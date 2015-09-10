@@ -6,6 +6,8 @@ Code for processing, validating and fixing some errors in "Casualties during the
 
 Copyright (c) 2015 Mikko Koho
 """
+
+import argparse
 import os
 
 import re
@@ -19,10 +21,20 @@ import rdf_dm as r
 INPUT_FILE_DIRECTORY = 'data/'
 OUTPUT_FILE_DIRECTORY = 'data/new/'
 
-try:
-    surma = joblib.load(INPUT_FILE_DIRECTORY + 'surma.pkl')
-    print('Parsed {len} triples from pickle object.'.format(len=len(surma)))
-except IOError:
+parser = argparse.ArgumentParser(description='Casualties of war')
+parser.add_argument('-r', action='store_true', help='Reload RDF graphs, instead of using pickle object')
+args = parser.parse_args()
+
+reload = args.r
+
+if not reload:
+    try:
+        surma = joblib.load(INPUT_FILE_DIRECTORY + 'surma.pkl')
+        print('Parsed {len} triples from pickle object.'.format(len=len(surma)))
+    except IOError:
+        reload = True
+
+if reload:
     print('Processing Sotasurma RDF data.')
     surma = rdflib.Graph()
     input_dir = '{base}/{dir}'.format(base=os.getcwd(), dir=INPUT_FILE_DIRECTORY)
