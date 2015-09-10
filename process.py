@@ -2,7 +2,8 @@
 #  -*- coding: UTF-8 -*-
 """
 Code for processing, validating and fixing some errors in "Casualties during the Finnish wars 1939–1945"
-(Suomen sodissa 1939–1945 menehtyneet) RDF dataset.
+(Suomen sodissa 1939–1945 menehtyneet) RDF dataset. Input data downloadable from LDF.FI linked data portal:
+http://www.ldf.fi/dataset/narc-menehtyneet1939-45
 
 Copyright (c) 2015 Mikko Koho
 """
@@ -43,6 +44,9 @@ if reload:
             surma.parse(input_dir + f, format='turtle')
     print('Parsed {len} triples.'.format(len=len(surma)))
     joblib.dump(surma, INPUT_FILE_DIRECTORY + 'surma.pkl')
+    print('Wrote graph to pickle object.')
+
+# TODO: Fix graveyard links using original CSV
 
 # Fix graveyard links
 p = URIRef('http://ldf.fi/schema/narc-menehtyneet1939-45/hautausmaa')
@@ -63,9 +67,9 @@ links = set(o for o in surma.objects() if type(o) != Literal)
 
 unknown_links = list(set([o for o in links if o not in known_uris]))
 
-print(len(classes))
-print(len(class_instances))
-print(len(known_uris))
+# print(len(classes))
+# print(len(class_instances))
+# print(len(known_uris))
 
 print('#####')
 print('{num} unknown URI references found in objects:\n'.format(num=len(unknown_links)))
