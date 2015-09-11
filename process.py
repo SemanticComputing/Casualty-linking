@@ -138,16 +138,10 @@ if not DRYRUN:
 
 # Validate all triples' object URIs against known classes and class instances.
 
-classes = r.get_classes(surma) + r.get_classes(surma_onto)
-class_instances = list(r.get_class_instances(surma, None)) + list(r.get_class_instances(surma_onto, None))
+unknown_links = r.get_unknown_links(surma + surma_onto)
 
-known_uris = list(set(classes) | set(class_instances))
-
-links = set(o for o in surma.objects() if type(o) != Literal)
-
-unknown_links = list(set([o for o in links if o not in known_uris]))
-
-print('#####')
-print('{num} unknown URI references found in objects:\n'.format(num=len(unknown_links)))
+print('Found {num} unknown URI references:\n'.format(num=len(unknown_links)))
 for o in sorted(unknown_links):
     print('{uri}  ({num})'.format(uri=str(o), num=len(list(surma[::o]))))
+
+# TODO: Check also subjects with no references
