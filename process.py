@@ -27,6 +27,18 @@ OUTPUT_FILE_DIRECTORY = 'data/new/'
 
 DATA_FILE = 'surma.ttl'
 
+# TODO: All mappings
+URI_MAPPINGS = {
+    URIRef('http://ldf.fi/narc-menehtyneet1939-45/sotilasarvo/Alipuseeri'):
+        URIRef('http://ldf.fi/narc-menehtyneet1939-45/sotilasarvo/Aliupseeri'),
+    URIRef('http://ldf.fi/narc-menehtyneet1939-45/sotilasarvo/Alikers__'):
+        URIRef('http://ldf.fi/narc-menehtyneet1939-45/sotilasarvo/Alikersantti'),
+    URIRef('http://ldf.fi/narc-menehtyneet1939-45/sotilasarvo/Jaeaek_'):
+        URIRef('http://ldf.fi/narc-menehtyneet1939-45/sotilasarvo/Jaeaekaeri'),
+    URIRef('http://ldf.fi/narc-menehtyneet1939-45/sotilasarvo/Miehisto'):
+        URIRef('http://ldf.fi/narc-menehtyneet1939-45/sotilasarvo/Miehistoe'),
+}
+
 parser = argparse.ArgumentParser(description='Casualties of war')
 parser.add_argument('-r', action='store_true', help='Reload RDF graphs, instead of using pickle object')
 parser.add_argument('-d', action='store_true', help='Dry run, don\'t serialize created graphs')
@@ -126,6 +138,17 @@ for s, o in surma[:p:]:
         surma.remove((s, p, o))
         surma.add((s, p, new_o))
 
+# Fix faulty URI references
+for map_from, map_to in URI_MAPPINGS.items():
+    for s, p in surma[::map_from]:
+        surma.remove((s, p, map_from))
+        surma.add((s, p, map_to))
+
+    for s, p in surma_onto[::map_from]:
+        surma_onto.remove((s, p, map_from))
+        surma_onto.add((s, p, map_to))
+
+
 print('Fixed known issues.')
 
 if not DRYRUN:
@@ -142,6 +165,6 @@ unknown_links = r.get_unknown_links(surma + surma_onto)
 
 print('Found {num} unknown URI references:\n'.format(num=len(unknown_links)))
 for o in sorted(unknown_links):
-    print('{uri}  ({num})'.format(uri=str(o), num=len(list(surma[::o]))))
+    print('{uri}  ({num})'.format(uri=str(o), num=str(len(list(surma[::o])) + len(list(surma_onto[::o])))))
 
 # TODO: Check also subjects with no references
