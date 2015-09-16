@@ -8,6 +8,10 @@ http://www.ldf.fi/dataset/narc-menehtyneet1939-45
 Input CSV data is not publicly available (?).
 
 Copyright (c) 2015 Mikko Koho
+
+Issues remaining:
+    - schema misused atleast http://ldf.fi/schema/narc-menehtyneet1939-45/hautauskunta being used against given
+      domain from also Hautausmaa instances, but no actual validation against schema done.
 """
 
 import argparse
@@ -45,7 +49,7 @@ URI_MAPPINGS = {
     ns_sotilasarvo.Miehisto: ns_sotilasarvo.Miehistoe,
     ns_sotilasarvo.Stm__________: ns_sotilasarvo.Sotamies,
     ns_sotilasarvo._stm_: ns_sotilasarvo.Sotamies,
-    ns_sotilasarvo.Matr_: ns_sotilasarvo.Matruusi,
+    ns_sotilasarvo.Matr__: ns_sotilasarvo.Matruusi,
     ns_sotilasarvo.Muu: ns_sotilasarvo.Muu_arvo,
     ns_kansalaisuus.Fi_: ns_kansalaisuus.Suomi,
     ns_kansallisuus.Fi_: ns_kansallisuus.Suomi,
@@ -56,11 +60,13 @@ URI_MAPPINGS = {
 
 parser = argparse.ArgumentParser(description='Casualties of war')
 parser.add_argument('-r', action='store_true', help='Reload RDF graphs, instead of using pickle object')
+parser.add_argument('-s', action='store_true', help='Skip cemetery fixing')
 parser.add_argument('-d', action='store_true', help='Dry run, don\'t serialize created graphs')
 args = parser.parse_args()
 
 reload = args.r
 DRYRUN = args.d
+SKIP_CEMETERIES = args.d
 
 
 # READ IN CSV DATA
@@ -123,54 +129,55 @@ for map_from, map_to in URI_MAPPINGS.items():
 # FIX CEMETERY LINKS AND INSTANCES
 p = ns_schema.hautausmaa
 
-for s, o in list(surma[:p:]):
-    assert str(o).startswith(ns_hautausmaat)
+if not SKIP_CEMETERIES:
+    for s, o in list(surma[:p:]):
+        assert str(o).startswith(ns_hautausmaat)
 
-    new_o = URIRef(re.sub(r'(/hautausmaat/)(\d+)', r'\1h\2', str(o)))
-    if not list(surma_onto[new_o::]):
-        new_o = None
+        new_o = URIRef(re.sub(r'(/hautausmaat/)(\d+)', r'\1h\2', str(o)))
+        if not list(surma_onto[new_o::]):
+            new_o = None
 
-    cemetery_id = str(o)[50:]  # Should be like '0243_3'
-    k_id, h_id = cemetery_id[:4], cemetery_id[5:].replace('_', '')
+        cemetery_id = str(o)[50:]  # Should be like '0243_3'
+        k_id, h_id = cemetery_id[:4], cemetery_id[5:].replace('_', '')
 
-    h_name = ''
-    try:
-        h_name = hmaat[hmaat['kunta_id'] == k_id][hmaat['hmaa_id'] == (int(h_id) if h_id.isnumeric() else 0)]['hmaa_name'].iloc[0]
-    except IndexError:
-        pass
-
-    try:
-        k_name = kunta[kunta['kunta_id'] == k_id]['kunta_name'].iloc[0]
-        h_name = h_name or '{kunta} {id}'.format(kunta=k_name, id=h_id)
-    except IndexError:
-        pass
-
-    if not new_o:
+        h_name = ''
         try:
-            new_o = ns_hautausmaat['h{cem_id}'.format(cem_id=cemetery_id)]
-        except ValueError:
-            print('Invalid cemetery id: {id}'.format(id=cemetery_id))
-            continue
+            h_name = hmaat[hmaat['kunta_id'] == k_id][hmaat['hmaa_id'] == (int(h_id) if h_id.isnumeric() else 0)]['hmaa_name'].iloc[0]
+        except IndexError:
+            pass
 
-        assert h_name, s  # We should have a name to use as prefLabel
+        try:
+            k_name = kunta[kunta['kunta_id'] == k_id]['kunta_name'].iloc[0]
+            h_name = h_name or '{kunta} {id}'.format(kunta=k_name, id=h_id)
+        except IndexError:
+            pass
 
-        surma_onto.add((new_o, RDF.type, ns_schema.Hautausmaa))
-        surma_onto.add((new_o, ns_skos.prefLabel, Literal(h_name)))
-        surma_onto.add((new_o, ns_schema.hautauskunta, Literal(h_name)))
+        if not new_o:
+            try:
+                new_o = ns_hautausmaat['h{cem_id}'.format(cem_id=cemetery_id)]
+            except ValueError:
+                print('Invalid cemetery id: {id}'.format(id=cemetery_id))
+                continue
 
-        print('New cemetery %s : %s' % (new_o, h_name))
+            assert h_name, s  # We should have a name to use as prefLabel
 
-    else:
-        h_name_onto = str(next(surma_onto[new_o:ns_skos.prefLabel:]))
-        if h_name:
-            assert h_name == h_name_onto or h_name == h_name_onto.split()[0], '%s  !=  %s' % (h_name, h_name_onto)
+            surma_onto.add((new_o, RDF.type, ns_schema.Hautausmaa))
+            surma_onto.add((new_o, ns_skos.prefLabel, Literal(h_name)))
+            surma_onto.add((new_o, ns_schema.hautauskunta, Literal(h_name)))
 
-    if new_o:
-        surma.remove((s, p, o))
-        surma.add((s, p, new_o))
+            print('New cemetery %s : %s' % (new_o, h_name))
+
+        else:
+            h_name_onto = str(next(surma_onto[new_o:ns_skos.prefLabel:]))
+            if h_name:
+                assert h_name == h_name_onto or h_name == h_name_onto.split()[0], '%s  !=  %s' % (h_name, h_name_onto)
+
+        if new_o:
+            surma.remove((s, p, o))
+            surma.add((s, p, new_o))
 
 
-print('Fixed known issues.')
+print('\nFixed known issues.')
 
 
 # DO SOME VALIDATION TO FIND REMAINING ERRORS
@@ -179,27 +186,55 @@ full_rdf = surma + surma_onto
 
 unknown_links = r.get_unknown_links(full_rdf)
 
-print('Found {num} unknown URI references:\n'.format(num=len(unknown_links)))
+print('\nFound {num} unknown URI references:'.format(num=len(unknown_links)))
 for o in sorted(unknown_links):
     print('{uri}  ({num})'.format(uri=str(o), num=str(len(list(surma[::o])) + len(list(surma_onto[::o])))))
 
-unlinked_subjects = r.get_unlinked_uris(full_rdf)
+unlinked_subjects = [uri for uri in r.get_unlinked_uris(full_rdf)
+                     if not str(uri).startswith('http://ldf.fi/narc-menehtyneet1939-45/p')]
 
-print('Found {num} unlinked subjects:\n'.format(num=len(unlinked_subjects)))
+print('\nFound {num} unlinked subjects:'.format(num=len(unlinked_subjects)))
 for s in sorted(unlinked_subjects):
     print('{uri}'.format(uri=str(s)))
 
-# TODO: Link to Warsa municipalities
 
-# TODO: Link to joukko-osastot
+# LINK TO WARSA MUNICIPALITIES
 
+munics = r.helpers.read_graph_from_sparql("http://ldf.fi/warsa/sparql",
+                                          graph_name='http://ldf.fi/warsa/places/municipalities')
+
+print(len(munics))
+kunnat = list(r.get_class_instances(munics, URIRef('http://www.yso.fi/onto/suo/kunta')))
+
+for s in list(surma_onto[:RDF.type:ns_schema.Kunta]):
+    label = next(surma_onto[s:ns_skos.prefLabel:])
+
+    warsa_s = list(munics[:ns_skos.prefLabel:Literal(str(label))])
+
+    if len(warsa_s) == 0:
+        print('Not found Warsa URI for {lbl}'.format(lbl=label))
+    elif len(warsa_s) == 1:
+        print('Found {lbl} as Warsa URI {s}'.format(lbl=label, s=warsa_s[0]))
+        # TODO: Link
+        surma_onto.add((s, ns_schema.warsa_municipality, warsa_s[0]))
+    else:
+        print('Found multiple Warsa URIs for {lbl}: {s}'.format(lbl=label, s=warsa_s))
+
+
+# TODO: Link to joukko-osastot (or do this afterwards?)
+
+# TODO: Add dct:contributors
 
 # SERIALIZE GRAPHS
 
 if not DRYRUN:
     surma.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
-    surma_onto.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
+    surma.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
+
+    surma_onto.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
+    surma_onto.bind("geo", "http://www.georss.org/georss/")
+    surma_onto.bind("dct", "http://purl.org/dc/terms/")
 
     surma.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma.ttl")
     surma_onto.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma_onto.ttl")
-    print('Serialized graphs.')
+    print('\nSerialized graphs.')
