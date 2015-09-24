@@ -83,7 +83,20 @@ def link_to_warsa_municipalities():
 
         warsa_s = []
 
-        for lbl in str(label).split('/'):
+        for lbl in str(label).strip().split('/'):
+            if lbl == 'Pyhäjärvi Ol':
+                warsa_s = URIRef('http://ldf.fi/warsa/places/municipalities/m_place_75')
+            elif lbl == 'Pyhäjärvi Ul.':
+                warsa_s = URIRef('http://ldf.fi/warsa/places/municipalities/m_place_543')
+            elif lbl == 'Pyhäjärvi Vl':
+                warsa_s = URIRef('http://ldf.fi/warsa/places/municipalities/m_place_586')
+            elif lbl == 'Koski Tl.':
+                warsa_s = URIRef('http://ldf.fi/warsa/places/municipalities/m_place_291')
+            elif lbl == 'Koski Hl.':
+                warsa_s = URIRef('http://ldf.fi/warsa/places/municipalities/m_place_391')
+            elif lbl == 'Uusikirkko Vl':
+                warsa_s = URIRef('http://ldf.fi/warsa/places/municipalities/m_place_609')
+
             if not warsa_s:
                 warsa_s = list(munics[:ns_skos.prefLabel:Literal(lbl)])
             if not warsa_s:
@@ -266,7 +279,9 @@ surma_onto.add((ns_schema.hautausmaakunta, RDFS.label, Literal('Hautauskunta', l
 surma_onto.add((ns_schema.hautausmaakunta, RDFS.domain, ns_schema.Kunta))
 surma_onto.add((ns_schema.hautausmaakunta, ns_skos.prefLabel, Literal('Hautauskunta', lang='fi')))
 
-# TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat voisi linkittää esim. paikannimirekisterin paikkoihin
+# surma_onto.add(())
+
+# TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää esim. paikannimirekisterin paikkoihin
 
 # SERIALIZE GRAPHS
 
@@ -274,6 +289,7 @@ if not DRYRUN:
     surma.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
     surma.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
 
+    surma_onto.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")  # TODO: Move schema stuff to schema namespace (e.g. skos:ConceptSchemes)
     surma_onto.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
     surma_onto.bind("geo", "http://www.georss.org/georss/")
     surma_onto.bind("dct", "http://purl.org/dc/terms/")
