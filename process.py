@@ -61,12 +61,62 @@ URI_MAPPINGS = {
 parser = argparse.ArgumentParser(description='Casualties of war')
 parser.add_argument('-r', action='store_true', help='Reload RDF graphs, instead of using pickle object')
 parser.add_argument('-s', action='store_true', help='Skip cemetery fixing')
+parser.add_argument('-v', action='store_true', help='Skip validation')
 parser.add_argument('-d', action='store_true', help='Dry run, don\'t serialize created graphs')
 args = parser.parse_args()
 
 reload = args.r
 DRYRUN = args.d
 SKIP_CEMETERIES = args.s
+SKIP_VALIDATION = args.v
+
+
+def link_to_warsa_municipalities():
+    munics = r.helpers.read_graph_from_sparql("http://ldf.fi/warsa/sparql",
+                                              graph_name='http://ldf.fi/warsa/places/municipalities')
+
+    print(len(munics))
+    kunnat = list(r.get_class_instances(munics, URIRef('http://www.yso.fi/onto/suo/kunta')))
+
+    for s in list(surma_onto[:RDF.type:ns_schema.Kunta]):
+        label = next(surma_onto[s:ns_skos.prefLabel:])
+
+        warsa_s = []
+
+        for lbl in str(label).split('/'):
+            if not warsa_s:
+                warsa_s = list(munics[:ns_skos.prefLabel:Literal(lbl)])
+            if not warsa_s:
+                warsa_s = list(munics[:ns_skos.prefLabel:Literal(lbl.replace(' kunta', ' mlk'))])
+
+        if len(warsa_s) == 0:
+            print('WARNING: Not found Warsa URI for {lbl}'.format(lbl=label))
+        elif len(warsa_s) == 1:
+            # print('Found {lbl} as Warsa URI {s}'.format(lbl=label, s=warsa_s[0]))
+            for subj in list(surma[:ns_schema.synnyinkunta:s]):
+                surma.add((subj, ns_schema.synnyinkunta, warsa_s[0]))
+                surma.remove((subj, ns_schema.synnyinkunta, s))
+            for subj in list(surma[:ns_schema.kotikunta:s]):
+                surma.add((subj, ns_schema.kotikunta, warsa_s[0]))
+                surma.remove((subj, ns_schema.kotikunta, s))
+            for subj in list(surma[:ns_schema.hautauskunta:s]):
+                # NOTE! hautauskunta seems to refer to current municipalities, unlike the rest
+
+                # surma.add((subj, ns_schema.hautauskunta, s))
+                # surma.remove((subj, ns_schema.hautauskunta, s))
+
+                # Fixes cemetery municipalities
+                surma_onto.add((subj, ns_schema.hautausmaakunta, s))
+                surma_onto.remove((subj, ns_schema.hautauskunta, s))
+            for subj in list(surma[:ns_schema.asuinkunta:s]):
+                surma.add((subj, ns_schema.asuinkunta, warsa_s[0]))
+                surma.remove((subj, ns_schema.asuinkunta, s))
+            for subj in list(surma[:ns_schema.kuolinkunta:s]):
+                surma.add((subj, ns_schema.kuolinkunta, warsa_s[0]))
+                surma.remove((subj, ns_schema.kuolinkunta, s))
+        else:
+            print('WARNING: Found multiple Warsa URIs for {lbl}: {s}'.format(lbl=label, s=warsa_s))
+
 
 
 # READ IN CSV DATA
@@ -126,10 +176,10 @@ for map_from, map_to in URI_MAPPINGS.items():
         surma_onto.add((s, p, map_to))
 
 
-# FIX CEMETERY LINKS AND INSTANCES
-p = ns_schema.hautausmaa
-
 if not SKIP_CEMETERIES:
+    # FIX CEMETERY LINKS AND INSTANCES
+    p = ns_schema.hautausmaa
+
     for s, o in list(surma[:p:]):
         assert str(o).startswith(ns_hautausmaat)
 
@@ -180,50 +230,39 @@ if not SKIP_CEMETERIES:
 print('\nFixed known issues.')
 
 
-# DO SOME VALIDATION TO FIND REMAINING ERRORS
+if not SKIP_VALIDATION:
+    # DO SOME VALIDATION TO FIND REMAINING ERRORS
 
-full_rdf = surma + surma_onto
+    full_rdf = surma + surma_onto
 
-unknown_links = r.get_unknown_links(full_rdf)
+    unknown_links = r.get_unknown_links(full_rdf)
 
-print('\nFound {num} unknown URI references:'.format(num=len(unknown_links)))
-for o in sorted(unknown_links):
-    print('{uri}  ({num})'.format(uri=str(o), num=str(len(list(surma[::o])) + len(list(surma_onto[::o])))))
+    print('\nFound {num} unknown URI references:'.format(num=len(unknown_links)))
+    for o in sorted(unknown_links):
+        print('{uri}  ({num})'.format(uri=str(o), num=str(len(list(surma[::o])) + len(list(surma_onto[::o])))))
 
-unlinked_subjects = [uri for uri in r.get_unlinked_uris(full_rdf)
-                     if not str(uri).startswith('http://ldf.fi/narc-menehtyneet1939-45/p')]
+    unlinked_subjects = [uri for uri in r.get_unlinked_uris(full_rdf)
+                         if not str(uri).startswith('http://ldf.fi/narc-menehtyneet1939-45/p')]
 
-print('\nFound {num} unlinked subjects:'.format(num=len(unlinked_subjects)))
-for s in sorted(unlinked_subjects):
-    print('{uri}'.format(uri=str(s)))
+    print('\nFound {num} unlinked subjects:'.format(num=len(unlinked_subjects)))
+    for s in sorted(unlinked_subjects):
+        print('{uri}'.format(uri=str(s)))
 
 
 # LINK TO WARSA MUNICIPALITIES
 
-munics = r.helpers.read_graph_from_sparql("http://ldf.fi/warsa/sparql",
-                                          graph_name='http://ldf.fi/warsa/places/municipalities')
+link_to_warsa_municipalities()
 
-print(len(munics))
-kunnat = list(r.get_class_instances(munics, URIRef('http://www.yso.fi/onto/suo/kunta')))
+# TODO: Change/expand synnyinkunta range in schema
 
-for s in list(surma_onto[:RDF.type:ns_schema.Kunta]):
-    label = next(surma_onto[s:ns_skos.prefLabel:])
-
-    warsa_s = list(munics[:ns_skos.prefLabel:Literal(str(label))])
-
-    if len(warsa_s) == 0:
-        print('Not found Warsa URI for {lbl}'.format(lbl=label))
-    elif len(warsa_s) == 1:
-        print('Found {lbl} as Warsa URI {s}'.format(lbl=label, s=warsa_s[0]))
-        # TODO: Link
-        surma_onto.add((s, ns_schema.warsa_municipality, warsa_s[0]))
-    else:
-        print('Found multiple Warsa URIs for {lbl}: {s}'.format(lbl=label, s=warsa_s))
-
+# TODO: Link to sotilasarvot
 
 # TODO: Link to joukko-osastot (or do this afterwards?)
 
 # TODO: Add dct:contributors
+
+# TODO: Fix possible errors in schema
+# TODO:     ns_schema.hautausmaakunta to schema
 
 # SERIALIZE GRAPHS
 
