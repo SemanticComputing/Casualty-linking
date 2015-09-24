@@ -32,6 +32,7 @@ OUTPUT_FILE_DIRECTORY = 'data/new/'
 DATA_FILE = 'surma.ttl'
 
 ns_skos = Namespace('http://www.w3.org/2004/02/skos/core#')
+ns_dct = Namespace('http://purl.org/dc/terms/')
 ns_schema = Namespace('http://ldf.fi/schema/narc-menehtyneet1939-45/')
 
 ns_hautausmaat = Namespace('http://ldf.fi/narc-menehtyneet1939-45/hautausmaat/')
@@ -71,126 +72,25 @@ SKIP_CEMETERIES = args.s
 SKIP_VALIDATION = args.v
 
 
-def link_to_warsa_municipalities():
-    munics = r.helpers.read_graph_from_sparql("http://ldf.fi/warsa/sparql",
-                                              graph_name='http://ldf.fi/warsa/places/municipalities')
+def fix_by_direct_uri_mappings():
+    """
+    Fix faulty uri references by direct mapping
+    """
+    for map_from, map_to in URI_MAPPINGS.items():
+        print('Fixing %s --> %s' % (map_from, map_to))
+        for s, p in list(surma[::map_from]):
+            surma.remove((s, p, map_from))
+            surma.add((s, p, map_to))
 
-    print(len(munics))
-    kunnat = list(r.get_class_instances(munics, URIRef('http://www.yso.fi/onto/suo/kunta')))
-
-    for s in list(surma_onto[:RDF.type:ns_schema.Kunta]):
-        label = next(surma_onto[s:ns_skos.prefLabel:])
-
-        warsa_s = []
-
-        for lbl in str(label).strip().split('/'):
-            if lbl == 'Pyhäjärvi Ol':
-                warsa_s = URIRef('http://ldf.fi/warsa/places/municipalities/m_place_75')
-            elif lbl == 'Pyhäjärvi Ul.':
-                warsa_s = URIRef('http://ldf.fi/warsa/places/municipalities/m_place_543')
-            elif lbl == 'Pyhäjärvi Vl':
-                warsa_s = URIRef('http://ldf.fi/warsa/places/municipalities/m_place_586')
-            elif lbl == 'Koski Tl.':
-                warsa_s = URIRef('http://ldf.fi/warsa/places/municipalities/m_place_291')
-            elif lbl == 'Koski Hl.':
-                warsa_s = URIRef('http://ldf.fi/warsa/places/municipalities/m_place_391')
-            elif lbl == 'Uusikirkko Vl':
-                warsa_s = URIRef('http://ldf.fi/warsa/places/municipalities/m_place_609')
-
-            if not warsa_s:
-                warsa_s = list(munics[:ns_skos.prefLabel:Literal(lbl)])
-            if not warsa_s:
-                warsa_s = list(munics[:ns_skos.prefLabel:Literal(lbl.replace(' kunta', ' mlk'))])
-
-        if len(warsa_s) == 0:
-            print('WARNING: Not found Warsa URI for {lbl}'.format(lbl=label))
-        elif len(warsa_s) == 1:
-            # print('Found {lbl} as Warsa URI {s}'.format(lbl=label, s=warsa_s[0]))
-            for subj in list(surma[:ns_schema.synnyinkunta:s]):
-                surma.add((subj, ns_schema.synnyinkunta, warsa_s[0]))
-                surma.remove((subj, ns_schema.synnyinkunta, s))
-            for subj in list(surma[:ns_schema.kotikunta:s]):
-                surma.add((subj, ns_schema.kotikunta, warsa_s[0]))
-                surma.remove((subj, ns_schema.kotikunta, s))
-            for subj in list(surma[:ns_schema.hautauskunta:s]):
-                # NOTE! hautauskunta seems to refer to current municipalities, unlike the rest
-
-                # surma.add((subj, ns_schema.hautauskunta, s))
-                # surma.remove((subj, ns_schema.hautauskunta, s))
-
-                # Fixes cemetery municipalities
-                surma_onto.add((subj, ns_schema.hautausmaakunta, s))  # Add hautausmaakunta
-                surma_onto.remove((subj, ns_schema.hautauskunta, s))
-            for subj in list(surma[:ns_schema.asuinkunta:s]):
-                surma.add((subj, ns_schema.asuinkunta, warsa_s[0]))
-                surma.remove((subj, ns_schema.asuinkunta, s))
-            for subj in list(surma[:ns_schema.kuolinkunta:s]):
-                surma.add((subj, ns_schema.kuolinkunta, warsa_s[0]))
-                surma.remove((subj, ns_schema.kuolinkunta, s))
-        else:
-            print('WARNING: Found multiple Warsa URIs for {lbl}: {s}'.format(lbl=label, s=warsa_s))
+        for s, p in list(surma_onto[::map_from]):
+            surma_onto.remove((s, p, map_from))
+            surma_onto.add((s, p, map_to))
 
 
-
-# READ IN CSV DATA
-hmaat = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_HMAAT.CSV', encoding='latin_1', header=None, index_col=False,
-                    names=['kunta_id', 'hmaa_id', 'hmaa_name'], sep=',', quotechar='"', na_values=['  '])
-""":type : pd.DataFrame"""  # for PyCharm type hinting
-
-kunta = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_KUNTA.CSV', encoding='latin_1', header=None, index_col=False,
-                    names=['kunta_id', 'kunta_name'], sep=',', quotechar='"', na_values=['  '])
-""":type : pd.DataFrame"""  # for PyCharm type hinting
-
-# Strip whitespace from cemetery names
-# hmaat.hmaa_name = hmaat.hmaa_name.map(lambda x: x.strip())
-hmaat = hmaat.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-kunta = kunta.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-
-
-# READ IN RDF DATA
-if not reload:
-    # Read RDF graph from pickle
-    try:
-        surma = joblib.load(INPUT_FILE_DIRECTORY + 'surma.pkl')
-        surma_onto = joblib.load(INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
-        print('Parsed {len} data triples from pickle object.'.format(len=len(surma)))
-        print('Parsed {len} ontology triples from pickle object.'.format(len=len(surma)))
-    except IOError:
-        reload = True
-
-if reload:
-    # Read RDF graph from TTL files
-    print('Processing Sotasurma RDF files.')
-
-    surma = rdflib.Graph()
-    surma.parse(INPUT_FILE_DIRECTORY + DATA_FILE, format='turtle')
-
-    surma_onto = rdflib.Graph()
-    input_dir = '{base}/{dir}'.format(base=os.getcwd(), dir=INPUT_FILE_DIRECTORY)
-    for f in os.listdir(input_dir):
-        if f != DATA_FILE and f.endswith('.ttl'):
-            surma_onto.parse(input_dir + f, format='turtle')
-    print('Parsed {len} data triples.'.format(len=len(surma)))
-    print('Parsed {len} ontology triples.'.format(len=len(surma_onto)))
-    joblib.dump(surma, INPUT_FILE_DIRECTORY + 'surma.pkl')
-    joblib.dump(surma_onto, INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
-    print('Wrote graphs to pickle objects.')
-
-
-# FIX FAULTY URI REFERENCES BY DIRECT MAPPING
-for map_from, map_to in URI_MAPPINGS.items():
-    print('Fixing %s --> %s' % (map_from, map_to))
-    for s, p in list(surma[::map_from]):
-        surma.remove((s, p, map_from))
-        surma.add((s, p, map_to))
-
-    for s, p in list(surma_onto[::map_from]):
-        surma_onto.remove((s, p, map_from))
-        surma_onto.add((s, p, map_to))
-
-
-if not SKIP_CEMETERIES:
-    # FIX CEMETERY LINKS AND INSTANCES
+def fix_cemetery_links():
+    """
+    Fix errors in cemetery links and add missing cemetery instances.
+    """
     p = ns_schema.hautausmaa
 
     for s, o in list(surma[:p:]):
@@ -240,11 +140,73 @@ if not SKIP_CEMETERIES:
             surma.add((s, p, new_o))
 
 
-print('\nFixed known issues.')
+def link_to_warsa_municipalities():
+    """
+    Link to Warsa municipalities used in SotaSampo project.
+    """
+    munics = r.helpers.read_graph_from_sparql("http://ldf.fi/warsa/sparql",
+                                              graph_name='http://ldf.fi/warsa/places/municipalities')
+
+    print(len(munics))
+    kunnat = list(r.get_class_instances(munics, URIRef('http://www.yso.fi/onto/suo/kunta')))
+
+    for s in list(surma_onto[:RDF.type:ns_schema.Kunta]):
+        label = next(surma_onto[s:ns_skos.prefLabel:])
+
+        warsa_s = []
+
+        for lbl in str(label).strip().split('/'):
+            if lbl == 'Pyhäjärvi Ol':
+                warsa_s = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_75')]
+            elif lbl == 'Pyhäjärvi Ul.':
+                warsa_s = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_543')]
+            elif lbl == 'Pyhäjärvi Vl':
+                warsa_s = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_586')]
+            elif lbl == 'Koski Tl.':
+                warsa_s = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_291')]
+            elif lbl == 'Koski Hl.':
+                warsa_s = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_391')]
+            elif lbl == 'Uusikirkko Vl':
+                warsa_s = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_609')]
+
+            if not warsa_s:
+                warsa_s = list(munics[:ns_skos.prefLabel:Literal(lbl)])
+            if not warsa_s:
+                warsa_s = list(munics[:ns_skos.prefLabel:Literal(lbl.replace(' kunta', ' mlk'))])
+
+        if len(warsa_s) == 0:
+            print('WARNING: Not found Warsa URI for {lbl}'.format(lbl=label))
+        elif len(warsa_s) == 1:
+            # print('Found {lbl} as Warsa URI {s}'.format(lbl=label, s=warsa_s[0]))
+            for subj in list(surma[:ns_schema.synnyinkunta:s]):
+                surma.add((subj, ns_schema.synnyinkunta, warsa_s[0]))
+                surma.remove((subj, ns_schema.synnyinkunta, s))
+            for subj in list(surma[:ns_schema.kotikunta:s]):
+                surma.add((subj, ns_schema.kotikunta, warsa_s[0]))
+                surma.remove((subj, ns_schema.kotikunta, s))
+            for subj in list(surma[:ns_schema.hautauskunta:s]):
+                # NOTE! hautauskunta seems to refer to current municipalities, unlike the rest
+
+                # surma.add((subj, ns_schema.hautauskunta, s))
+                # surma.remove((subj, ns_schema.hautauskunta, s))
+
+                # Fixes cemetery municipalities
+                surma_onto.add((subj, ns_schema.hautausmaakunta, s))  # Add hautausmaakunta
+                surma_onto.remove((subj, ns_schema.hautauskunta, s))
+            for subj in list(surma[:ns_schema.asuinkunta:s]):
+                surma.add((subj, ns_schema.asuinkunta, warsa_s[0]))
+                surma.remove((subj, ns_schema.asuinkunta, s))
+            for subj in list(surma[:ns_schema.kuolinkunta:s]):
+                surma.add((subj, ns_schema.kuolinkunta, warsa_s[0]))
+                surma.remove((subj, ns_schema.kuolinkunta, s))
+        else:
+            print('WARNING: Found multiple Warsa URIs for {lbl}: {s}'.format(lbl=label, s=warsa_s))
 
 
-if not SKIP_VALIDATION:
-    # DO SOME VALIDATION TO FIND REMAINING ERRORS
+def validate():
+    """
+    Do some validation to find remaining errors
+    """
 
     full_rdf = surma + surma_onto
 
@@ -262,7 +224,66 @@ if not SKIP_VALIDATION:
         print('{uri}'.format(uri=str(s)))
 
 
-# LINK TO WARSA MUNICIPALITIES
+##################
+# READ IN CSV DATA
+
+hmaat = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_HMAAT.CSV', encoding='latin_1', header=None, index_col=False,
+                    names=['kunta_id', 'hmaa_id', 'hmaa_name'], sep=',', quotechar='"', na_values=['  '])
+""":type : pd.DataFrame"""  # for PyCharm type hinting
+
+kunta = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_KUNTA.CSV', encoding='latin_1', header=None, index_col=False,
+                    names=['kunta_id', 'kunta_name'], sep=',', quotechar='"', na_values=['  '])
+""":type : pd.DataFrame"""  # for PyCharm type hinting
+
+# Strip whitespace from cemetery names
+# hmaat.hmaa_name = hmaat.hmaa_name.map(lambda x: x.strip())
+hmaat = hmaat.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+kunta = kunta.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+
+
+##################
+# READ IN RDF DATA
+
+if not reload:
+    # Read RDF graph from pickle
+    try:
+        surma = joblib.load(INPUT_FILE_DIRECTORY + 'surma.pkl')
+        surma_onto = joblib.load(INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
+        print('Parsed {len} data triples from pickle object.'.format(len=len(surma)))
+        print('Parsed {len} ontology triples from pickle object.'.format(len=len(surma)))
+    except IOError:
+        reload = True
+
+if reload:
+    # Read RDF graph from TTL files
+    print('Processing Sotasurma RDF files.')
+
+    surma = rdflib.Graph()
+    surma.parse(INPUT_FILE_DIRECTORY + DATA_FILE, format='turtle')
+
+    surma_onto = rdflib.Graph()
+    input_dir = '{base}/{dir}'.format(base=os.getcwd(), dir=INPUT_FILE_DIRECTORY)
+    for f in os.listdir(input_dir):
+        if f != DATA_FILE and f.endswith('.ttl'):
+            surma_onto.parse(input_dir + f, format='turtle')
+    print('Parsed {len} data triples.'.format(len=len(surma)))
+    print('Parsed {len} ontology triples.'.format(len=len(surma_onto)))
+    joblib.dump(surma, INPUT_FILE_DIRECTORY + 'surma.pkl')
+    joblib.dump(surma_onto, INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
+    print('Wrote graphs to pickle objects.')
+
+##########################################################
+# FIX KNOWN ISSUES AND ADD LINKS TO OTHER SOTASAMPO GRAPHS
+
+fix_by_direct_uri_mappings()
+
+if not SKIP_CEMETERIES:
+    fix_cemetery_links()
+
+print('\nFixed known issues.')
+
+if not SKIP_VALIDATION:
+    validate()
 
 link_to_warsa_municipalities()
 
@@ -270,19 +291,19 @@ link_to_warsa_municipalities()
 
 # TODO: Link to joukko-osastot (or do this afterwards?)
 
-# TODO: Add dct:contributors
-
 # TODO: Fix possible errors in schema
+
+# TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää esim. paikannimirekisterin paikkoihin
 
 surma_onto.add((ns_schema.hautausmaakunta, RDF.type, OWL.ObjectProperty))
 surma_onto.add((ns_schema.hautausmaakunta, RDFS.label, Literal('Hautauskunta', lang='fi')))
 surma_onto.add((ns_schema.hautausmaakunta, RDFS.domain, ns_schema.Kunta))
 surma_onto.add((ns_schema.hautausmaakunta, ns_skos.prefLabel, Literal('Hautauskunta', lang='fi')))
 
-# surma_onto.add(())
+surma_onto.add((ns_kunnat.kunta_ontologia, ns_dct.contributor, 'http://orcid.org/0000-0002-7373-9338'))
+surma_onto.add((ns_kunnat.kunta_ontologia, ns_dct.contributor, 'http://www.seco.tkk.fi/'))
 
-# TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää esim. paikannimirekisterin paikkoihin
-
+##################
 # SERIALIZE GRAPHS
 
 if not DRYRUN:
