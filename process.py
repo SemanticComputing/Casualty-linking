@@ -106,7 +106,7 @@ def link_to_warsa_municipalities():
                 # surma.remove((subj, ns_schema.hautauskunta, s))
 
                 # Fixes cemetery municipalities
-                surma_onto.add((subj, ns_schema.hautausmaakunta, s))
+                surma_onto.add((subj, ns_schema.hautausmaakunta, s))  # Add hautausmaakunta
                 surma_onto.remove((subj, ns_schema.hautauskunta, s))
             for subj in list(surma[:ns_schema.asuinkunta:s]):
                 surma.add((subj, ns_schema.asuinkunta, warsa_s[0]))
@@ -253,8 +253,6 @@ if not SKIP_VALIDATION:
 
 link_to_warsa_municipalities()
 
-# TODO: Change/expand synnyinkunta range in schema
-
 # TODO: Link to sotilasarvot
 
 # TODO: Link to joukko-osastot (or do this afterwards?)
@@ -262,7 +260,13 @@ link_to_warsa_municipalities()
 # TODO: Add dct:contributors
 
 # TODO: Fix possible errors in schema
-# TODO:     ns_schema.hautausmaakunta to schema
+
+surma_onto.add((ns_schema.hautausmaakunta, RDF.type, OWL.ObjectProperty))
+surma_onto.add((ns_schema.hautausmaakunta, RDFS.label, Literal('Hautauskunta', lang='fi')))
+surma_onto.add((ns_schema.hautausmaakunta, RDFS.domain, ns_schema.Kunta))
+surma_onto.add((ns_schema.hautausmaakunta, ns_skos.prefLabel, Literal('Hautauskunta', lang='fi')))
+
+# TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat voisi linkittää esim. paikannimirekisterin paikkoihin
 
 # SERIALIZE GRAPHS
 
