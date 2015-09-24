@@ -66,7 +66,7 @@ args = parser.parse_args()
 
 reload = args.r
 DRYRUN = args.d
-SKIP_CEMETERIES = args.d
+SKIP_CEMETERIES = args.s
 
 
 # READ IN CSV DATA
