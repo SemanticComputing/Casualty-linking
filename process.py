@@ -183,7 +183,7 @@ def link_to_warsa_municipalities():
 
         if len(warsa_s) == 0:
             if set(surma.subjects(None, s)) - set(surma[:ns_schema.hautauskunta:s]):
-                print('WARNING: Not found Warsa URI for {lbl}'.format(lbl=label))
+                print('WARNING: Couldn\'t find Warsa URI for {lbl}'.format(lbl=label))
         elif len(warsa_s) == 1:
             # print('Found {lbl} as Warsa URI {s}'.format(lbl=label, s=warsa_s[0]))
             for subj in list(surma[:ns_schema.synnyinkunta:s]):
@@ -230,6 +230,26 @@ def validate():
         print('{uri}'.format(uri=str(s)))
 
 
+def link_to_military_ranks():
+    ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
+
+    p = ns_schema.sotilasarvo
+    for s, o in list(surma[:p:]):
+        rank_label = list(surma_onto[o:ns_skos.prefLabel:])[0]
+        rank_label = Literal(str(rank_label).capitalize())  # Strip lang attribute and capitalize
+        found_ranks = list(ranks[:ns_skos.prefLabel:rank_label])
+        if len(found_ranks) == 1:
+            new_o = found_ranks[0]
+        elif len(found_ranks) > 1:
+            print('WARNING: Found multiple ranks for {rank}'.format(rank=rank_label))
+            new_o = None
+        else:
+            print('WARNING: Couldn\'t find military rank for {rank}'.format(rank=rank_label))
+            new_o = None
+
+        if new_o:
+            pass
+            # TODO: Link
 
 
 ##################
@@ -258,7 +278,7 @@ if not reload:
         surma = joblib.load(INPUT_FILE_DIRECTORY + 'surma.pkl')
         surma_onto = joblib.load(INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
         print('Parsed {len} data triples from pickle object.'.format(len=len(surma)))
-        print('Parsed {len} ontology triples from pickle object.'.format(len=len(surma)))
+        print('Parsed {len} ontology triples from pickle object.'.format(len=len(surma_onto)))
     except IOError:
         reload = True
 
@@ -286,14 +306,17 @@ fix_by_direct_uri_mappings()
 if not SKIP_CEMETERIES:
     fix_cemetery_links()
 
-print('\nFixed known issues.')
+print('\nFixed known issues.\n')
 
 if not SKIP_VALIDATION:
     validate()
+    print()
 
 link_to_warsa_municipalities()
 
-# TODO: Link to sotilasarvot
+print()
+
+link_to_military_ranks()
 
 # TODO: Link to joukko-osastot (or do this afterwards?)
 
