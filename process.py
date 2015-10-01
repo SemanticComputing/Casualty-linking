@@ -257,14 +257,26 @@ def link_to_military_ranks():
             # TODO: Link
 
 
-def link_to_military_units():
+def link_to_military_units(graph):
     """
     Link casualties to all of their military units in Warsa
     """
+    from arpa import Arpa, arpafy
 
-    # TODO
-    pass
+    def preprocessor(text):
+        l = text.split('/')
+        if len(l) > 1:
+            for part in reversed(l):
+                text = text + ' # ' + part
 
+        return text
+
+    arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_actor_units')
+
+    # Query the ARPA service and add the matches
+    return arpafy(graph, URIRef('http://ldf.fi/schema/narc-menehtyneet1939-45/unit'),
+            arpa, URIRef('http://ldf.fi/schema/narc-menehtyneet1939-45/joukko_osasto'),
+            preprocessor=preprocessor, progress=True)
 
 
 ##################
