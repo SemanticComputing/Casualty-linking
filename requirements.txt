@@ -1,4 +1,4 @@
 joblib>=0.8.4
 pandas>=0.16.2
 rdflib>=4.2.1
--e https://github.com/SemanticComputing/rdf_dm.git#egg=rdf_dm-master
+-e git+https://github.com/SemanticComputing/rdf_dm.git#egg=rdf_dm-master
