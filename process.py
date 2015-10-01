@@ -253,8 +253,8 @@ def link_to_military_ranks():
             print('WARNING: Couldn\'t find military rank for {rank}'.format(rank=rank_label))
 
         if new_o:
-            pass
-            # TODO: Link
+            surma.remove((s, p, o))
+            surma.add((s, p, new_o))
 
 
 def link_to_military_units(graph):
@@ -325,6 +325,7 @@ if reload:
     joblib.dump(surma_onto, INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
     print('Wrote graphs to pickle objects.')
 
+
 ##########################################################
 # FIX KNOWN ISSUES AND ADD LINKS TO OTHER SOTASAMPO GRAPHS
 
@@ -335,7 +336,8 @@ if not SKIP_CEMETERIES:
 
     surma_onto.add((ns_schema.hautausmaakunta, RDF.type, OWL.ObjectProperty))
     surma_onto.add((ns_schema.hautausmaakunta, RDFS.label, Literal('Hautausmaan kunta', lang='fi')))
-    surma_onto.add((ns_schema.hautausmaakunta, RDFS.domain, ns_schema.Kunta))
+    surma_onto.add((ns_schema.hautausmaakunta, RDFS.domain, ns_schema.Hautausmaa))
+    surma_onto.add((ns_schema.hautausmaakunta, RDFS.range, ns_schema.Kunta))
     surma_onto.add((ns_schema.hautausmaakunta, ns_skos.prefLabel, Literal('Hautausmaan kunta', lang='fi')))
 
 print('\nFixed known issues.\n')
@@ -350,7 +352,10 @@ print()
 
 link_to_military_ranks()
 
-# TODO: Fix schema for military ranks
+print('\nLinked to military ranks.\n')
+
+surma_onto.remove((ns_schema.sotilasarvo, RDFS.range, None))
+surma_onto.add((ns_schema.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/warsa/actors/ranks/Rank')))
 
 if not SKIP_UNITS:
     link_to_military_units()
@@ -361,6 +366,7 @@ if not SKIP_UNITS:
 
 surma_onto.add((ns_kunnat.kunta_ontologia, ns_dct.contributor, URIRef('http://orcid.org/0000-0002-7373-9338')))
 surma_onto.add((ns_kunnat.kunta_ontologia, ns_dct.contributor, URIRef('http://www.seco.tkk.fi/')))
+
 
 ##################
 # SERIALIZE GRAPHS
