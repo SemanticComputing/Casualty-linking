@@ -16,6 +16,7 @@ Issues remaining:
 
 import argparse
 import os
+import pprint
 
 import re
 
@@ -25,6 +26,7 @@ from rdflib import *
 import rdflib
 
 import rdf_dm as r
+from arpa_linker.arpa import Arpa, arpafy
 
 INPUT_FILE_DIRECTORY = 'data/'
 OUTPUT_FILE_DIRECTORY = 'data/new/'
@@ -261,8 +263,6 @@ def link_to_military_units(graph):
     """
     Link casualties to all of their military units in Warsa
     """
-    from arpa import Arpa, arpafy
-
     def preprocessor(text):
         l = text.split('/')
         if len(l) > 1:
@@ -275,8 +275,8 @@ def link_to_military_units(graph):
 
     # Query the ARPA service and add the matches
     return arpafy(graph, URIRef('http://ldf.fi/schema/narc-menehtyneet1939-45/unit'),
-            arpa, URIRef('http://ldf.fi/schema/narc-menehtyneet1939-45/joukko_osasto'),
-            preprocessor=preprocessor, progress=True)
+                  arpa, URIRef('http://ldf.fi/schema/narc-menehtyneet1939-45/joukko_osasto'),
+                  preprocessor=preprocessor, progress=True)
 
 
 ##################
@@ -358,7 +358,7 @@ surma_onto.remove((ns_schema.sotilasarvo, RDFS.range, None))
 surma_onto.add((ns_schema.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/warsa/actors/ranks/Rank')))
 
 if not SKIP_UNITS:
-    link_to_military_units()
+    pprint.pprint(link_to_military_units(surma))
 
 # TODO: Fix possible errors in schema
 
