@@ -63,6 +63,7 @@ parser = argparse.ArgumentParser(description='Casualties of war')
 parser.add_argument('-r', action='store_true', help='Reload RDF graphs, instead of using pickle object')
 parser.add_argument('-s', action='store_true', help='Skip cemetery fixing')
 parser.add_argument('-v', action='store_true', help='Skip validation')
+parser.add_argument('-u', action='store_true', help='Skip linking to military units')
 parser.add_argument('-d', action='store_true', help='Dry run, don\'t serialize created graphs')
 args = parser.parse_args()
 
@@ -70,6 +71,7 @@ reload = args.r
 DRYRUN = args.d
 SKIP_CEMETERIES = args.s
 SKIP_VALIDATION = args.v
+SKIP_UNITS = args.u
 
 surma = rdflib.Graph()
 surma_onto = rdflib.Graph()
@@ -231,6 +233,9 @@ def validate():
 
 
 def link_to_military_ranks():
+    """
+    Link casualties to their ranks in Warsa
+    """
     ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
 
     p = ns_schema.sotilasarvo
@@ -238,18 +243,28 @@ def link_to_military_ranks():
         rank_label = list(surma_onto[o:ns_skos.prefLabel:])[0]
         rank_label = Literal(str(rank_label).capitalize())  # Strip lang attribute and capitalize
         found_ranks = list(ranks[:ns_skos.prefLabel:rank_label])
+
+        new_o = None
         if len(found_ranks) == 1:
             new_o = found_ranks[0]
         elif len(found_ranks) > 1:
             print('WARNING: Found multiple ranks for {rank}'.format(rank=rank_label))
-            new_o = None
         else:
             print('WARNING: Couldn\'t find military rank for {rank}'.format(rank=rank_label))
-            new_o = None
 
         if new_o:
             pass
             # TODO: Link
+
+
+def link_to_military_units():
+    """
+    Link casualties to all of their military units in Warsa
+    """
+
+    # TODO
+    pass
+
 
 
 ##################
@@ -306,6 +321,11 @@ fix_by_direct_uri_mappings()
 if not SKIP_CEMETERIES:
     fix_cemetery_links()
 
+    surma_onto.add((ns_schema.hautausmaakunta, RDF.type, OWL.ObjectProperty))
+    surma_onto.add((ns_schema.hautausmaakunta, RDFS.label, Literal('Hautausmaan kunta', lang='fi')))
+    surma_onto.add((ns_schema.hautausmaakunta, RDFS.domain, ns_schema.Kunta))
+    surma_onto.add((ns_schema.hautausmaakunta, ns_skos.prefLabel, Literal('Hautausmaan kunta', lang='fi')))
+
 print('\nFixed known issues.\n')
 
 if not SKIP_VALIDATION:
@@ -318,16 +338,14 @@ print()
 
 link_to_military_ranks()
 
-# TODO: Link to joukko-osastot (or do this afterwards?)
+# TODO: Fix schema for military ranks
+
+if not SKIP_UNITS:
+    link_to_military_units()
 
 # TODO: Fix possible errors in schema
 
 # TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää esim. paikannimirekisterin paikkoihin
-
-surma_onto.add((ns_schema.hautausmaakunta, RDF.type, OWL.ObjectProperty))
-surma_onto.add((ns_schema.hautausmaakunta, RDFS.label, Literal('Hautausmaan kunta', lang='fi')))
-surma_onto.add((ns_schema.hautausmaakunta, RDFS.domain, ns_schema.Kunta))
-surma_onto.add((ns_schema.hautausmaakunta, ns_skos.prefLabel, Literal('Hautausmaan kunta', lang='fi')))
 
 surma_onto.add((ns_kunnat.kunta_ontologia, ns_dct.contributor, URIRef('http://orcid.org/0000-0002-7373-9338')))
 surma_onto.add((ns_kunnat.kunta_ontologia, ns_dct.contributor, URIRef('http://www.seco.tkk.fi/')))
