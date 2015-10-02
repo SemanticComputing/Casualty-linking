@@ -259,128 +259,159 @@ def link_to_military_ranks():
             surma.add((s, p, new_o))
 
 
+def _unit_preprocessor(text):
+    """
+    Preprocess military unit abbreviation strings for all possible combinations
+
+    :param text:
+    :return:
+    """
+
+    import re
+    import itertools
+
+    def _split(part):
+        return [a for a, b in re.findall(r'(\w+?)(\b|(?<=[a-zäö])(?=[A-ZÄÖ]))', part)]
+        # return [p.strip() for p in part.split('.')]
+
+    def _variations(part):
+        inner_parts = _split(part) + ['']
+        vars = []
+        vars += ['.'.join(inner_parts)]
+        vars += ['. '.join(inner_parts)]
+        vars += [' '.join(inner_parts)]
+        vars += [''.join(inner_parts)]
+        return vars
+
+    variation_lists = [_variations(part) + [part] for part in text.split('/')]
+
+    combined_variations = sorted(set(['/'.join(foo).strip().replace(' /', '/') for foo in sorted(set(itertools.product(*variation_lists)))]))
+    return ' # '.join(combined_variations) + \
+           ' # ' + ' # '.join(sorted(set(variation.strip() for var_list in variation_lists for variation in var_list)))
+
+
 def link_to_military_units(graph):
     """
     Link casualties to all of their military units in Warsa
     """
-    def preprocessor(text):
-        l = text.split('/')
-        if len(l) > 1:
-            for part in reversed(l):
-                text = text + ' # ' + part
 
-        return text
-
-    arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_actor_units')
+    arpa = Arpa('http://demo.seco.tkk.fi/arpa/menehtyneet_units')
 
     # Query the ARPA service and add the matches
-    return arpafy(graph, URIRef('http://ldf.fi/schema/narc-menehtyneet1939-45/unit'),
-                  arpa, URIRef('http://ldf.fi/schema/narc-menehtyneet1939-45/joukko_osasto'),
-                  preprocessor=preprocessor, progress=True)
+    return arpafy(graph, ns_schema.unit, arpa, ns_schema.joukko_osasto, preprocessor=_unit_preprocessor, progress=True)
 
 
-##################
-# READ IN CSV DATA
 
-hmaat = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_HMAAT.CSV', encoding='latin_1', header=None, index_col=False,
-                    names=['kunta_id', 'hmaa_id', 'hmaa_name'], sep=',', quotechar='"', na_values=['  '])
-""":type : pd.DataFrame"""  # for PyCharm type hinting
+#######
+# MAIN
 
-kunta = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_KUNTA.CSV', encoding='latin_1', header=None, index_col=False,
-                    names=['kunta_id', 'kunta_name'], sep=',', quotechar='"', na_values=['  '])
-""":type : pd.DataFrame"""  # for PyCharm type hinting
+if __name__ == "__main__":
+    # import doctest
 
-# Strip whitespace from cemetery names
-# hmaat.hmaa_name = hmaat.hmaa_name.map(lambda x: x.strip())
-hmaat = hmaat.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-kunta = kunta.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+    ##################
+    # READ IN CSV DATA
 
+    print('Reading data')
 
-##################
-# READ IN RDF DATA
+    hmaat = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_HMAAT.CSV', encoding='latin_1', header=None, index_col=False,
+                        names=['kunta_id', 'hmaa_id', 'hmaa_name'], sep=',', quotechar='"', na_values=['  '])
+    """:type : pd.DataFrame"""  # for PyCharm type hinting
 
-if not reload:
-    # Read RDF graph from pickle
-    try:
-        surma = joblib.load(INPUT_FILE_DIRECTORY + 'surma.pkl')
-        surma_onto = joblib.load(INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
-        print('Parsed {len} data triples from pickle object.'.format(len=len(surma)))
-        print('Parsed {len} ontology triples from pickle object.'.format(len=len(surma_onto)))
-    except IOError:
-        reload = True
+    kunta = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_KUNTA.CSV', encoding='latin_1', header=None, index_col=False,
+                        names=['kunta_id', 'kunta_name'], sep=',', quotechar='"', na_values=['  '])
+    """:type : pd.DataFrame"""  # for PyCharm type hinting
 
-if reload:
-    # Read RDF graph from TTL files
-    print('Processing Sotasurma RDF files.')
-
-    surma.parse(INPUT_FILE_DIRECTORY + DATA_FILE, format='turtle')
-
-    input_dir = '{base}/{dir}'.format(base=os.getcwd(), dir=INPUT_FILE_DIRECTORY)
-    for f in os.listdir(input_dir):
-        if f != DATA_FILE and f.endswith('.ttl'):
-            surma_onto.parse(input_dir + f, format='turtle')
-    print('Parsed {len} data triples.'.format(len=len(surma)))
-    print('Parsed {len} ontology triples.'.format(len=len(surma_onto)))
-    joblib.dump(surma, INPUT_FILE_DIRECTORY + 'surma.pkl')
-    joblib.dump(surma_onto, INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
-    print('Wrote graphs to pickle objects.')
+    # Strip whitespace from cemetery names
+    # hmaat.hmaa_name = hmaat.hmaa_name.map(lambda x: x.strip())
+    hmaat = hmaat.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+    kunta = kunta.applymap(lambda x: x.strip() if isinstance(x, str) else x)
 
 
-##########################################################
-# FIX KNOWN ISSUES AND ADD LINKS TO OTHER SOTASAMPO GRAPHS
+    ##################
+    # READ IN RDF DATA
 
-fix_by_direct_uri_mappings()
+    if not reload:
+        # Read RDF graph from pickle
+        try:
+            surma = joblib.load(INPUT_FILE_DIRECTORY + 'surma.pkl')
+            surma_onto = joblib.load(INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
+            print('Parsed {len} data triples from pickle object.'.format(len=len(surma)))
+            print('Parsed {len} ontology triples from pickle object.'.format(len=len(surma_onto)))
+        except IOError:
+            reload = True
 
-if not SKIP_CEMETERIES:
-    fix_cemetery_links()
+    if reload:
+        # Read RDF graph from TTL files
+        print('Processing Sotasurma RDF files.')
 
-    surma_onto.add((ns_schema.hautausmaakunta, RDF.type, OWL.ObjectProperty))
-    surma_onto.add((ns_schema.hautausmaakunta, RDFS.label, Literal('Hautausmaan kunta', lang='fi')))
-    surma_onto.add((ns_schema.hautausmaakunta, RDFS.domain, ns_schema.Hautausmaa))
-    surma_onto.add((ns_schema.hautausmaakunta, RDFS.range, ns_schema.Kunta))
-    surma_onto.add((ns_schema.hautausmaakunta, ns_skos.prefLabel, Literal('Hautausmaan kunta', lang='fi')))
+        surma.parse(INPUT_FILE_DIRECTORY + DATA_FILE, format='turtle')
 
-print('\nFixed known issues.\n')
+        input_dir = '{base}/{dir}'.format(base=os.getcwd(), dir=INPUT_FILE_DIRECTORY)
+        for f in os.listdir(input_dir):
+            if f != DATA_FILE and f.endswith('.ttl'):
+                surma_onto.parse(input_dir + f, format='turtle')
+        print('Parsed {len} data triples.'.format(len=len(surma)))
+        print('Parsed {len} ontology triples.'.format(len=len(surma_onto)))
+        joblib.dump(surma, INPUT_FILE_DIRECTORY + 'surma.pkl')
+        joblib.dump(surma_onto, INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
+        print('Wrote graphs to pickle objects.')
 
-if not SKIP_VALIDATION:
-    validate()
+
+    ##########################################################
+    # FIX KNOWN ISSUES AND ADD LINKS TO OTHER SOTASAMPO GRAPHS
+
+    fix_by_direct_uri_mappings()
+
+    if not SKIP_CEMETERIES:
+        fix_cemetery_links()
+
+        surma_onto.add((ns_schema.hautausmaakunta, RDF.type, OWL.ObjectProperty))
+        surma_onto.add((ns_schema.hautausmaakunta, RDFS.label, Literal('Hautausmaan kunta', lang='fi')))
+        surma_onto.add((ns_schema.hautausmaakunta, RDFS.domain, ns_schema.Hautausmaa))
+        surma_onto.add((ns_schema.hautausmaakunta, RDFS.range, ns_schema.Kunta))
+        surma_onto.add((ns_schema.hautausmaakunta, ns_skos.prefLabel, Literal('Hautausmaan kunta', lang='fi')))
+
+    print('\nFixed known issues.\n')
+
+    if not SKIP_VALIDATION:
+        validate()
+        print()
+
+    link_to_warsa_municipalities()
+
     print()
 
-link_to_warsa_municipalities()
+    link_to_military_ranks()
 
-print()
+    print('\nLinked to military ranks.\n')
 
-link_to_military_ranks()
+    surma_onto.remove((ns_schema.sotilasarvo, RDFS.range, None))
+    surma_onto.add((ns_schema.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/warsa/actors/ranks/Rank')))
 
-print('\nLinked to military ranks.\n')
+    if not SKIP_UNITS:
+        pprint.pprint(link_to_military_units(surma))
 
-surma_onto.remove((ns_schema.sotilasarvo, RDFS.range, None))
-surma_onto.add((ns_schema.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/warsa/actors/ranks/Rank')))
+    # TODO: Fix possible errors in schema
 
-if not SKIP_UNITS:
-    pprint.pprint(link_to_military_units(surma))
+    # TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää esim. paikannimirekisterin paikkoihin
 
-# TODO: Fix possible errors in schema
-
-# TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää esim. paikannimirekisterin paikkoihin
-
-surma_onto.add((ns_kunnat.kunta_ontologia, ns_dct.contributor, URIRef('http://orcid.org/0000-0002-7373-9338')))
-surma_onto.add((ns_kunnat.kunta_ontologia, ns_dct.contributor, URIRef('http://www.seco.tkk.fi/')))
+    surma_onto.add((ns_kunnat.kunta_ontologia, ns_dct.contributor, URIRef('http://orcid.org/0000-0002-7373-9338')))
+    surma_onto.add((ns_kunnat.kunta_ontologia, ns_dct.contributor, URIRef('http://www.seco.tkk.fi/')))
 
 
-##################
-# SERIALIZE GRAPHS
+    ##################
+    # SERIALIZE GRAPHS
 
-if not DRYRUN:
-    surma.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
-    surma.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
+    if not DRYRUN:
+        surma.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
+        surma.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
 
-    surma_onto.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")  # TODO: Move schema stuff to schema namespace (e.g. skos:ConceptSchemes)
-    surma_onto.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
-    surma_onto.bind("geo", "http://www.georss.org/georss/")
-    surma_onto.bind("dct", "http://purl.org/dc/terms/")
+        surma_onto.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")  # TODO: Move schema stuff to schema namespace (e.g. skos:ConceptSchemes)
+        surma_onto.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
+        surma_onto.bind("geo", "http://www.georss.org/georss/")
+        surma_onto.bind("dct", "http://purl.org/dc/terms/")
 
-    surma.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma.ttl")
-    surma_onto.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma_onto.ttl")
-    print('\nSerialized graphs.')
+        surma.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma.ttl")
+        surma_onto.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma_onto.ttl")
+        print('\nSerialized graphs.')
 
