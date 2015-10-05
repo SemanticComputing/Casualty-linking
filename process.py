@@ -259,7 +259,7 @@ def link_to_military_ranks():
             surma.add((s, p, new_o))
 
 
-def _unit_preprocessor(text):
+def _create_unit_abbreviations(text, *args):
     """
     Preprocess military unit abbreviation strings for all possible combinations
 
@@ -295,10 +295,27 @@ def link_to_military_units(graph):
     Link casualties to all of their military units in Warsa
     """
 
-    arpa = Arpa('http://demo.seco.tkk.fi/arpa/menehtyneet_units')
+    arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_actor_units')
 
     # Query the ARPA service and add the matches
-    return arpafy(graph, ns_schema.unit, arpa, ns_schema.joukko_osasto, preprocessor=_unit_preprocessor, progress=True)
+    return arpafy(graph, ns_schema.osasto, arpa, ns_schema.joukko_osasto,
+                  preprocessor=_create_unit_abbreviations, progress=True)
+
+
+def link_to_warsa_persons(graph):
+    """
+    Link casualties to known Warsa persons
+    """
+
+    def _combine_rank_and_name(rank, person_uri, graph):
+        return '{rank} {fullname}'.format(rank=rank, fullname=str(next(graph[person_uri:ns_skos.prefLabel:])))
+
+    arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_actor_persons')
+
+    # Query the ARPA service and add the matches
+    return arpafy(graph, OWL.sameas, arpa, ns_schema.sotilasarvo,
+                  preprocessor=_combine_rank_and_name, progress=True)
+
 
 
 
@@ -325,7 +342,6 @@ if __name__ == "__main__":
     # hmaat.hmaa_name = hmaat.hmaa_name.map(lambda x: x.strip())
     hmaat = hmaat.applymap(lambda x: x.strip() if isinstance(x, str) else x)
     kunta = kunta.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-
 
     ##################
     # READ IN RDF DATA
@@ -355,7 +371,6 @@ if __name__ == "__main__":
         joblib.dump(surma, INPUT_FILE_DIRECTORY + 'surma.pkl')
         joblib.dump(surma_onto, INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
         print('Wrote graphs to pickle objects.')
-
 
     ##########################################################
     # FIX KNOWN ISSUES AND ADD LINKS TO OTHER SOTASAMPO GRAPHS
@@ -388,16 +403,21 @@ if __name__ == "__main__":
     surma_onto.remove((ns_schema.sotilasarvo, RDFS.range, None))
     surma_onto.add((ns_schema.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/warsa/actors/ranks/Rank')))
 
+    surma_onto.add((ns_schema.osasto, RDF.type, OWL.ObjectProperty))
+    surma_onto.add((ns_schema.osasto, RDFS.label, Literal('Tunnettu joukko-osasto', lang='fi')))
+    surma_onto.add((ns_schema.osasto, RDFS.domain, URIRef('http://xmlns.com/foaf/0.1/Person')))
+    surma_onto.add((ns_schema.osasto, RDFS.range, URIRef('http://ldf.fi/warsa/actors/actor_types/MilitaryUnit')))
+    surma_onto.add((ns_schema.osasto, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
+
     if not SKIP_UNITS:
         pprint.pprint(link_to_military_units(surma))
 
-    # TODO: Fix possible errors in schema
+    # TODO: Linkitys Warsa actors henkilöihin
 
     # TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää esim. paikannimirekisterin paikkoihin
 
     surma_onto.add((ns_kunnat.kunta_ontologia, ns_dct.contributor, URIRef('http://orcid.org/0000-0002-7373-9338')))
     surma_onto.add((ns_kunnat.kunta_ontologia, ns_dct.contributor, URIRef('http://www.seco.tkk.fi/')))
-
 
     ##################
     # SERIALIZE GRAPHS
