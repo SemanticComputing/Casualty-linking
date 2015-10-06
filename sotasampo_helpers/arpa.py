@@ -45,8 +45,8 @@ def link_to_military_units(graph, target_prop, source_prop):
     Link casualties to all of their military units in Warsa
     :returns dict containing some statistics and a list of errors
 
-    :param target_prop:
-    :param source_prop:
+    :param target_prop: target property as URIRef
+    :param source_prop: source property as URIRef
     :type graph: rdflib.Graph
     """
 
