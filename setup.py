@@ -7,7 +7,7 @@ def read(fname):
 
 setup(
     name="sotasampo_helpers",
-    version="0.0.1",
+    version="0.0.2",
     author="Mikko Koho",
     author_email="mikko.koho@aalto.fi",
     description="Sotasampo helper functions",
