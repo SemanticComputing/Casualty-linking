@@ -4,4 +4,6 @@ sotasampo_helpers
 Helper functions for some common Sotasampo tasks like retrieving military unit links by abbreviations.
 
 Installation:
-pip install -e git+https://github.com/SemanticComputing/sotasampo_helpers.git#egg=sotasampo_helpers-master
+- pip install -e git+https://github.com/SemanticComputing/sotasampo_helpers.git#egg=sotasampo_helpers-master
+
+- Install dependencies via pip install -r sotasampo_helpers/requirements.txt
