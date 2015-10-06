@@ -1,7 +1,7 @@
-rdf_dm
-------
+sotasampo_helpers
+-----------------
 
-Collection of Python tools for data mining tasks and statistical analysis of RDF datasets.
+Helper functions for some common Sotasampo tasks like retrieving military unit links by abbreviations.
 
-Currently requires Christian Borgelt's FP-growth program (http://www.borgelt.net/fpgrowth.html) for association analysis.
-
+Installation:
+pip install -e git+https://github.com/SemanticComputing/sotasampo_helpers.git#egg=sotasampo_helpers-master
