@@ -2,4 +2,4 @@ joblib>=0.8.4
 pandas>=0.16.2
 rdflib>=4.2.1
 -e git+https://github.com/SemanticComputing/rdf_dm.git#egg=rdf_dm-master
--e git+https://github.com/SemanticComputing/python-arpa-linker.git#egg=arpa_linker-master
+-e git+https://github.com/SemanticComputing/sotasampo_helpers.git#egg=sotasampo_helpers-master

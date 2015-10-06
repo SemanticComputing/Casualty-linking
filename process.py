@@ -24,9 +24,9 @@ import joblib
 import pandas as pd
 from rdflib import *
 import rdflib
+from sotasampo_helpers import arpa
 
 import rdf_dm as r
-from arpa_linker.arpa import Arpa, arpafy
 
 INPUT_FILE_DIRECTORY = 'data/'
 OUTPUT_FILE_DIRECTORY = 'data/new/'
@@ -67,6 +67,7 @@ parser.add_argument('-s', action='store_true', help='Skip cemetery fixing')
 parser.add_argument('-v', action='store_true', help='Skip validation')
 parser.add_argument('-u', action='store_true', help='Skip linking to military units')
 parser.add_argument('-d', action='store_true', help='Dry run, don\'t serialize created graphs')
+parser.add_argument('-m', action='store_true', help='Skip linking to municipalities')
 args = parser.parse_args()
 
 reload = args.r
@@ -74,6 +75,7 @@ DRYRUN = args.d
 SKIP_CEMETERIES = args.s
 SKIP_VALIDATION = args.v
 SKIP_UNITS = args.u
+SKIP_MUNICIPALITIES = args.m
 
 surma = rdflib.Graph()
 surma_onto = rdflib.Graph()
@@ -259,64 +261,6 @@ def link_to_military_ranks():
             surma.add((s, p, new_o))
 
 
-def _create_unit_abbreviations(text, *args):
-    """
-    Preprocess military unit abbreviation strings for all possible combinations
-
-    :param text:
-    :return:
-    """
-
-    import re
-    import itertools
-
-    def _split(part):
-        return [a for a, b in re.findall(r'(\w+?)(\b|(?<=[a-zäö])(?=[A-ZÄÖ]))', part)]
-        # return [p.strip() for p in part.split('.')]
-
-    def _variations(part):
-        inner_parts = _split(part) + ['']
-        vars = []
-        vars += ['.'.join(inner_parts)]
-        vars += ['. '.join(inner_parts)]
-        vars += [' '.join(inner_parts)]
-        vars += [''.join(inner_parts)]
-        return vars
-
-    variation_lists = [_variations(part) + [part] for part in text.split('/')]
-
-    combined_variations = sorted(set(['/'.join(foo).strip().replace(' /', '/') for foo in sorted(set(itertools.product(*variation_lists)))]))
-    return ' # '.join(combined_variations) + \
-           ' # ' + ' # '.join(sorted(set(variation.strip() for var_list in variation_lists for variation in var_list)))
-
-
-def link_to_military_units(graph):
-    """
-    Link casualties to all of their military units in Warsa
-    """
-
-    arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_actor_units')
-
-    # Query the ARPA service and add the matches
-    return arpafy(graph, ns_schema.osasto, arpa, ns_schema.joukko_osasto,
-                  preprocessor=_create_unit_abbreviations, progress=True)
-
-
-def link_to_warsa_persons(graph):
-    """
-    Link casualties to known Warsa persons
-    """
-
-    def _combine_rank_and_name(rank, person_uri, graph):
-        return '{rank} {fullname}'.format(rank=rank, fullname=str(next(graph[person_uri:ns_skos.prefLabel:])))
-
-    arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_actor_persons')
-
-    # Query the ARPA service and add the matches
-    return arpafy(graph, OWL.sameas, arpa, ns_schema.sotilasarvo,
-                  preprocessor=_combine_rank_and_name, progress=True)
-
-
 
 
 #######
@@ -392,9 +336,16 @@ if __name__ == "__main__":
         validate()
         print()
 
-    link_to_warsa_municipalities()
+    if not SKIP_MUNICIPALITIES:
+        link_to_warsa_municipalities()
+        print()
 
-    print()
+    # Link to WARSA actor persons
+    pprint.pprint(arpa.link_to_warsa_persons(surma, surma_onto, OWL.sameas, ns_schema.sotilasarvo,
+                                             ns_schema.etunimet, ns_schema.sukunimi))
+
+    for s, o in surma[:OWL.sameas:]:
+        print('{s} is same as {o}'.format(s=s, o=o))
 
     link_to_military_ranks()
 
@@ -410,9 +361,7 @@ if __name__ == "__main__":
     surma_onto.add((ns_schema.osasto, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
 
     if not SKIP_UNITS:
-        pprint.pprint(link_to_military_units(surma))
-
-    # TODO: Linkitys Warsa actors henkilöihin
+        pprint.pprint(arpa.link_to_military_units(surma, ns_schema.osasto, ns_schema.joukko_osasto))
 
     # TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää esim. paikannimirekisterin paikkoihin
 
