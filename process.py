@@ -62,7 +62,8 @@ URI_MAPPINGS = {
 }
 
 parser = argparse.ArgumentParser(description='Casualties of war')
-parser.add_argument('-r', action='store_true', help='Reload RDF graphs, instead of using pickle object')
+parser.add_argument('-reload', action='store_true', help='Reload RDF graphs, instead of using pickle object')
+parser.add_argument('-generated', action='store_true', help='Use previously generated new data files as input')
 parser.add_argument('-s', action='store_true', help='Skip cemetery fixing')
 parser.add_argument('-v', action='store_true', help='Skip validation')
 parser.add_argument('-u', action='store_true', help='Skip linking to military units')
@@ -70,7 +71,8 @@ parser.add_argument('-d', action='store_true', help='Dry run, don\'t serialize c
 parser.add_argument('-m', action='store_true', help='Skip linking to municipalities')
 args = parser.parse_args()
 
-reload = args.r
+reload = args.reload
+USE_GENERATED_FILES = args.generated
 DRYRUN = args.d
 SKIP_CEMETERIES = args.s
 SKIP_VALIDATION = args.v
@@ -269,52 +271,61 @@ def link_to_military_ranks():
 if __name__ == "__main__":
     # import doctest
 
-    ##################
-    # READ IN CSV DATA
+    if not SKIP_CEMETERIES:
+        ##################
+        # READ IN CSV DATA
 
-    print('Reading data')
+        print('Reading data')
 
-    hmaat = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_HMAAT.CSV', encoding='latin_1', header=None, index_col=False,
-                        names=['kunta_id', 'hmaa_id', 'hmaa_name'], sep=',', quotechar='"', na_values=['  '])
-    """:type : pd.DataFrame"""  # for PyCharm type hinting
+        hmaat = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_HMAAT.CSV', encoding='latin_1', header=None, index_col=False,
+                            names=['kunta_id', 'hmaa_id', 'hmaa_name'], sep=',', quotechar='"', na_values=['  '])
+        """:type : pd.DataFrame"""  # for PyCharm type hinting
 
-    kunta = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_KUNTA.CSV', encoding='latin_1', header=None, index_col=False,
-                        names=['kunta_id', 'kunta_name'], sep=',', quotechar='"', na_values=['  '])
-    """:type : pd.DataFrame"""  # for PyCharm type hinting
+        kunta = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_KUNTA.CSV', encoding='latin_1', header=None, index_col=False,
+                            names=['kunta_id', 'kunta_name'], sep=',', quotechar='"', na_values=['  '])
+        """:type : pd.DataFrame"""  # for PyCharm type hinting
 
-    # Strip whitespace from cemetery names
-    # hmaat.hmaa_name = hmaat.hmaa_name.map(lambda x: x.strip())
-    hmaat = hmaat.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-    kunta = kunta.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+        # Strip whitespace from cemetery names
+        # hmaat.hmaa_name = hmaat.hmaa_name.map(lambda x: x.strip())
+        hmaat = hmaat.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+        kunta = kunta.applymap(lambda x: x.strip() if isinstance(x, str) else x)
 
     ##################
     # READ IN RDF DATA
 
-    if not reload:
-        # Read RDF graph from pickle
-        try:
-            surma = joblib.load(INPUT_FILE_DIRECTORY + 'surma.pkl')
-            surma_onto = joblib.load(INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
-            print('Parsed {len} data triples from pickle object.'.format(len=len(surma)))
-            print('Parsed {len} ontology triples from pickle object.'.format(len=len(surma_onto)))
-        except IOError:
-            reload = True
+    if USE_GENERATED_FILES:
+            # Read RDF graph from TTL files
+            print('Processing previously generated RDF files.')
+            surma.parse(OUTPUT_FILE_DIRECTORY + "surma.ttl", format='turtle')
+            surma_onto.parse(OUTPUT_FILE_DIRECTORY + "surma_onto.ttl", format='turtle')
+            print('Parsed {len} data triples.'.format(len=len(surma)))
+            print('Parsed {len} ontology triples.'.format(len=len(surma_onto)))
+    else:
+        if not reload:
+            # Read RDF graph from pickle
+            try:
+                surma = joblib.load(INPUT_FILE_DIRECTORY + 'surma.pkl')
+                surma_onto = joblib.load(INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
+                print('Parsed {len} data triples from pickle object.'.format(len=len(surma)))
+                print('Parsed {len} ontology triples from pickle object.'.format(len=len(surma_onto)))
+            except IOError:
+                reload = True
 
-    if reload:
-        # Read RDF graph from TTL files
-        print('Processing Sotasurma RDF files.')
+        if reload:
+            # Read RDF graph from TTL files
+            print('Processing Sotasurma RDF files.')
 
-        surma.parse(INPUT_FILE_DIRECTORY + DATA_FILE, format='turtle')
+            surma.parse(INPUT_FILE_DIRECTORY + DATA_FILE, format='turtle')
 
-        input_dir = '{base}/{dir}'.format(base=os.getcwd(), dir=INPUT_FILE_DIRECTORY)
-        for f in os.listdir(input_dir):
-            if f != DATA_FILE and f.endswith('.ttl'):
-                surma_onto.parse(input_dir + f, format='turtle')
-        print('Parsed {len} data triples.'.format(len=len(surma)))
-        print('Parsed {len} ontology triples.'.format(len=len(surma_onto)))
-        joblib.dump(surma, INPUT_FILE_DIRECTORY + 'surma.pkl')
-        joblib.dump(surma_onto, INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
-        print('Wrote graphs to pickle objects.')
+            input_dir = '{base}/{dir}'.format(base=os.getcwd(), dir=INPUT_FILE_DIRECTORY)
+            for f in os.listdir(input_dir):
+                if f != DATA_FILE and f.endswith('.ttl'):
+                    surma_onto.parse(input_dir + f, format='turtle')
+            print('Parsed {len} data triples.'.format(len=len(surma)))
+            print('Parsed {len} ontology triples.'.format(len=len(surma_onto)))
+            joblib.dump(surma, INPUT_FILE_DIRECTORY + 'surma.pkl')
+            joblib.dump(surma_onto, INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
+            print('Wrote graphs to pickle objects.')
 
     ##########################################################
     # FIX KNOWN ISSUES AND ADD LINKS TO OTHER SOTASAMPO GRAPHS
@@ -344,6 +355,7 @@ if __name__ == "__main__":
     pprint.pprint(arpa.link_to_warsa_persons(surma, surma_onto, OWL.sameas, ns_schema.sotilasarvo,
                                              ns_schema.etunimet, ns_schema.sukunimi))
 
+    print('Found links for WARSA persons:')
     for s, o in surma[:OWL.sameas:]:
         print('{s} is same as {o}'.format(s=s, o=o))
 
