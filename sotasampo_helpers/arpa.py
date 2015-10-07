@@ -1,14 +1,16 @@
 """
 ARPA service functions for common Sotasampo tasks
 """
-import json
 import pprint
+import logging
 
 import re
 import itertools
 
 from arpa_linker.arpa import Arpa, arpafy
 from rdflib import URIRef
+
+log = logging.getLogger(__name__)
 
 
 def _create_unit_abbreviations(text, *args):
@@ -65,8 +67,12 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
     """
     Link a person to known Warsa persons
 
+    :param graph_data: RDF graph where the names and such are found
     :type graph_data: rdflib.Graph
+
+    :param graph_schema: RDF graph where is the military rank label
     :type graph_schema: rdflib.Graph
+
     :param target_prop: target property to use for new links
     :param source_rank_prop: military rank property
     :param source_fullname_prop: full name property
@@ -83,7 +89,7 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
             if not results:
                 return results
 
-            text_parts = text.lower().split(' ')
+            text_parts = text.lower().split()
             rank, firstnames, lastname = (text_parts[0], text_parts[1:-1], text_parts[-1])
 
             filtered = []
@@ -91,9 +97,26 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                 try:
                     assert lastname == person['properties'].get('sukunimi')[0].replace('"', '').lower()
                     assert rank == person['properties'].get('sotilasarvolabel', [''])[0].replace('"', '').lower()
-                    assert set(firstnames) & \
-                       set([p.split('^')[0].replace('"', '').lower() for p in person['properties'].get('etunimet')])
+
+                    res_firstnames = person['properties'].get('etunimet')[0].split('^')[0].replace('"', '').lower()
+                    res_firstnames = res_firstnames.split()
+
+                    assert len(firstnames) and len(res_firstnames)
+
+                    log.debug('Found potential match (lastname and rank) for person {text}: {lname} {fnames}'.
+                              format(text=text, lname=lastname, fnames=res_firstnames))
+                    # assert firstnames[0] == res_firstnames[0]
+                    for i in range(0, min(len(firstnames), len(res_firstnames))):
+                        if '.' not in ''.join((firstnames[i], res_firstnames[i])):
+                            assert firstnames[i] == res_firstnames[i]
+                        else:
+                            pos = min(firstnames[i].find('.'), res_firstnames[i].find('.'))
+                            assert firstnames[i][:pos] == res_firstnames[i][:pos]
                     filtered.append(person)
+
+                    log.info('Found person for {text}: '.format(text=text))
+                    print('################        MATCH       !!!!\n')
+
                 except AssertionError:
                     continue
 
