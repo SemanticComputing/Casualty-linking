@@ -15,6 +15,7 @@ Issues remaining:
 """
 
 import argparse
+import logging
 import os
 import pprint
 
@@ -64,23 +65,29 @@ URI_MAPPINGS = {
 parser = argparse.ArgumentParser(description='Casualties of war')
 parser.add_argument('-reload', action='store_true', help='Reload RDF graphs, instead of using pickle object')
 parser.add_argument('-generated', action='store_true', help='Use previously generated new data files as input')
-parser.add_argument('-s', action='store_true', help='Skip cemetery fixing')
-parser.add_argument('-v', action='store_true', help='Skip validation')
-parser.add_argument('-u', action='store_true', help='Skip linking to military units')
+parser.add_argument('-skip_cemeteries', action='store_true', help='Skip cemetery fixing')
+parser.add_argument('-skip_validation', action='store_true', help='Skip validation')
+parser.add_argument('-skip_units', action='store_true', help='Skip linking to Warsa military units')
+parser.add_argument('-skip_ranks', action='store_true', help='Skip linking to Warsa military ranks')
+parser.add_argument('-skip_municipalities', action='store_true', help='Skip linking to municipalities')
+parser.add_argument('-skip_persons', action='store_true', help='Skip linking to Warsa persons')
 parser.add_argument('-d', action='store_true', help='Dry run, don\'t serialize created graphs')
-parser.add_argument('-m', action='store_true', help='Skip linking to municipalities')
 args = parser.parse_args()
 
 reload = args.reload
 USE_GENERATED_FILES = args.generated
 DRYRUN = args.d
-SKIP_CEMETERIES = args.s
-SKIP_VALIDATION = args.v
-SKIP_UNITS = args.u
-SKIP_MUNICIPALITIES = args.m
+SKIP_CEMETERIES = args.skip_cemeteries
+SKIP_VALIDATION = args.skip_validation
+SKIP_UNITS = args.skip_units
+SKIP_MUNICIPALITIES = args.skip_municipalities
+SKIP_RANKS = args.skip_ranks
+SKIP_PERSONS = args.skip_persons
 
 surma = rdflib.Graph()
 surma_onto = rdflib.Graph()
+
+logging.basicConfig(filename='Sotasurma.log', filemode='w', level=logging.DEBUG)
 
 
 
@@ -89,7 +96,6 @@ def fix_by_direct_uri_mappings():
     Fix faulty uri references by direct mapping
     """
     for map_from, map_to in URI_MAPPINGS.items():
-        print('Fixing %s --> %s' % (map_from, map_to))
         for s, p in list(surma[::map_from]):
             surma.remove((s, p, map_from))
             surma.add((s, p, map_to))
@@ -238,15 +244,13 @@ def validate():
         print('{uri}'.format(uri=str(s)))
 
 
-def link_to_military_ranks():
+def link_to_military_ranks(ranks):
     """
     Link casualties to their ranks in Warsa
     """
-    ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
-
     p = ns_schema.sotilasarvo
     for s, o in list(surma[:p:]):
-        rank_label = list(surma_onto[o:ns_skos.prefLabel:])[0]
+        rank_label = next(surma_onto[o:ns_skos.prefLabel:], '')
         rank_label = Literal(str(rank_label).capitalize())  # Strip lang attribute and capitalize
         found_ranks = list(ranks[:ns_skos.prefLabel:rank_label])
 
@@ -269,7 +273,10 @@ def link_to_military_ranks():
 # MAIN
 
 if __name__ == "__main__":
-    # import doctest
+
+    ranks = None
+
+    # TODO: Logging
 
     if not SKIP_CEMETERIES:
         ##################
@@ -331,6 +338,7 @@ if __name__ == "__main__":
     # FIX KNOWN ISSUES AND ADD LINKS TO OTHER SOTASAMPO GRAPHS
 
     fix_by_direct_uri_mappings()
+    print('Applied direct URI mapping fixes')
 
     if not SKIP_CEMETERIES:
         fix_cemetery_links()
@@ -341,7 +349,7 @@ if __name__ == "__main__":
         surma_onto.add((ns_schema.hautausmaakunta, RDFS.range, ns_schema.Kunta))
         surma_onto.add((ns_schema.hautausmaakunta, ns_skos.prefLabel, Literal('Hautausmaan kunta', lang='fi')))
 
-    print('\nFixed known issues.\n')
+        print('\nFixed cemeteries.\n')
 
     if not SKIP_VALIDATION:
         validate()
@@ -351,17 +359,25 @@ if __name__ == "__main__":
         link_to_warsa_municipalities()
         print()
 
-    # Link to WARSA actor persons
-    pprint.pprint(arpa.link_to_warsa_persons(surma, surma_onto, OWL.sameas, ns_schema.sotilasarvo,
-                                             ns_schema.etunimet, ns_schema.sukunimi))
+    if not SKIP_RANKS:
+        ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
+        link_to_military_ranks(ranks)
+        print('\nLinked to military ranks.\n')
 
-    print('Found links for WARSA persons:')
-    for s, o in surma[:OWL.sameas:]:
-        print('{s} is same as {o}'.format(s=s, o=o))
+    if not SKIP_PERSONS:
+        if not ranks:
+            ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
 
-    link_to_military_ranks()
-
-    print('\nLinked to military ranks.\n')
+        # Link to WARSA actor persons
+        pprint.pprint(arpa.link_to_warsa_persons(surma, ranks, OWL.sameas, ns_schema.sotilasarvo,
+                                                 ns_schema.etunimet, ns_schema.sukunimi))
+        # Verner Viikla (ent. Viklund)
+        surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p752512'),
+                   OWL.sameas,
+                   URIRef('http://ldf.fi/warsa/actors/person_251')))
+        print('Found links for WARSA persons:')
+        for s, o in surma[:OWL.sameas:]:
+            print('{s} is same as {o}'.format(s=s, o=o))
 
     surma_onto.remove((ns_schema.sotilasarvo, RDFS.range, None))
     surma_onto.add((ns_schema.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/warsa/actors/ranks/Rank')))
