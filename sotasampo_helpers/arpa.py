@@ -104,7 +104,7 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                     assert len(firstnames) and len(res_firstnames)
 
                     log.debug('Found potential match (lastname and rank) for person {text}: {lname} {fnames}'.
-                              format(text=text, lname=lastname, fnames=res_firstnames))
+                              format(text=text, lname=lastname, fnames=''.join(res_firstnames)))
                     # assert firstnames[0] == res_firstnames[0]
                     for i in range(0, min(len(firstnames), len(res_firstnames))):
                         if '.' not in ''.join((firstnames[i], res_firstnames[i])):
@@ -114,8 +114,8 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                             assert firstnames[i][:pos] == res_firstnames[i][:pos]
                     filtered.append(person)
 
-                    log.info('Found person for {text}: '.format(text=text))
-                    print('################        MATCH       !!!!\n')
+                    log.info('Found person for {text}: {lname} {fnames}'.
+                             format(text=text, lname=lastname, fnames=''.join(res_firstnames)))
 
                 except AssertionError:
                     continue
