@@ -101,10 +101,12 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                     res_firstnames = person['properties'].get('etunimet')[0].split('^')[0].replace('"', '').lower()
                     res_firstnames = res_firstnames.split()
 
+                    # TODO: Use date of birth in validation
+
                     assert len(firstnames) and len(res_firstnames)
 
-                    log.debug('Found potential match (lastname and rank) for person {text}: {lname} {fnames}'.
-                              format(text=text, lname=lastname, fnames=''.join(res_firstnames)))
+                    log.debug('Potential match (lastname and rank) for person {text}: {fnames} {lname}'.
+                              format(text=text, lname=lastname, fnames=' '.join(res_firstnames)))
                     # assert firstnames[0] == res_firstnames[0]
                     for i in range(0, min(len(firstnames), len(res_firstnames))):
                         if '.' not in ''.join((firstnames[i], res_firstnames[i])):
@@ -114,8 +116,8 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                             assert firstnames[i][:pos] == res_firstnames[i][:pos]
                     filtered.append(person)
 
-                    log.info('Found person for {text}: {lname} {fnames}'.
-                             format(text=text, lname=lastname, fnames=''.join(res_firstnames)))
+                    log.info('Found person for {text}: {fnames} {lname}'.
+                             format(text=text, lname=lastname, fnames=' '.join(res_firstnames)))
 
                 except AssertionError:
                     continue
