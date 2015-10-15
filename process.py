@@ -87,8 +87,12 @@ SKIP_PERSONS = args.skip_persons
 surma = rdflib.Graph()
 surma_onto = rdflib.Graph()
 
-logging.basicConfig(filename='Sotasurma.log', filemode='w', level=logging.DEBUG)
+logging.basicConfig(filename='Sotasurma.log',
+                    filemode='a',
+                    level=logging.DEBUG,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+log = logging.getLogger(__name__)
 
 
 def fix_by_direct_uri_mappings():
@@ -103,6 +107,8 @@ def fix_by_direct_uri_mappings():
         for s, p in list(surma_onto[::map_from]):
             surma_onto.remove((s, p, map_from))
             surma_onto.add((s, p, map_to))
+
+        log.info('Applied mapping %s  -->  %s' % (map_from, map_to))
 
 
 def fix_cemetery_links():
@@ -138,7 +144,7 @@ def fix_cemetery_links():
             try:
                 new_o = ns_hautausmaat['h{cem_id}'.format(cem_id=cemetery_id)]
             except ValueError:
-                print('Invalid cemetery id: {id}'.format(id=cemetery_id))
+                log.error('Invalid cemetery id: {id}'.format(id=cemetery_id))
                 continue
 
             assert h_name, s    # Should have a name to use as prefLabel
@@ -150,7 +156,7 @@ def fix_cemetery_links():
             surma_onto.add((new_o, ns_skos.prefLabel, Literal(h_name)))
             surma_onto.add((new_o, ns_schema.hautausmaakunta, kunta_node))
 
-            print('New cemetery %s : %s' % (new_o, h_name))
+            log.info('New cemetery %s : %s' % (new_o, h_name))
 
         else:
             h_name_onto = str(next(surma_onto[new_o:ns_skos.prefLabel:]))
@@ -197,9 +203,9 @@ def link_to_warsa_municipalities():
 
         if len(warsa_s) == 0:
             if set(surma.subjects(None, s)) - set(surma[:ns_schema.hautauskunta:s]):
-                print('WARNING: Couldn\'t find Warsa URI for {lbl}'.format(lbl=label))
+                log.warning('Couldn\'t find Warsa URI for {lbl}'.format(lbl=label))
         elif len(warsa_s) == 1:
-            # print('Found {lbl} as Warsa URI {s}'.format(lbl=label, s=warsa_s[0]))
+            log.info('Found {lbl} as Warsa URI {s}'.format(lbl=label, s=warsa_s[0]))
             for subj in list(surma[:ns_schema.synnyinkunta:s]):
                 surma.add((subj, ns_schema.synnyinkunta, warsa_s[0]))
                 surma.remove((subj, ns_schema.synnyinkunta, s))
@@ -220,7 +226,7 @@ def link_to_warsa_municipalities():
                 surma.add((subj, ns_schema.kuolinkunta, warsa_s[0]))
                 surma.remove((subj, ns_schema.kuolinkunta, s))
         else:
-            print('WARNING: Found multiple Warsa URIs for {lbl}: {s}'.format(lbl=label, s=warsa_s))
+            log.warning('Found multiple Warsa URIs for {lbl}: {s}'.format(lbl=label, s=warsa_s))
 
 
 def validate():
@@ -232,16 +238,16 @@ def validate():
 
     unknown_links = r.get_unknown_links(full_rdf)
 
-    print('\nFound {num} unknown URI references:'.format(num=len(unknown_links)))
+    log.warning('\nFound {num} unknown URI references'.format(num=len(unknown_links)))
     for o in sorted(unknown_links):
-        print('{uri}  ({num})'.format(uri=str(o), num=str(len(list(surma[::o])) + len(list(surma_onto[::o])))))
+        log.warning('Unknown URI references: {uri}  (referenced {num} times)'.format(uri=str(o), num=str(len(list(surma[::o])) + len(list(surma_onto[::o])))))
 
     unlinked_subjects = [uri for uri in r.get_unlinked_uris(full_rdf)
                          if not str(uri).startswith('http://ldf.fi/narc-menehtyneet1939-45/p')]
 
-    print('\nFound {num} unlinked subjects:'.format(num=len(unlinked_subjects)))
+    log.warning('\nFound {num} unlinked subjects'.format(num=len(unlinked_subjects)))
     for s in sorted(unlinked_subjects):
-        print('{uri}'.format(uri=str(s)))
+        log.warning('Unlinked subject {uri}'.format(uri=str(s)))
 
 
 def link_to_military_ranks(ranks):
@@ -258,9 +264,9 @@ def link_to_military_ranks(ranks):
         if len(found_ranks) == 1:
             new_o = found_ranks[0]
         elif len(found_ranks) > 1:
-            print('WARNING: Found multiple ranks for {rank}'.format(rank=rank_label))
+            log.warning('Found multiple ranks for {rank}'.format(rank=rank_label))
         else:
-            print('WARNING: Couldn\'t find military rank for {rank}'.format(rank=rank_label))
+            log.warning('Couldn\'t find military rank for {rank}'.format(rank=rank_label))
 
         if new_o:
             surma.remove((s, p, o))
@@ -276,13 +282,11 @@ if __name__ == "__main__":
 
     ranks = None
 
-    # TODO: Logging
-
     if not SKIP_CEMETERIES:
         ##################
         # READ IN CSV DATA
 
-        print('Reading data')
+        print('Reading CSV data...')
 
         hmaat = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_HMAAT.CSV', encoding='latin_1', header=None, index_col=False,
                             names=['kunta_id', 'hmaa_id', 'hmaa_name'], sep=',', quotechar='"', na_values=['  '])
@@ -302,7 +306,7 @@ if __name__ == "__main__":
 
     if USE_GENERATED_FILES:
             # Read RDF graph from TTL files
-            print('Processing previously generated RDF files.')
+            print('Processing previously generated RDF files...')
             surma.parse(OUTPUT_FILE_DIRECTORY + "surma.ttl", format='turtle')
             surma_onto.parse(OUTPUT_FILE_DIRECTORY + "surma_onto.ttl", format='turtle')
             print('Parsed {len} data triples.'.format(len=len(surma)))
@@ -320,7 +324,7 @@ if __name__ == "__main__":
 
         if reload:
             # Read RDF graph from TTL files
-            print('Processing Sotasurma RDF files.')
+            print('Processing Sotasurma RDF files...')
 
             surma.parse(INPUT_FILE_DIRECTORY + DATA_FILE, format='turtle')
 
@@ -330,17 +334,18 @@ if __name__ == "__main__":
                     surma_onto.parse(input_dir + f, format='turtle')
             print('Parsed {len} data triples.'.format(len=len(surma)))
             print('Parsed {len} ontology triples.'.format(len=len(surma_onto)))
+            print('Writing graphs to pickle objects...')
             joblib.dump(surma, INPUT_FILE_DIRECTORY + 'surma.pkl')
             joblib.dump(surma_onto, INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
-            print('Wrote graphs to pickle objects.')
 
     ##########################################################
     # FIX KNOWN ISSUES AND ADD LINKS TO OTHER SOTASAMPO GRAPHS
 
+    print('Applying direct URI mapping fixes...')
     fix_by_direct_uri_mappings()
-    print('Applied direct URI mapping fixes')
 
     if not SKIP_CEMETERIES:
+        print('Fixing cemeteries...')
         fix_cemetery_links()
 
         surma_onto.add((ns_schema.hautausmaakunta, RDF.type, OWL.ObjectProperty))
@@ -349,35 +354,31 @@ if __name__ == "__main__":
         surma_onto.add((ns_schema.hautausmaakunta, RDFS.range, ns_schema.Kunta))
         surma_onto.add((ns_schema.hautausmaakunta, ns_skos.prefLabel, Literal('Hautausmaan kunta', lang='fi')))
 
-        print('\nFixed cemeteries.\n')
-
-    if not SKIP_VALIDATION:
-        validate()
-        print()
-
     if not SKIP_MUNICIPALITIES:
+        print('Linking to military municipalities...')
         link_to_warsa_municipalities()
-        print()
 
     if not SKIP_RANKS:
+        print('Linking to military ranks...')
         ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
         link_to_military_ranks(ranks)
-        print('\nLinked to military ranks.\n')
 
     if not SKIP_PERSONS:
+        print('Finding links for WARSA persons...')
+
         if not ranks:
             ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
 
         # Link to WARSA actor persons
-        pprint.pprint(arpa.link_to_warsa_persons(surma, ranks, OWL.sameas, ns_schema.sotilasarvo,
-                                                 ns_schema.etunimet, ns_schema.sukunimi))
+        log.debug(arpa.link_to_warsa_persons(surma, ranks, OWL.sameas, ns_schema.sotilasarvo,
+                                             ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika))
         # Verner Viikla (ent. Viklund)
         surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p752512'),
                    OWL.sameas,
                    URIRef('http://ldf.fi/warsa/actors/person_251')))
-        print('Found links for WARSA persons:')
+
         for s, o in surma[:OWL.sameas:]:
-            print('{s} is same as {o}'.format(s=s, o=o))
+            log.info('{s} is same as {o}'.format(s=s, o=o))
 
     surma_onto.remove((ns_schema.sotilasarvo, RDFS.range, None))
     surma_onto.add((ns_schema.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/warsa/actors/ranks/Rank')))
@@ -389,7 +390,7 @@ if __name__ == "__main__":
     surma_onto.add((ns_schema.osasto, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
 
     if not SKIP_UNITS:
-        pprint.pprint(arpa.link_to_military_units(surma, ns_schema.osasto, ns_schema.joukko_osasto))
+        log.debug(arpa.link_to_military_units(surma, ns_schema.osasto, ns_schema.joukko_osasto))
 
     # TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää esim. paikannimirekisterin paikkoihin
 
@@ -399,7 +400,12 @@ if __name__ == "__main__":
     ##################
     # SERIALIZE GRAPHS
 
+    if not SKIP_VALIDATION:
+        print('Validating graphs for unknown link targets and unlinked subjects...')
+        validate()
+
     if not DRYRUN:
+        print('Serializing graphs...')
         surma.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
         surma.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
 
@@ -410,5 +416,4 @@ if __name__ == "__main__":
 
         surma.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma.ttl")
         surma_onto.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma_onto.ttl")
-        print('\nSerialized graphs.')
 
