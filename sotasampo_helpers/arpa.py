@@ -63,7 +63,7 @@ def link_to_military_units(graph, target_prop, source_prop):
 
 
 def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_prop, source_firstname_prop,
-                          source_lastname_prop, preprocessor=None, validator=None):
+                          source_lastname_prop, birthdate_prop, preprocessor=None, validator=None):
     """
     Link a person to known Warsa persons
 
@@ -80,9 +80,9 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
 
     def _combine_rank_and_names(rank, person_uri, graph):
         return '{rank} {firstname} {lastname}'.format(
-            rank=str(next(graph_schema[rank:URIRef('http://www.w3.org/2004/02/skos/core#prefLabel'):], '')),
-            firstname=str(next(graph[person_uri:source_firstname_prop:], '')),
-            lastname=str(next(graph[person_uri:source_lastname_prop:], '')))
+            rank=str(graph_schema.value(rank, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel'))),
+            firstname=str(graph.value(person_uri, source_firstname_prop)),
+            lastname=str(graph.value(person_uri, source_lastname_prop)))
 
     def _validator(graph, s):
         def _validate_name(text, results):
@@ -94,6 +94,7 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
 
             filtered = []
             for person in results:
+                score = 0
                 try:
                     assert lastname == person['properties'].get('sukunimi')[0].replace('"', '').lower()
                     assert rank == person['properties'].get('sotilasarvolabel', [''])[0].replace('"', '').lower()
@@ -101,28 +102,59 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                     res_firstnames = person['properties'].get('etunimet')[0].split('^')[0].replace('"', '').lower()
                     res_firstnames = res_firstnames.split()
 
-                    # TODO: Use date of birth in validation
-
                     assert len(firstnames) and len(res_firstnames)
 
-                    log.debug('Potential match (lastname and rank) for person {text}: {fnames} {lname}'.
-                              format(text=text, lname=lastname, fnames=' '.join(res_firstnames)))
-                    # assert firstnames[0] == res_firstnames[0]
                     for i in range(0, min(len(firstnames), len(res_firstnames))):
                         if '.' not in ''.join((firstnames[i], res_firstnames[i])):
                             assert firstnames[i] == res_firstnames[i]
                         else:
                             pos = min(firstnames[i].find('.'), res_firstnames[i].find('.'))
                             assert firstnames[i][:pos] == res_firstnames[i][:pos]
+
+                    log.debug('Potential match (lastname and rank) for person {text}: {fnames} {lname}'.
+                              format(text=text, lname=lastname, fnames=' '.join(res_firstnames)))
+
+                    res_birthdates = (person['properties'].get('birth_start', [''])[0].split('^')[0].replace('"', ''),
+                                      person['properties'].get('birth_end', [''])[0].split('^')[0].replace('"', ''))
+
+                    birthdate = str(graph.value(s, birthdate_prop))
+
+                    if res_birthdates[0] and birthdate:
+                        assert res_birthdates[0] <= birthdate
+                        score += 1
+
+                    if res_birthdates[1] and birthdate:
+                        assert birthdate <= res_birthdates[1]
+                        score += 1
+
+                    person['score'] = score
+
                     filtered.append(person)
 
-                    log.info('Found person for {text}: {fnames} {lname}'.
+                    log.info('Found matching Warsa person for {text}: {fnames} {lname}'.
                              format(text=text, lname=lastname, fnames=' '.join(res_firstnames)))
 
                 except AssertionError:
                     continue
 
-            return filtered
+            if len(filtered) == 1:
+                return filtered
+            elif len(filtered) > 1:
+                log.warning('Found several matches for Warsa person {s} ({text}): {ids}'.
+                            format(s=s, text=text,
+                                   ids=', '.join(p['properties'].get('id')[0].split('^')[0].replace('"', '')
+                                                 for p in filtered)))
+
+                best_matches = sorted(filtered, key=lambda p: p['score'], reverse=True)
+                if len(best_matches) == 1 or best_matches[0]['score'] > 0:
+                    return best_matches[0]
+                else:
+                    log.error('Would have to guess from multiple matches without birthdate for {text}: {ids}'.
+                              format(text=text,
+                                     ids=', '.join(p['properties'].get('id')[0].split('^')[0].replace('"', '')
+                                                   for p in filtered)))
+
+            return []
 
         return _validate_name
 
