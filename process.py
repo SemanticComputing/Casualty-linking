@@ -89,7 +89,7 @@ surma_onto = rdflib.Graph()
 
 logging.basicConfig(filename='Sotasurma.log',
                     filemode='a',
-                    level=logging.DEBUG,
+                    level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 log = logging.getLogger(__name__)
@@ -240,10 +240,13 @@ def validate():
 
     log.warning('\nFound {num} unknown URI references'.format(num=len(unknown_links)))
     for o in sorted(unknown_links):
-        log.warning('Unknown URI references: {uri}  (referenced {num} times)'.format(uri=str(o), num=str(len(list(surma[::o])) + len(list(surma_onto[::o])))))
+        if not str(o).startswith('http://ldf.fi/warsa/'):
+            log.warning('Unknown URI references: {uri}  (referenced {num} times)'.format(uri=str(o), num=str(len(list(surma[::o])) + len(list(surma_onto[::o])))))
 
     unlinked_subjects = [uri for uri in r.get_unlinked_uris(full_rdf)
-                         if not str(uri).startswith('http://ldf.fi/narc-menehtyneet1939-45/p')]
+                         if not (str(uri).startswith('http://ldf.fi/narc-menehtyneet1939-45/p')
+                                 or str(uri).startswith('http://ldf.fi/warsa/'))
+                         ]
 
     log.warning('\nFound {num} unlinked subjects'.format(num=len(unlinked_subjects)))
     for s in sorted(unlinked_subjects):
@@ -355,7 +358,7 @@ if __name__ == "__main__":
         surma_onto.add((ns_schema.hautausmaakunta, ns_skos.prefLabel, Literal('Hautausmaan kunta', lang='fi')))
 
     if not SKIP_MUNICIPALITIES:
-        print('Linking to military municipalities...')
+        print('Linking to municipalities...')
         link_to_warsa_municipalities()
 
     if not SKIP_RANKS:
@@ -363,8 +366,13 @@ if __name__ == "__main__":
         ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
         link_to_military_ranks(ranks)
 
+        surma_onto.remove((ns_schema.sotilasarvo, RDFS.range, None))
+        surma_onto.add((ns_schema.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/warsa/actors/ranks/Rank')))
+
     if not SKIP_PERSONS:
         print('Finding links for WARSA persons...')
+
+        # Note: Requires updated military ranks
 
         if not ranks:
             ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
@@ -380,22 +388,24 @@ if __name__ == "__main__":
         for s, o in surma[:OWL.sameas:]:
             log.info('{s} is same as {o}'.format(s=s, o=o))
 
-    surma_onto.remove((ns_schema.sotilasarvo, RDFS.range, None))
-    surma_onto.add((ns_schema.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/warsa/actors/ranks/Rank')))
-
-    surma_onto.add((ns_schema.osasto, RDF.type, OWL.ObjectProperty))
-    surma_onto.add((ns_schema.osasto, RDFS.label, Literal('Tunnettu joukko-osasto', lang='fi')))
-    surma_onto.add((ns_schema.osasto, RDFS.domain, URIRef('http://xmlns.com/foaf/0.1/Person')))
-    surma_onto.add((ns_schema.osasto, RDFS.range, URIRef('http://ldf.fi/warsa/actors/actor_types/MilitaryUnit')))
-    surma_onto.add((ns_schema.osasto, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
-
     if not SKIP_UNITS:
-        log.debug(arpa.link_to_military_units(surma, ns_schema.osasto, ns_schema.joukko_osasto))
+        print('Finding links for military units...')
+        unit_link_uri = ns_schema.warsa_unit
+
+        log.debug(arpa.link_to_military_units(surma, unit_link_uri, ns_schema.joukko_osasto))
+
+        surma_onto.remove((ns_schema.osasto, None, None))  # TODO: Remove
+        surma.remove((None, ns_schema.osasto, None))  # TODO: Remove
+
+        surma_onto.add((unit_link_uri, RDF.type, OWL.ObjectProperty))
+        surma_onto.add((unit_link_uri, RDFS.label, Literal('Tunnettu joukko-osasto', lang='fi')))
+        surma_onto.add((unit_link_uri, RDFS.label, Literal('Military unit', lang='en')))
+        surma_onto.add((unit_link_uri, RDFS.domain, URIRef('http://xmlns.com/foaf/0.1/Person')))
+        surma_onto.add((unit_link_uri, RDFS.range, URIRef('http://ldf.fi/warsa/actors/actor_types/MilitaryUnit')))
+        surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
+        surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Military unit', lang='en')))
 
     # TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää esim. paikannimirekisterin paikkoihin
-
-    surma_onto.add((ns_kunnat.kunta_ontologia, ns_dct.contributor, URIRef('http://orcid.org/0000-0002-7373-9338')))
-    surma_onto.add((ns_kunnat.kunta_ontologia, ns_dct.contributor, URIRef('http://www.seco.tkk.fi/')))
 
     ##################
     # SERIALIZE GRAPHS
@@ -406,11 +416,41 @@ if __name__ == "__main__":
 
     if not DRYRUN:
         print('Serializing graphs...')
+        surma.bind("foaf", "http://xmlns.com/foaf/0.1/")
+
         surma.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
         surma.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
 
-        surma_onto.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")  # TODO: Move schema stuff to schema namespace (e.g. skos:ConceptSchemes)
+        surma.bind("narc-kieli", "http://ldf.fi/narc-menehtyneet1939-45/aeidinkieli/")
+        surma.bind("narc-hautausmaa", "http://ldf.fi/narc-menehtyneet1939-45/hautausmaat/")
+        surma.bind("narc-kansalaisuus", "http://ldf.fi/narc-menehtyneet1939-45/kansalaisuus/")
+        surma.bind("narc-kansallisuus", "http://ldf.fi/narc-menehtyneet1939-45/kansallisuus/")
+        surma.bind("narc-menehtymisluokka", "http://ldf.fi/narc-menehtyneet1939-45/menehtymisluokka/")
+        surma.bind("narc-siviilisaeaety", "http://ldf.fi/narc-menehtyneet1939-45/siviilisaeaety/")
+        surma.bind("narc-kunta", "http://ldf.fi/narc-menehtyneet1939-45/kunnat/")
+        surma.bind("narc-sukupuoli", "http://ldf.fi/narc-menehtyneet1939-45/sukupuoli/")
+
+        surma.bind("warsa-kunta", "http://ldf.fi/warsa/places/municipalities/")
+        surma.bind("warsa-arvo", "http://ldf.fi/warsa/actors/ranks/")
+        surma.bind("warsa-toimija", "http://ldf.fi/warsa/actors/")
+
+        # TODO: Move schema stuff to schema namespace? (e.g. skos:ConceptSchemes)
+
+        surma_onto.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
         surma_onto.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
+
+        surma_onto.bind("narc-kieli", "http://ldf.fi/narc-menehtyneet1939-45/aeidinkieli/")
+        surma_onto.bind("narc-hautausmaa", "http://ldf.fi/narc-menehtyneet1939-45/hautausmaat/")
+        surma_onto.bind("narc-kansalaisuus", "http://ldf.fi/narc-menehtyneet1939-45/kansalaisuus/")
+        surma_onto.bind("narc-kansallisuus", "http://ldf.fi/narc-menehtyneet1939-45/kansallisuus/")
+        surma_onto.bind("narc-menehtymisluokka", "http://ldf.fi/narc-menehtyneet1939-45/menehtymisluokka/")
+        surma_onto.bind("narc-siviilisaeaety", "http://ldf.fi/narc-menehtyneet1939-45/siviilisaeaety/")
+        surma_onto.bind("narc-kunta", "http://ldf.fi/narc-menehtyneet1939-45/kunnat/")
+
+        surma_onto.bind("warsa-kunta", "http://ldf.fi/warsa/places/municipalities/")
+        surma_onto.bind("warsa-arvo", "http://ldf.fi/warsa/actors/ranks/")
+        surma_onto.bind("warsa-toimija", "http://ldf.fi/warsa/actors/")
+
         surma_onto.bind("geo", "http://www.georss.org/georss/")
         surma_onto.bind("dct", "http://purl.org/dc/terms/")
 
