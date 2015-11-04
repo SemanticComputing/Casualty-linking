@@ -347,6 +347,8 @@ if __name__ == "__main__":
     print('Applying direct URI mapping fixes...')
     fix_by_direct_uri_mappings()
 
+    # TODO: UNIFY PREVIOUS LAST NAMES TO SAME FORMAT AS WARSA ACTORS: LASTNAME (PREVIOUS)
+
     if not SKIP_CEMETERIES:
         print('Fixing cemeteries...')
         fix_cemetery_links()
@@ -378,17 +380,19 @@ if __name__ == "__main__":
             ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
 
         # Link to WARSA actor persons
-        log.debug(arpa.link_to_warsa_persons(surma, ranks, OWL.sameas, ns_schema.sotilasarvo,
+        log.debug(arpa.link_to_warsa_persons(surma, ranks, OWL.sameAs, ns_schema.sotilasarvo,
                                              ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika))
         # Verner Viikla (ent. Viklund)
         surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p752512'),
-                   OWL.sameas,
+                   OWL.sameAs,
                    URIRef('http://ldf.fi/warsa/actors/person_251')))
 
-        for s, o in surma[:OWL.sameas:]:
+        for s, o in surma[:OWL.sameAs:]:
             log.info('{s} is same as {o}'.format(s=s, o=o))
 
     if not SKIP_UNITS:
+        # TODO: USE ONLY TALVISOTA UNITS [UNIT IS (ASSUMABLY) GIVEN FOR TIME OF DEATH]
+
         print('Finding links for military units...')
         unit_link_uri = ns_schema.warsa_unit
 
