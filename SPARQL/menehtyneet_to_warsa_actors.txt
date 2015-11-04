@@ -1,0 +1,44 @@
+# This query creates WARSA actor instances of persons in "Casualties during the Finnish wars 1939–1945"
+
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX foaf:    <http://xmlns.com/foaf/0.1/>
+PREFIX narcs: <http://ldf.fi/schema/narc-menehtyneet1939-45/>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX dc: <http://purl.org/dc/elements/1.1/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX actors: <http://ldf.fi/warsa/actors/>
+
+CONSTRUCT	
+	{ 
+	?new_uri	foaf:familyName	?lname ;
+			foaf:firstName	?fname ;
+			skos:prefLabel	?fullname ;
+			actors:hasRank	?rank ;
+			dc:source	?source ; 
+			rdf:type	<http://ldf.fi/warsa/actors/actor_types/MilitaryPerson> ;
+			owl:sameAs	?x ;
+	}
+WHERE	{{
+		?x	rdf:type	foaf:Person ;
+			narcs:sukunimi	?lname ;
+			narcs:etunimet	?fname ;
+			narcs:sotilasarvo	?rank .
+		
+		OPTIONAL { ?x	owl:sameas	?warsa_person } .
+		FILTER(!bound(?warsa_person))
+		BIND(URI("http://ldf.fi/narc-menehtyneet1939-45") as ?source)
+		BIND(URI(REPLACE(	str(?x), 
+					"http://ldf.fi/narc-menehtyneet1939-45/", 
+					"http://ldf.fi/warsa/actors/person_")) AS ?new_uri)
+		BIND(CONCAT(?fname, " ", ?lname) AS ?fullname)
+	}
+	UNION
+	{
+                ?x      rdf:type        foaf:Person ;
+
+                OPTIONAL { ?x   owl:sameas      ?warsa_person } .
+                FILTER(bound(?warsa_person))
+                BIND(?warsa_person AS ?new_uri)
+	}}
+
