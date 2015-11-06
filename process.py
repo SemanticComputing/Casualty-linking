@@ -347,7 +347,7 @@ if __name__ == "__main__":
     print('Applying direct URI mapping fixes...')
     fix_by_direct_uri_mappings()
 
-    # TODO: UNIFY PREVIOUS LAST NAMES TO SAME FORMAT AS WARSA ACTORS: LASTNAME (PREVIOUS)
+    # TODO: UNIFY PREVIOUS LAST NAMES TO SAME FORMAT AS WARSA ACTORS: LASTNAME (ent PREVIOUS)
 
     if not SKIP_CEMETERIES:
         print('Fixing cemeteries...')
@@ -386,6 +386,16 @@ if __name__ == "__main__":
         surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p752512'),
                    OWL.sameAs,
                    URIRef('http://ldf.fi/warsa/actors/person_251')))
+
+        # VARSTALA, MATTI
+        surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p282493'),
+                   OWL.sameAs,
+                   URIRef('http://ldf.fi/warsa/actors/person_232')))
+
+        # KAUSTI, ESKO
+        surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p11344'),
+                   OWL.sameAs,
+                   URIRef('http://ldf.fi/warsa/actors/person_334')))
 
         for s, o in surma[:OWL.sameAs:]:
             log.info('{s} is same as {o}'.format(s=s, o=o))
