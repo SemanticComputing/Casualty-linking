@@ -15,7 +15,7 @@ CONSTRUCT
 			foaf:firstName	?fname ;
 			skos:prefLabel	?fullname ;
 			actors:hasRank	?rank ;
-			dc:source	?source ; 
+			dc:source	?source ;
 			rdf:type	<http://ldf.fi/warsa/actors/actor_types/MilitaryPerson> ;
 			owl:sameAs	?x ;
 	}
@@ -25,7 +25,7 @@ WHERE	{{
 			narcs:etunimet	?fname ;
 			narcs:sotilasarvo	?rank .
 		
-		OPTIONAL { ?x	owl:sameas	?warsa_person } .
+		OPTIONAL { ?x	owl:sameAs	?warsa_person } .
 		FILTER(!bound(?warsa_person))
 		BIND(URI("http://ldf.fi/narc-menehtyneet1939-45") as ?source)
 		BIND(URI(REPLACE(	str(?x), 
@@ -37,7 +37,7 @@ WHERE	{{
 	{
                 ?x      rdf:type        foaf:Person ;
 
-                OPTIONAL { ?x   owl:sameas      ?warsa_person } .
+                OPTIONAL { ?x   owl:sameAs      ?warsa_person } .
                 FILTER(bound(?warsa_person))
                 BIND(?warsa_person AS ?new_uri)
 	}}
