@@ -349,6 +349,8 @@ if __name__ == "__main__":
 
     # TODO: UNIFY PREVIOUS LAST NAMES TO SAME FORMAT AS WARSA ACTORS: LASTNAME (ent PREVIOUS)
 
+    # TODO: Use str.title() for all names
+
     if not SKIP_CEMETERIES:
         print('Fixing cemeteries...')
         fix_cemetery_links()
