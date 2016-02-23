@@ -347,6 +347,8 @@ if __name__ == "__main__":
     print('Applying direct URI mapping fixes...')
     fix_by_direct_uri_mappings()
 
+    # TODO: Add english ontology descriptions?
+
     # TODO: UNIFY PREVIOUS LAST NAMES TO SAME FORMAT AS WARSA ACTORS: LASTNAME (ent PREVIOUS)
 
     # TODO: Use str.title() for all names
