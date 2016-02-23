@@ -357,6 +357,8 @@ if __name__ == "__main__":
         print('Fixing cemeteries...')
         fix_cemetery_links()
 
+        # TODO: Fix narcs:hautausmaa rdf:type and rdfs:Range
+
         surma_onto.add((ns_schema.hautausmaakunta, RDF.type, OWL.ObjectProperty))
         surma_onto.add((ns_schema.hautausmaakunta, RDFS.label, Literal('Hautausmaan kunta', lang='fi')))
         surma_onto.add((ns_schema.hautausmaakunta, RDFS.domain, ns_schema.Hautausmaa))
