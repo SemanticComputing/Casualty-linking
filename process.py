@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
 #  -*- coding: UTF-8 -*-
 """
-Code for processing, validating and fixing some errors in "Casualties during the Finnish wars 1939–1945"
-(Suomen sodissa 1939–1945 menehtyneet) RDF dataset. Input RDF data downloadable from LDF.FI linked data portal:
-http://www.ldf.fi/dataset/narc-menehtyneet1939-45
+Code for processing, validating and fixing some errors in the original RDF version of
+"Casualties during the Finnish wars 1939–1945" (Suomen sodissa 1939–1945 menehtyneet) RDF dataset.
 
-Input CSV data is not publicly available (?).
+Input CSV data used is not publicly available.
 
-Copyright (c) 2015 Mikko Koho
-
-Issues remaining:
-    - schema misused atleast http://ldf.fi/schema/narc-menehtyneet1939-45/hautauskunta being used against given
-      domain from also Hautausmaa instances, but no actual validation against schema done.
+Copyright (c) 2016 Mikko Koho
 """
 
 import argparse
@@ -347,6 +342,7 @@ if __name__ == "__main__":
     print('Applying direct URI mapping fixes...')
     fix_by_direct_uri_mappings()
 
+    # TODO: Add military rank group ontology description
     # TODO: Add english ontology descriptions?
 
     # TODO: UNIFY PREVIOUS LAST NAMES TO SAME FORMAT AS WARSA ACTORS: LASTNAME (ent PREVIOUS)
@@ -358,6 +354,9 @@ if __name__ == "__main__":
         fix_cemetery_links()
 
         # TODO: Fix narcs:hautausmaa rdf:type and rdfs:Range
+        # TODO: Add graveyard ontology description
+
+        # TODO: http://ldf.fi/schema/narc-menehtyneet1939-45/hautauskunta being used against given domain from also Hautausmaa instances
 
         surma_onto.add((ns_schema.hautausmaakunta, RDF.type, OWL.ObjectProperty))
         surma_onto.add((ns_schema.hautausmaakunta, RDFS.label, Literal('Hautausmaan kunta', lang='fi')))
@@ -367,6 +366,9 @@ if __name__ == "__main__":
 
     if not SKIP_MUNICIPALITIES:
         print('Linking to municipalities...')
+
+        # TODO: Link graveyards to Warsa municipalities
+
         link_to_warsa_municipalities()
 
     if not SKIP_RANKS:
@@ -465,6 +467,7 @@ if __name__ == "__main__":
         surma_onto.bind("narc-kansallisuus", "http://ldf.fi/narc-menehtyneet1939-45/kansallisuus/")
         surma_onto.bind("narc-menehtymisluokka", "http://ldf.fi/narc-menehtyneet1939-45/menehtymisluokka/")
         surma_onto.bind("narc-siviilisaeaety", "http://ldf.fi/narc-menehtyneet1939-45/siviilisaeaety/")
+        surma_onto.bind("narc-sotilasarvo", "http://ldf.fi/narc-menehtyneet1939-45/sotilasarvo/")
         surma_onto.bind("narc-kunta", "http://ldf.fi/narc-menehtyneet1939-45/kunnat/")
 
         surma_onto.bind("warsa-kunta", "http://ldf.fi/warsa/places/municipalities/")
