@@ -223,6 +223,9 @@ def link_to_warsa_municipalities():
             for subj in list(surma[:ns_schema.haavoittumiskunta:s]):
                 surma.add((subj, ns_schema.haavoittumiskunta, warsa_s[0]))
                 surma.remove((subj, ns_schema.haavoittumiskunta, s))
+            for subj in list(surma[:ns_schema.katoamiskunta:s]):
+                surma.add((subj, ns_schema.katoamiskunta, warsa_s[0]))
+                surma.remove((subj, ns_schema.katoamiskunta, s))
         else:
             log.warning('Found multiple Warsa URIs for {lbl}: {s}'.format(lbl=label, s=warsa_s))
 
