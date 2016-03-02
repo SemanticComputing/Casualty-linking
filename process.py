@@ -220,6 +220,9 @@ def link_to_warsa_municipalities():
             for subj in list(surma[:ns_schema.kuolinkunta:s]):
                 surma.add((subj, ns_schema.kuolinkunta, warsa_s[0]))
                 surma.remove((subj, ns_schema.kuolinkunta, s))
+            for subj in list(surma[:ns_schema.haavoittumiskunta:s]):
+                surma.add((subj, ns_schema.haavoittumiskunta, warsa_s[0]))
+                surma.remove((subj, ns_schema.haavoittumiskunta, s))
         else:
             log.warning('Found multiple Warsa URIs for {lbl}: {s}'.format(lbl=label, s=warsa_s))
 
@@ -348,6 +351,8 @@ if __name__ == "__main__":
     # TODO: UNIFY PREVIOUS LAST NAMES TO SAME FORMAT AS WARSA ACTORS: LASTNAME (ent PREVIOUS)
 
     # TODO: Use str.title() for all names
+
+    # TODO: Change FOAF:Person classes to CIDOC-CRM:E21_Person
 
     if not SKIP_CEMETERIES:
         print('Fixing cemeteries...')
