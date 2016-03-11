@@ -399,11 +399,10 @@ if __name__ == "__main__":
 
         # TODO: Change sameAs links to some CIDOC link
 
-        # TODO: Get persons with some other source than casualties dataset (New Arpa configuration for this)
-
         # Link to WARSA actor persons
         log.debug(arpa.link_to_warsa_persons(surma, ranks, OWL.sameAs, ns_schema.sotilasarvo,
-                                             ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika))
+                                             ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika,
+                                             endpoint='http://demo.seco.tkk.fi/arpa/menehtyneet_persons'))
         # Verner Viikla (ent. Viklund)
         surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p752512'),
                    OWL.sameAs,
