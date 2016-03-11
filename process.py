@@ -32,6 +32,7 @@ DATA_FILE = 'surma.ttl'
 ns_skos = Namespace('http://www.w3.org/2004/02/skos/core#')
 ns_dct = Namespace('http://purl.org/dc/terms/')
 ns_schema = Namespace('http://ldf.fi/schema/narc-menehtyneet1939-45/')
+ns_crm = Namespace('http://www.cidoc-crm.org/cidoc-crm/')
 
 ns_hautausmaat = Namespace('http://ldf.fi/narc-menehtyneet1939-45/hautausmaat/')
 ns_kansalaisuus = Namespace('http://ldf.fi/narc-menehtyneet1939-45/kansalaisuus/')
@@ -351,8 +352,6 @@ if __name__ == "__main__":
     # TODO: Add military rank group ontology description
     # TODO: Add english ontology descriptions?
 
-    # TODO: UNIFY PREVIOUS LAST NAMES TO SAME FORMAT AS WARSA ACTORS: LASTNAME (ent PREVIOUS)
-
     # TODO: Use str.title() for all names
 
     # TODO: Add CRM:P70_documents from every instance
@@ -392,6 +391,17 @@ if __name__ == "__main__":
     if not SKIP_PERSONS:
         print('Finding links for WARSA persons...')
 
+        # Unify previous last names to same format as WARSA actors: LASTNAME (ent PREVIOUS)
+
+        for (person, lname) in list(surma[:ns_schema.sukunimi:]):
+            new_lname = Literal(re.sub(r'(\w\w )(E.)(\w+)', r'\1(ent \3)', str(lname)))
+            if new_lname and new_lname != lname:
+                log.info('Unifying lastname {ln} to {nln}'.format(ln=lname, nln=new_lname))
+                fname = list(surma[person:ns_schema.etunimet:])[0]
+
+                surma.add((person, ns_schema.sukunimi, new_lname))
+                surma.remove((person, ns_schema.sukunimi, lname))
+
         # Note: Requires updated military ranks
 
         if not ranks:
@@ -422,8 +432,6 @@ if __name__ == "__main__":
             log.info('{s} is same as {o}'.format(s=s, o=o))
 
     if not SKIP_UNITS:
-        # TODO: USE ONLY TALVISOTA UNITS [UNIT IS (ASSUMABLY) GIVEN FOR TIME OF DEATH]
-
         print('Finding links for military units...')
         unit_link_uri = ns_schema.warsa_unit
 
@@ -435,7 +443,7 @@ if __name__ == "__main__":
         surma_onto.add((unit_link_uri, RDF.type, OWL.ObjectProperty))
         surma_onto.add((unit_link_uri, RDFS.label, Literal('Tunnettu joukko-osasto', lang='fi')))
         surma_onto.add((unit_link_uri, RDFS.label, Literal('Military unit', lang='en')))
-        surma_onto.add((unit_link_uri, RDFS.domain, URIRef('http://www.cidoc-crm.org/cidoc-crm/E31_Document')))
+        surma_onto.add((unit_link_uri, RDFS.domain, ns_crm.E31_Document))
         surma_onto.add((unit_link_uri, RDFS.range, URIRef('http://ldf.fi/warsa/actors/actor_types/MilitaryUnit')))
         surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
         surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Military unit', lang='en')))
@@ -445,11 +453,11 @@ if __name__ == "__main__":
     print('Applying final corrections...')
 
     for (sub, pred) in surma[::URIRef('http://xmlns.com/foaf/0.1/Person')]:
-        surma.add((sub, pred, URIRef('http://www.cidoc-crm.org/cidoc-crm/E31_Document')))
+        surma.add((sub, pred, ns_crm.E31_Document))
         surma.remove((sub, pred, URIRef('http://xmlns.com/foaf/0.1/Person')))
 
     for (sub, pred) in surma_onto[::URIRef('http://xmlns.com/foaf/0.1/Person')]:
-        surma_onto.add((sub, pred, URIRef('http://www.cidoc-crm.org/cidoc-crm/E31_Document')))
+        surma_onto.add((sub, pred, ns_crm.E31_Document))
         surma_onto.remove((sub, pred, URIRef('http://xmlns.com/foaf/0.1/Person')))
 
     ##################
