@@ -355,7 +355,6 @@ if __name__ == "__main__":
 
     # TODO: Use str.title() for all names
 
-    # TODO: Change FOAF:Person classes to CRM:E31_Document
     # TODO: Add CRM:P70_documents from every instance
 
     # TODO: Linkitä paikat WARSA-paikkoihin
@@ -437,12 +436,22 @@ if __name__ == "__main__":
         surma_onto.add((unit_link_uri, RDF.type, OWL.ObjectProperty))
         surma_onto.add((unit_link_uri, RDFS.label, Literal('Tunnettu joukko-osasto', lang='fi')))
         surma_onto.add((unit_link_uri, RDFS.label, Literal('Military unit', lang='en')))
-        surma_onto.add((unit_link_uri, RDFS.domain, URIRef('http://xmlns.com/foaf/0.1/Person')))
+        surma_onto.add((unit_link_uri, RDFS.domain, URIRef('http://www.cidoc-crm.org/cidoc-crm/E31_Document')))
         surma_onto.add((unit_link_uri, RDFS.range, URIRef('http://ldf.fi/warsa/actors/actor_types/MilitaryUnit')))
         surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
         surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Military unit', lang='en')))
 
     # TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää esim. paikannimirekisterin paikkoihin
+
+    print('Applying final corrections...')
+
+    for (sub, pred) in surma[::URIRef('http://xmlns.com/foaf/0.1/Person')]:
+        surma.add((sub, pred, URIRef('http://www.cidoc-crm.org/cidoc-crm/E31_Document')))
+        surma.remove((sub, pred, URIRef('http://xmlns.com/foaf/0.1/Person')))
+
+    for (sub, pred) in surma_onto[::URIRef('http://xmlns.com/foaf/0.1/Person')]:
+        surma_onto.add((sub, pred, URIRef('http://www.cidoc-crm.org/cidoc-crm/E31_Document')))
+        surma_onto.remove((sub, pred, URIRef('http://xmlns.com/foaf/0.1/Person')))
 
     ##################
     # SERIALIZE GRAPHS
@@ -453,7 +462,8 @@ if __name__ == "__main__":
 
     if not DRYRUN:
         print('Serializing graphs...')
-        surma.bind("foaf", "http://xmlns.com/foaf/0.1/")
+        # surma.bind("foaf", "http://xmlns.com/foaf/0.1/")
+        surma.bind("crm", "http://www.cidoc-crm.org/cidoc-crm/")
 
         surma.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
         surma.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
@@ -472,6 +482,8 @@ if __name__ == "__main__":
         surma.bind("warsa-toimija", "http://ldf.fi/warsa/actors/")
 
         # TODO: Move schema stuff to schema namespace? (e.g. skos:ConceptSchemes)
+
+        surma_onto.bind("crm", "http://www.cidoc-crm.org/cidoc-crm/")
 
         surma_onto.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
         surma_onto.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
