@@ -1,0 +1,130 @@
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX sf: <http://ldf.fi/functions#>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+
+SELECT (?s as ?id) ?Menehtymisluokka ?Kuolinaika ?Sukunimi ?Haavoittumiskunta ?Hautapaikka ?Ammatti ?Joukko_osastokoodi ?Haavoittumisaika ?Hautauskunta ?Joukko_osasto ?Kansallisuus (GROUP_CONCAT(DISTINCT ?Tunnettu_joukko_osastoS;separator=';') AS ?Tunnettu_joukko_osasto) (GROUP_CONCAT(DISTINCT ?Tunnettu_joukko_osasto_idS;separator=';') AS ?Tunnettu_joukko_osasto_id) ?Aidinkieli ?Kuolinkunta ?Kuolinkunta_id ?Synnyinkunta ?Synnyinkunta_id ?Asuinkunta ?Asuinkunta_id ?Katoamiskunta ?Syntymaaika ?prefLabel ?Etunimet ?Siviilisaaty ?Lasten_lukumaara ?Kansalaisuus ?Sotilasarvo ?Sukupuoli ?sameAs ?Hautausmaa ?Hautausmaa_id ?Kuolinpaikka ?Katoamisaika ?Haavoittumispaikka ?Katoamispaikka ?Kotikunta ?Kotikunta_id ?inScheme {
+  # CONSTRAINTS
+  ?s a foaf:Person .
+  # /CONSTRAINTS
+  # OSELECTOR
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/menehtymisluokka> ?Menehtymisluokka_id .
+    ?Menehtymisluokka_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Menehtymisluokka) .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/kuolinaika> ?Kuolinaika .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/sukunimi> ?Sukunimi .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/haavoittumiskunta> ?Haavoittumiskunta_id .
+    ?Haavoittumiskunta_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Haavoittumiskunta) .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/hautapaikka> ?Hautapaikka .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/ammatti> ?Ammatti .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/joukko_osastokoodi> ?Joukko_osastokoodi .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/haavoittumisaika> ?Haavoittumisaika .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/hautauskunta> ?Hautauskunta_id .
+    ?Hautauskunta_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Hautauskunta) .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/joukko_osasto> ?Joukko_osasto .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/kansallisuus> ?Kansallisuus_id .
+    ?Kansallisuus_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Kansallisuus) .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/osasto> ?Tunnettu_joukko_osasto_idS .
+    OPTIONAL {
+      ?Tunnettu_joukko_osasto_idS sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Tunnettu_joukko_osastoS) .
+    }
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/aeidinkieli> ?Aidinkieli_id .
+    ?Aidinkieli_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Aidinkieli) .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/kuolinkunta> ?Kuolinkunta_id .
+    ?Kuolinkunta_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Kuolinkunta) .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/synnyinkunta> ?Synnyinkunta_id .
+    ?Synnyinkunta_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Synnyinkunta) .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/asuinkunta> ?Asuinkunta_id .
+    ?Asuinkunta_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Asuinkunta) .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/katoamiskunta> ?Katoamiskunta_id .
+    ?Katoamiskunta_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Katoamiskunta) .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/syntymaeaika> ?Syntymaaika .
+  }
+  ?s skos:prefLabel ?prefLabel .
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/etunimet> ?Etunimet .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/siviilisaeaety> ?Siviilisaaty_id .
+    ?Siviilisaaty_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Siviilisaaty) .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/lasten_lukumaeaerae> ?Lasten_lukumaara .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/kansalaisuus> ?Kansalaisuus_id .
+    ?Kansalaisuus_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Kansalaisuus) .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/sotilasarvo> ?Sotilasarvo_id .
+    ?Sotilasarvo_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Sotilasarvo) .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/sukupuoli> ?Sukupuoli_id .
+    ?Sukupuoli_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Sukupuoli) .
+  }
+  OPTIONAL {
+    ?s <http://www.w3.org/2002/07/owl#sameAs> ?sameAs_id .
+    ?sameAs_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?sameAs) .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/hautausmaa> ?Hautausmaa_id .
+    ?Hautausmaa_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Hautausmaa) .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/kuolinpaikka> ?Kuolinpaikka .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/katoamisaika> ?Katoamisaika .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/haavoittumispaikka> ?Haavoittumispaikka .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/katoamispaikka> ?Katoamispaikka .
+  }
+  OPTIONAL {
+    ?s <http://ldf.fi/schema/narc-menehtyneet1939-45/kotikunta> ?Kotikunta_id .
+    ?Kotikunta_id sf:preferredLanguageLiteral (skos:prefLabel "fi" "sv" "en"  "" ?Kotikunta) .
+  }
+  OPTIONAL {
+    ?s skos:inScheme ?inScheme .
+  }
+  # /OSELECTOR
+}
+GROUP BY ?s ?Menehtymisluokka ?Kuolinaika ?Sukunimi ?Haavoittumiskunta ?Hautapaikka ?Ammatti ?Joukko_osastokoodi ?Haavoittumisaika ?Hautauskunta ?Joukko_osasto ?Kansallisuus ?Aidinkieli ?Kuolinkunta ?Kuolinkunta_id ?Synnyinkunta ?Synnyinkunta_id ?Asuinkunta ?Asuinkunta_id ?Katoamiskunta ?Syntymaaika ?prefLabel ?Etunimet ?Siviilisaaty ?Lasten_lukumaara ?Kansalaisuus ?Sotilasarvo ?Sukupuoli ?sameAs ?Hautausmaa ?Hautausmaa_id ?Kuolinpaikka ?Katoamisaika ?Haavoittumispaikka ?Katoamispaikka ?Kotikunta ?Kotikunta_id ?inScheme
+LIMIT 1
