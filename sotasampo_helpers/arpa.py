@@ -63,7 +63,8 @@ def link_to_military_units(graph, target_prop, source_prop):
 
 
 def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_prop, source_firstname_prop,
-                          source_lastname_prop, birthdate_prop, preprocessor=None, validator=None):
+                          source_lastname_prop, birthdate_prop, preprocessor=None, validator=None,
+                          endpoint='http://demo.seco.tkk.fi/arpa/warsa_actor_persons'):
     """
     Link a person to known Warsa persons
 
@@ -158,7 +159,7 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
 
         return _validate_name
 
-    arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_actor_persons')
+    arpa = Arpa(endpoint)
 
     if preprocessor is None:
         preprocessor = _combine_rank_and_names
