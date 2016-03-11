@@ -210,10 +210,10 @@ def link_to_warsa_municipalities():
             # for subj in list(surma[:ns_schema.hautauskunta:s]):
                 # surma.add((subj, ns_schema.hautauskunta, s))
                 # surma.remove((subj, ns_schema.hautauskunta, s))
-            for subj in list(surma_onto[:ns_schema.hautauskunta:s]):
+            # for subj in list(surma_onto[:ns_schema.hautauskunta:s]):
                 # Fixes cemetery municipalities
-                surma_onto.add((subj, ns_schema.hautausmaakunta, s))  # Add hautausmaakunta
-                surma_onto.remove((subj, ns_schema.hautauskunta, s))
+                # surma_onto.add((subj, ns_schema.hautausmaakunta, s))  # Add hautausmaakunta # TODO ??
+                # surma_onto.remove((subj, ns_schema.hautauskunta, s))
             for subj in list(surma[:ns_schema.asuinkunta:s]):
                 surma.add((subj, ns_schema.asuinkunta, warsa_s[0]))
                 surma.remove((subj, ns_schema.asuinkunta, s))
@@ -355,7 +355,10 @@ if __name__ == "__main__":
 
     # TODO: Use str.title() for all names
 
-    # TODO: Change FOAF:Person classes to CIDOC-CRM:E21_Person
+    # TODO: Change FOAF:Person classes to CRM:E31_Document
+    # TODO: Add CRM:P70_documents from every instance
+
+    # TODO: Linkitä paikat WARSA-paikkoihin
 
     if not SKIP_CEMETERIES:
         print('Fixing cemeteries...')
@@ -394,6 +397,10 @@ if __name__ == "__main__":
 
         if not ranks:
             ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
+
+        # TODO: Change sameAs links to some CIDOC link
+
+        # TODO: Get persons with some other source than casualties dataset (New Arpa configuration for this)
 
         # Link to WARSA actor persons
         log.debug(arpa.link_to_warsa_persons(surma, ranks, OWL.sameAs, ns_schema.sotilasarvo,
