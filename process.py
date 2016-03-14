@@ -14,6 +14,7 @@ import logging
 import os
 
 import re
+import iso8601
 
 import joblib
 import pandas as pd
@@ -217,10 +218,6 @@ def link_to_warsa_municipalities():
             # for subj in list(surma[:ns_schema.hautauskunta:s]):
                 # surma.add((subj, ns_schema.hautauskunta, s))
                 # surma.remove((subj, ns_schema.hautauskunta, s))
-            for subj in list(surma_onto[:ns_schema.hautauskunta:s]):
-                # Fixes cemetery municipalities
-                surma_onto.add((subj, ns_schema.hautausmaakunta, s))  # Add hautausmaakunta to cemeteries
-                surma_onto.remove((subj, ns_schema.hautauskunta, s))
             for subj in list(surma[:ns_schema.asuinkunta:s]):
                 surma.add((subj, ns_schema.asuinkunta, warsa_s[0]))
                 surma.remove((subj, ns_schema.asuinkunta, s))
@@ -233,6 +230,11 @@ def link_to_warsa_municipalities():
             for subj in list(surma[:ns_schema.katoamiskunta:s]):
                 surma.add((subj, ns_schema.katoamiskunta, warsa_s[0]))
                 surma.remove((subj, ns_schema.katoamiskunta, s))
+
+            for subj in list(surma_onto[:ns_schema.hautauskunta:s]):
+                # Fixes cemetery municipalities
+                surma_onto.add((subj, ns_schema.hautausmaakunta, s))  # Add hautausmaakunta to cemeteries
+                surma_onto.remove((subj, ns_schema.hautauskunta, s))
         else:
             log.warning('Found multiple Warsa URIs for {lbl}: {s}'.format(lbl=label, s=warsa_s))
 
@@ -443,7 +445,7 @@ if __name__ == "__main__":
         surma_onto.remove((ns_schema.hautausmaa, RDF.type, ns_owl.DatatypeProperty))
         surma_onto.add((ns_schema.hautausmaa, RDF.type, ns_owl.ObjectProperty))
 
-        surma_onto.remove((ns_schema.hautausmaa, RDFS.range, URIRef('http://www.w3.org/2001/XMLSchema#string')))
+        surma_onto.remove((ns_schema.hautausmaa, RDFS.range, XSD.string))
         surma_onto.add((ns_schema.hautausmaa, RDFS.range, ns_schema.Hautausmaa))
 
     if not SKIP_MUNICIPALITIES:
@@ -489,6 +491,21 @@ if __name__ == "__main__":
 
     print('Applying final corrections...')
 
+    dateset = set()
+    date_props = [ns_schema.haavoittumisaika, ns_schema.katoamisaika, ns_schema.kuolinaika, ns_schema.syntymaeaika]
+    for date_prop in date_props:
+        dateset |= set(surma.objects(None, date_prop))
+
+    for date in dateset:
+        try:
+            parsed_date = iso8601.parse_date(str(date))
+            if parsed_date.year < 1840:
+                raise TypeError
+        except (iso8601.ParseError, TypeError):
+            log.info('Removing references to invalid date: {date}'.format(date=str(date)))
+            for date_prop in date_props:
+                surma.remove((None, date_prop, date))
+
     for (sub, pred) in surma[::ns_foaf.Person]:
         surma.add((sub, pred, ns_crm.E31_Document))
         surma.remove((sub, pred, ns_foaf.Person))
@@ -506,7 +523,6 @@ if __name__ == "__main__":
 
     if not DRYRUN:
         print('Serializing graphs...')
-        # surma.bind("foaf", "http://xmlns.com/foaf/0.1/")
         surma.bind("crm", "http://www.cidoc-crm.org/cidoc-crm/")
 
         surma.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
