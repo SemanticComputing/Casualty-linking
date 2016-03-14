@@ -284,6 +284,75 @@ def link_to_military_ranks(ranks):
             surma.add((s, p, new_o))
 
 
+def link_persons(ranks):
+    """
+    Link death records to WARSA persons, unify and stylize name representations
+
+    :param ranks: military ranks
+    """
+    # Unify previous last names to same format as WARSA actors: LASTNAME (ent PREVIOUS)
+    for (person, lname) in list(surma[:ns_schema.sukunimi:]):
+        new_lname = Literal(re.sub(r'(\w\w )(E.)\s?(\w+)', r'\1(ent \3)', str(lname)))
+        if new_lname and new_lname != lname:
+            log.info('Unifying lastname {ln} to {nln}'.format(ln=lname, nln=new_lname))
+            fname = list(surma[person:ns_schema.etunimet:])[0]
+
+            surma.add((person, ns_schema.sukunimi, new_lname))
+            surma.remove((person, ns_schema.sukunimi, lname))
+
+    # Change names from all uppercase to capitalized
+    for lbl_pred in [ns_schema.etunimet, ns_schema.sukunimi, ns_skos.prefLabel]:
+        for (sub, obj) in list(surma[:lbl_pred:]):
+            name = str(obj)
+            new_name = str.title(name)
+            surma.remove((sub, lbl_pred, obj))
+            surma.add((sub, lbl_pred, Literal(new_name)))
+            log.debug('Changed name {orig} to {new}'.format(orig=name, new=new_name))
+
+    # Link to WARSA actor persons
+    log.debug(arpa.link_to_warsa_persons(surma, ranks, ns_crm.P70_documents, ns_schema.sotilasarvo,
+                                         ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika,
+                                         endpoint='http://demo.seco.tkk.fi/arpa/menehtyneet_persons'))
+
+    # TODO: Make sure these get linked
+    # # Verner Viikla (ent. Viklund)
+    # surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p752512'),
+    #            ns_crm.P70_documents,
+    #            URIRef('http://ldf.fi/warsa/actors/person_251')))
+    #
+    # # VARSTALA, MATTI
+    # surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p282493'),
+    #            ns_crm.P70_documents,
+    #            URIRef('http://ldf.fi/warsa/actors/person_232')))
+    #
+    # # KAUSTI, ESKO
+    # surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p11344'),
+    #            ns_crm.P70_documents,
+    #            URIRef('http://ldf.fi/warsa/actors/person_334')))
+    #
+    for s, o in surma[:ns_crm.P70_documents:]:
+        log.info('ARPA found that {s} is the death record of person {o}'.format(s=s, o=o))
+
+    sparql = SPARQLWrapper('http://ldf.fi/warsa/sparql')
+    for person in list(surma[:RDF.type:ns_foaf.Person]):
+        sparql.setQuery("""
+                        PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
+                        SELECT * WHERE {{ ?sub crm:P70i_is_documented_in <{person_uri}> . }}
+                        """.format(person_uri=person))
+        sparql.setReturnFormat(JSON)
+        try:
+            results = sparql.query().convert()
+        except ValueError:
+            log.error('Malformed result from SPARQL endpoint for person {p_uri}'.format(p_uri=person))
+
+        warsa_person = None
+        for result in results["results"]["bindings"]:
+            warsa_person = result["sub"]["value"]
+            log.debug('{pers} matches WARSA person {warsa_pers}'.format(pers=person, warsa_pers=warsa_person))
+            surma.add((person, ns_crm.P70_documents, URIRef(warsa_person)))
+
+        if not warsa_person:
+            log.warning('{person} didn\'t match any WARSA persons.'.format(person=person))
 
 
 #######
@@ -395,73 +464,11 @@ if __name__ == "__main__":
     if not SKIP_PERSONS:
         print('Finding links for WARSA persons...')
 
-        # Unify previous last names to same format as WARSA actors: LASTNAME (ent PREVIOUS)
-        for (person, lname) in list(surma[:ns_schema.sukunimi:]):
-            new_lname = Literal(re.sub(r'(\w\w )(E.)\s?(\w+)', r'\1(ent \3)', str(lname)))
-            if new_lname and new_lname != lname:
-                log.info('Unifying lastname {ln} to {nln}'.format(ln=lname, nln=new_lname))
-                fname = list(surma[person:ns_schema.etunimet:])[0]
-
-                surma.add((person, ns_schema.sukunimi, new_lname))
-                surma.remove((person, ns_schema.sukunimi, lname))
-
-        # Change names from all uppercase to capitalized
-        for lbl_pred in [ns_schema.etunimet, ns_schema.sukunimi, ns_skos.prefLabel]:
-            for (sub, obj) in list(surma[:lbl_pred:]):
-                name = str(obj)
-                new_name = str.title(name)
-                surma.remove((sub, lbl_pred, obj))
-                surma.add((sub, lbl_pred, Literal(new_name)))
-                log.debug('Changed name {orig} to {new}'.format(orig=name, new=new_name))
-
         # Note: Requires updated military ranks
         if not ranks:
             ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
 
-        # Link to WARSA actor persons
-        log.debug(arpa.link_to_warsa_persons(surma, ranks, ns_crm.P70_documents, ns_schema.sotilasarvo,
-                                             ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika,
-                                             endpoint='http://demo.seco.tkk.fi/arpa/menehtyneet_persons'))
-
-        # TODO: Make sure these get linked
-        # # Verner Viikla (ent. Viklund)
-        # surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p752512'),
-        #            ns_crm.P70_documents,
-        #            URIRef('http://ldf.fi/warsa/actors/person_251')))
-        #
-        # # VARSTALA, MATTI
-        # surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p282493'),
-        #            ns_crm.P70_documents,
-        #            URIRef('http://ldf.fi/warsa/actors/person_232')))
-        #
-        # # KAUSTI, ESKO
-        # surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p11344'),
-        #            ns_crm.P70_documents,
-        #            URIRef('http://ldf.fi/warsa/actors/person_334')))
-        #
-        for s, o in surma[:ns_crm.P70_documents:]:
-            log.info('ARPA found that {s} is the death record of person {o}'.format(s=s, o=o))
-
-        sparql = SPARQLWrapper('http://ldf.fi/warsa/sparql')
-        for person in list(surma[:RDF.type:ns_foaf.Person]):
-            sparql.setQuery("""
-                            PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
-                            SELECT * WHERE {{ ?sub crm:P70i_is_documented_in <{person_uri}> . }}
-                            """.format(person_uri=person))
-            sparql.setReturnFormat(JSON)
-            try:
-                results = sparql.query().convert()
-            except ValueError:
-                log.error('Malformed result from SPARQL endpoint for person {p_uri}'.format(p_uri=person))
-
-            warsa_person = None
-            for result in results["results"]["bindings"]:
-                warsa_person = result["sub"]["value"]
-                log.debug('{pers} matches WARSA person {warsa_pers}'.format(pers=person, warsa_pers=warsa_person))
-                surma.add((person, ns_crm.P70_documents, URIRef(warsa_person)))
-
-            if not warsa_person:
-                log.warning('{person} didn\'t match any WARSA persons.'.format(person=person))
+        link_persons(ranks)
 
     if not SKIP_UNITS:
         print('Finding links for military units...')
