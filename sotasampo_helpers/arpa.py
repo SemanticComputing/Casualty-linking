@@ -82,7 +82,7 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
     def _combine_rank_and_names(rank, person_uri, graph):
         return '{rank} {firstname} {lastname}'.format(
             rank=str(graph_schema.value(rank, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel'))),
-            firstname=str(graph.value(person_uri, source_firstname_prop)),
+            firstname=str(graph.value(person_uri, source_firstname_prop)).replace('/', ' '),
             lastname=str(graph.value(person_uri, source_lastname_prop)))
 
     def _validator(graph, s):
@@ -103,14 +103,14 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                     res_firstnames = person['properties'].get('etunimet')[0].split('^')[0].replace('"', '').lower()
                     res_firstnames = res_firstnames.split()
 
-                    assert len(firstnames) and len(res_firstnames)
-
-                    for i in range(0, min(len(firstnames), len(res_firstnames))):
-                        if '.' not in ''.join((firstnames[i], res_firstnames[i])):
-                            assert firstnames[i] == res_firstnames[i]
-                        else:
-                            pos = min(firstnames[i].find('.'), res_firstnames[i].find('.'))
-                            assert firstnames[i][:pos] == res_firstnames[i][:pos]
+                    # assert len(firstnames) and len(res_firstnames)
+                    #
+                    # for i in range(0, min(len(firstnames), len(res_firstnames))):
+                    #     if '.' not in ''.join((firstnames[i], res_firstnames[i])):
+                    #         assert firstnames[i] == res_firstnames[i]
+                    #     else:
+                    #         pos = min(firstnames[i].find('.'), res_firstnames[i].find('.'))
+                    #         assert firstnames[i][:pos] == res_firstnames[i][:pos]
 
                     log.debug('Potential match (lastname and rank) for person {text}: {fnames} {lname}'.
                               format(text=text, lname=lastname, fnames=' '.join(res_firstnames)))
