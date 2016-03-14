@@ -392,7 +392,6 @@ if __name__ == "__main__":
         print('Finding links for WARSA persons...')
 
         # Unify previous last names to same format as WARSA actors: LASTNAME (ent PREVIOUS)
-
         for (person, lname) in list(surma[:ns_schema.sukunimi:]):
             new_lname = Literal(re.sub(r'(\w\w )(E.)(\w+)', r'\1(ent \3)', str(lname)))
             if new_lname and new_lname != lname:
@@ -403,33 +402,30 @@ if __name__ == "__main__":
                 surma.remove((person, ns_schema.sukunimi, lname))
 
         # Note: Requires updated military ranks
-
         if not ranks:
             ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
 
-        # TODO: Change sameAs links to some CIDOC link
-
         # Link to WARSA actor persons
-        log.debug(arpa.link_to_warsa_persons(surma, ranks, OWL.sameAs, ns_schema.sotilasarvo,
+        log.debug(arpa.link_to_warsa_persons(surma, ranks, ns_crm.P70_documents, ns_schema.sotilasarvo,
                                              ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika,
                                              endpoint='http://demo.seco.tkk.fi/arpa/menehtyneet_persons'))
         # Verner Viikla (ent. Viklund)
         surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p752512'),
-                   OWL.sameAs,
+                   ns_crm.P70_documents,
                    URIRef('http://ldf.fi/warsa/actors/person_251')))
 
         # VARSTALA, MATTI
         surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p282493'),
-                   OWL.sameAs,
+                   ns_crm.P70_documents,
                    URIRef('http://ldf.fi/warsa/actors/person_232')))
 
         # KAUSTI, ESKO
         surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p11344'),
-                   OWL.sameAs,
+                   ns_crm.P70_documents,
                    URIRef('http://ldf.fi/warsa/actors/person_334')))
 
-        for s, o in surma[:OWL.sameAs:]:
-            log.info('{s} is same as {o}'.format(s=s, o=o))
+        for s, o in surma[:ns_crm.P70_documents:]:
+            log.info('{s} is the death record of person {o}'.format(s=s, o=o))
 
     if not SKIP_UNITS:
         print('Finding links for military units...')
