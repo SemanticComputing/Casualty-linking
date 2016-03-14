@@ -19,6 +19,7 @@ import joblib
 import pandas as pd
 from rdflib import *
 import rdflib
+from SPARQLWrapper import SPARQLWrapper, JSON
 from sotasampo_helpers import arpa
 
 import rdf_dm as r
@@ -32,6 +33,8 @@ ns_skos = Namespace('http://www.w3.org/2004/02/skos/core#')
 ns_dct = Namespace('http://purl.org/dc/terms/')
 ns_schema = Namespace('http://ldf.fi/schema/narc-menehtyneet1939-45/')
 ns_crm = Namespace('http://www.cidoc-crm.org/cidoc-crm/')
+ns_foaf = Namespace('http://xmlns.com/foaf/0.1/')
+ns_owl = Namespace('http://www.w3.org/2002/07/owl#')
 
 ns_hautausmaat = Namespace('http://ldf.fi/narc-menehtyneet1939-45/hautausmaat/')
 ns_kansalaisuus = Namespace('http://ldf.fi/narc-menehtyneet1939-45/kansalaisuus/')
@@ -194,6 +197,9 @@ def link_to_warsa_municipalities():
                 warsa_s = list(munics[:ns_skos.prefLabel:Literal(lbl)])
             if not warsa_s:
                 warsa_s = list(munics[:ns_skos.prefLabel:Literal(lbl.replace(' kunta', ' mlk'))])
+            if not warsa_s:
+                # TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää esim. paikannimirekisterin paikkoihin
+                pass
 
         # NOTE! hautauskunta seems to refer to current municipalities, unlike the rest
 
@@ -211,10 +217,10 @@ def link_to_warsa_municipalities():
             # for subj in list(surma[:ns_schema.hautauskunta:s]):
                 # surma.add((subj, ns_schema.hautauskunta, s))
                 # surma.remove((subj, ns_schema.hautauskunta, s))
-            # for subj in list(surma_onto[:ns_schema.hautauskunta:s]):
+            for subj in list(surma_onto[:ns_schema.hautauskunta:s]):
                 # Fixes cemetery municipalities
-                # surma_onto.add((subj, ns_schema.hautausmaakunta, s))  # Add hautausmaakunta # TODO ??
-                # surma_onto.remove((subj, ns_schema.hautauskunta, s))
+                surma_onto.add((subj, ns_schema.hautausmaakunta, s))  # Add hautausmaakunta to cemeteries
+                surma_onto.remove((subj, ns_schema.hautauskunta, s))
             for subj in list(surma[:ns_schema.asuinkunta:s]):
                 surma.add((subj, ns_schema.asuinkunta, warsa_s[0]))
                 surma.remove((subj, ns_schema.asuinkunta, s))
@@ -352,26 +358,24 @@ if __name__ == "__main__":
     # TODO: Add military rank group ontology description
     # TODO: Add english ontology descriptions?
 
-    # TODO: Use str.title() for all names
-
-    # TODO: Add CRM:P70_documents from every instance
-
-    # TODO: Linkitä paikat WARSA-paikkoihin
-
     if not SKIP_CEMETERIES:
         print('Fixing cemeteries...')
         fix_cemetery_links()
 
-        # TODO: Fix narcs:hautausmaa rdf:type and rdfs:Range
         # TODO: Add graveyard ontology description
-
-        # TODO: http://ldf.fi/schema/narc-menehtyneet1939-45/hautauskunta being used against given domain from also Hautausmaa instances
 
         surma_onto.add((ns_schema.hautausmaakunta, RDF.type, OWL.ObjectProperty))
         surma_onto.add((ns_schema.hautausmaakunta, RDFS.label, Literal('Hautausmaan kunta', lang='fi')))
         surma_onto.add((ns_schema.hautausmaakunta, RDFS.domain, ns_schema.Hautausmaa))
         surma_onto.add((ns_schema.hautausmaakunta, RDFS.range, ns_schema.Kunta))
         surma_onto.add((ns_schema.hautausmaakunta, ns_skos.prefLabel, Literal('Hautausmaan kunta', lang='fi')))
+
+        # TODO: Fix narcs:hautausmaa rdf:type and rdfs:Range
+        surma_onto.remove((ns_schema.hautausmaa, RDF.type, ns_owl.DatatypeProperty))
+        surma_onto.add((ns_schema.hautausmaa, RDF.type, ns_owl.ObjectProperty))
+
+        surma_onto.remove((ns_schema.hautausmaa, RDFS.range, URIRef('http://www.w3.org/2001/XMLSchema#string')))
+        surma_onto.add((ns_schema.hautausmaa, RDFS.range, ns_schema.Hautausmaa))
 
     if not SKIP_MUNICIPALITIES:
         print('Linking to municipalities...')
@@ -401,6 +405,15 @@ if __name__ == "__main__":
                 surma.add((person, ns_schema.sukunimi, new_lname))
                 surma.remove((person, ns_schema.sukunimi, lname))
 
+        # Change names from all uppercase to capitalized
+        for lbl_pred in [ns_schema.etunimet, ns_schema.sukunimi, ns_skos.prefLabel]:
+            for (sub, obj) in list(surma[:lbl_pred:]):
+                name = str(obj)
+                new_name = str.title(name)
+                surma.remove((sub, lbl_pred, obj))
+                surma.add((sub, lbl_pred, Literal(new_name)))
+                log.debug('Changed name {orig} to {new}'.format(orig=name, new=new_name))
+
         # Note: Requires updated military ranks
         if not ranks:
             ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
@@ -427,7 +440,28 @@ if __name__ == "__main__":
         #            URIRef('http://ldf.fi/warsa/actors/person_334')))
         #
         for s, o in surma[:ns_crm.P70_documents:]:
-            log.info('{s} is the death record of person {o}'.format(s=s, o=o))
+            log.info('ARPA found that {s} is the death record of person {o}'.format(s=s, o=o))
+
+        sparql = SPARQLWrapper('http://ldf.fi/warsa/sparql')
+        for person in list(surma[:RDF.type:ns_foaf.Person]):
+            sparql.setQuery("""
+                            PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
+                            SELECT * WHERE {{ ?sub crm:P70i_is_documented_in <{person_uri}> . }}
+                            """.format(person_uri=person))
+            sparql.setReturnFormat(JSON)
+            try:
+                results = sparql.query().convert()
+            except ValueError:
+                log.error('Malformed result from SPARQL endpoint for person {p_uri}'.format(p_uri=person))
+
+            warsa_person = None
+            for result in results["results"]["bindings"]:
+                warsa_person = result["sub"]["value"]
+                log.debug('{pers} matches WARSA person {warsa_pers}'.format(pers=person, warsa_pers=warsa_person))
+                surma.add((person, ns_crm.P70_documents, URIRef(warsa_person)))
+
+            if not warsa_person:
+                log.warning('{person} didn\'t match any WARSA persons.'.format(person=person))
 
     if not SKIP_UNITS:
         print('Finding links for military units...')
@@ -446,17 +480,15 @@ if __name__ == "__main__":
         surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
         surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Military unit', lang='en')))
 
-    # TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää esim. paikannimirekisterin paikkoihin
-
     print('Applying final corrections...')
 
-    for (sub, pred) in surma[::URIRef('http://xmlns.com/foaf/0.1/Person')]:
+    for (sub, pred) in surma[::ns_foaf.Person]:
         surma.add((sub, pred, ns_crm.E31_Document))
-        surma.remove((sub, pred, URIRef('http://xmlns.com/foaf/0.1/Person')))
+        surma.remove((sub, pred, ns_foaf.Person))
 
-    for (sub, pred) in surma_onto[::URIRef('http://xmlns.com/foaf/0.1/Person')]:
+    for (sub, pred) in surma_onto[::ns_foaf.Person]:
         surma_onto.add((sub, pred, ns_crm.E31_Document))
-        surma_onto.remove((sub, pred, URIRef('http://xmlns.com/foaf/0.1/Person')))
+        surma_onto.remove((sub, pred, ns_foaf.Person))
 
     ##################
     # SERIALIZE GRAPHS
