@@ -12,7 +12,6 @@ Copyright (c) 2016 Mikko Koho
 import argparse
 import logging
 import os
-import pprint
 
 import re
 
@@ -85,7 +84,8 @@ surma_onto = rdflib.Graph()
 
 logging.basicConfig(filename='Sotasurma.log',
                     filemode='a',
-                    level=logging.INFO,
+                    level=logging.DEBUG,
+                    # level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 log = logging.getLogger(__name__)
@@ -393,7 +393,7 @@ if __name__ == "__main__":
 
         # Unify previous last names to same format as WARSA actors: LASTNAME (ent PREVIOUS)
         for (person, lname) in list(surma[:ns_schema.sukunimi:]):
-            new_lname = Literal(re.sub(r'(\w\w )(E.)(\w+)', r'\1(ent \3)', str(lname)))
+            new_lname = Literal(re.sub(r'(\w\w )(E.)\s?(\w+)', r'\1(ent \3)', str(lname)))
             if new_lname and new_lname != lname:
                 log.info('Unifying lastname {ln} to {nln}'.format(ln=lname, nln=new_lname))
                 fname = list(surma[person:ns_schema.etunimet:])[0]
@@ -409,21 +409,23 @@ if __name__ == "__main__":
         log.debug(arpa.link_to_warsa_persons(surma, ranks, ns_crm.P70_documents, ns_schema.sotilasarvo,
                                              ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika,
                                              endpoint='http://demo.seco.tkk.fi/arpa/menehtyneet_persons'))
-        # Verner Viikla (ent. Viklund)
-        surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p752512'),
-                   ns_crm.P70_documents,
-                   URIRef('http://ldf.fi/warsa/actors/person_251')))
 
-        # VARSTALA, MATTI
-        surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p282493'),
-                   ns_crm.P70_documents,
-                   URIRef('http://ldf.fi/warsa/actors/person_232')))
-
-        # KAUSTI, ESKO
-        surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p11344'),
-                   ns_crm.P70_documents,
-                   URIRef('http://ldf.fi/warsa/actors/person_334')))
-
+        # TODO: Make sure these get linked
+        # # Verner Viikla (ent. Viklund)
+        # surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p752512'),
+        #            ns_crm.P70_documents,
+        #            URIRef('http://ldf.fi/warsa/actors/person_251')))
+        #
+        # # VARSTALA, MATTI
+        # surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p282493'),
+        #            ns_crm.P70_documents,
+        #            URIRef('http://ldf.fi/warsa/actors/person_232')))
+        #
+        # # KAUSTI, ESKO
+        # surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p11344'),
+        #            ns_crm.P70_documents,
+        #            URIRef('http://ldf.fi/warsa/actors/person_334')))
+        #
         for s, o in surma[:ns_crm.P70_documents:]:
             log.info('{s} is the death record of person {o}'.format(s=s, o=o))
 
