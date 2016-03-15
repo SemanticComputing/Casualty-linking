@@ -9,6 +9,7 @@ import itertools
 
 from arpa_linker.arpa import Arpa, arpafy
 from rdflib import URIRef
+from fuzzywuzzy import fuzz
 
 log = logging.getLogger(__name__)
 
@@ -79,30 +80,31 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
     :param source_fullname_prop: full name property
     """
 
-    def _combine_rank_and_names(rank, person_uri, graph):
-        return '{rank} {firstname} {lastname}'.format(
-            rank=str(graph_schema.value(rank, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel'))),
-            firstname=str(graph.value(person_uri, source_firstname_prop)).replace('/', ' '),
-            lastname=str(graph.value(person_uri, source_lastname_prop)))
-
     def _validator(graph, s):
         def _validate_name(text, results):
             if not results:
                 return results
 
-            text_parts = text.lower().split()
-            rank, firstnames, lastname = (text_parts[0], text_parts[1:-1], text_parts[-1])
+            rank = graph.value(s, source_rank_prop)
+            rank = str(graph_schema.value(rank, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel'))).lower()
+            firstnames = str(graph.value(s, source_firstname_prop)).replace('/', ' ').lower().split()
+            lastname = text.lower()
 
             filtered = []
             for person in results:
                 score = 0
                 try:
-                    assert lastname == person['properties'].get('sukunimi')[0].replace('"', '').lower()
-                    if rank != 'tuntematon':
-                        assert rank == person['properties'].get('sotilasarvolabel', [''])[0].replace('"', '').lower()
+                    res_lastname = person['properties'].get('sukunimi')[0].replace('"', '').lower()
+                    assert lastname == res_lastname
 
+                    res_id = person['properties'].get('id')[0].replace('"', '')
+                    res_rank = person['properties'].get('sotilasarvolabel', [''])[0].replace('"', '').lower()
                     res_firstnames = person['properties'].get('etunimet')[0].split('^')[0].replace('"', '').lower()
                     res_firstnames = res_firstnames.split()
+
+                    if rank != 'tuntematon':
+                        if rank == res_rank:
+                            score += 50
 
                     # assert len(firstnames) and len(res_firstnames)
                     #
@@ -113,8 +115,9 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                     #         pos = min(firstnames[i].find('.'), res_firstnames[i].find('.'))
                     #         assert firstnames[i][:pos] == res_firstnames[i][:pos]
 
-                    log.debug('Potential match (lastname and rank) for person {text}: {fnames} {lname}'.
-                              format(text=text, lname=lastname, fnames=' '.join(res_firstnames)))
+                    log.debug('Potential match for person {p1text} <{p1}> : {p2text} {p2}'.
+                              format(p1text=' '.join([rank] + firstnames + [lastname]), p1=s,
+                                     p2text=' '.join([res_rank] + res_firstnames + [lastname]), p2=res_id))
 
                     res_birthdates = (person['properties'].get('birth_start', [''])[0].split('^')[0].replace('"', ''),
                                       person['properties'].get('birth_end', [''])[0].split('^')[0].replace('"', ''))
@@ -123,18 +126,44 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
 
                     if res_birthdates[0] and birthdate:
                         assert res_birthdates[0] <= birthdate
-                        score += 1
+                        if res_birthdates[0] == birthdate:
+                            score += 25
 
                     if res_birthdates[1] and birthdate:
                         assert birthdate <= res_birthdates[1]
-                        score += 1
+                        if res_birthdates[1] == birthdate:
+                            score += 25
+
+                    # TODO: Add score [50] from death date match
+
+                    s_first1 = ' '.join(firstnames)
+                    s_first2 = ' '.join(res_firstnames)
+                    fuzzy_firstname_match = max(fuzz.ratio(s_first1, s_first2),
+                                                fuzz.partial_ratio(s_first1, s_first2),
+                                                fuzz.token_sort_ratio(s_first1, s_first2),
+                                                fuzz.token_set_ratio(s_first1, s_first2))
+
+                    if fuzzy_firstname_match > 50:
+                        log.info('Fuzzy first name match for {f1} and {f2}: {fuzzy}'
+                                  .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
+                    # if set(firstnames) & set(res_firstnames):
+                    #     log.debug('Common firstnames for {f1} and {f2}: {fc}'
+                    #               .format(f1=firstnames, f2=res_firstnames, fc=set(firstnames) & set(res_firstnames)))
+                        score += fuzzy_firstname_match
+                    else:
+                        log.debug('No fuzzy first name match for {f1} and {f2}: {fuzzy}'
+                                  .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
 
                     person['score'] = score
 
-                    filtered.append(person)
+                    if score >= 100:
+                        filtered.append(person)
 
-                    log.info('Found matching Warsa person for {text}: {fnames} {lname}'.
-                             format(text=text, lname=lastname, fnames=' '.join(res_firstnames)))
+                        log.info('Found matching Warsa person for {text}: {fnames} {lname} [score: {score}]'.
+                                 format(text=text, lname=lastname, fnames=' '.join(res_firstnames), score=score))
+                    else:
+                        log.info('Skipping potential match because of too low score [{score}]: {p1}  <<-->>  {p2}'.
+                                 format(p1=s, p2=res_id, score=score))
 
                 except AssertionError:
                     continue
@@ -162,15 +191,17 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
 
     arpa = Arpa(endpoint)
 
-    if preprocessor is None:
-        preprocessor = _combine_rank_and_names
-
+    # if preprocessor is None:
+    #     preprocessor = _combine_rank_and_names
+    #
     if validator is None:
         validator = _validator
 
     # Query the ARPA service and add the matches
-    return arpafy(graph_data, target_prop, arpa, source_rank_prop,
+    return arpafy(graph_data, target_prop, arpa, source_lastname_prop,
                   preprocessor=preprocessor, progress=True, validator=validator)
+    # return arpafy(graph_data, target_prop, arpa, source_rank_prop,
+    #               preprocessor=preprocessor, progress=True, validator=validator)
 
 
 if __name__ == "__main__":
