@@ -98,7 +98,8 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                 score = 0
                 try:
                     assert lastname == person['properties'].get('sukunimi')[0].replace('"', '').lower()
-                    assert rank == person['properties'].get('sotilasarvolabel', [''])[0].replace('"', '').lower()
+                    if rank != 'tuntematon':
+                        assert rank == person['properties'].get('sotilasarvolabel', [''])[0].replace('"', '').lower()
 
                     res_firstnames = person['properties'].get('etunimet')[0].split('^')[0].replace('"', '').lower()
                     res_firstnames = res_firstnames.split()
