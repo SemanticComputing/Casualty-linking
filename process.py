@@ -199,7 +199,8 @@ def link_to_warsa_municipalities():
             if not warsa_s:
                 warsa_s = list(munics[:ns_skos.prefLabel:Literal(lbl.replace(' kunta', ' mlk'))])
             if not warsa_s:
-                # TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää esim. paikannimirekisterin paikkoihin
+                # TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää paikannimirekisterin paikkoihin
+                # http://demo.seco.tkk.fi/arpa/pnr_municipality
                 pass
 
         # NOTE! hautauskunta seems to refer to current municipalities, unlike the rest
@@ -312,6 +313,9 @@ def link_persons(ranks):
             log.debug('Changed name {orig} to {new}'.format(orig=name, new=new_name))
 
     # Link to WARSA actor persons
+    # log.debug(arpa.link_to_warsa_persons(surma, ranks, ns_crm.P70_documents, ns_schema.sotilasarvo,
+    #                                      ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika,
+    #                                      endpoint='http://demo.seco.tkk.fi/arpa/menehtyneet_persons'))
     log.debug(arpa.link_to_warsa_persons(surma, ranks, ns_crm.P70_documents, ns_schema.sotilasarvo,
                                          ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika,
                                          endpoint='http://demo.seco.tkk.fi/arpa/menehtyneet_persons'))
@@ -368,7 +372,7 @@ if __name__ == "__main__":
         ##################
         # READ IN CSV DATA
 
-        print('Reading CSV data...')
+        print('Reading CSV data for cemeteries...')
 
         hmaat = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_HMAAT.CSV', encoding='latin_1', header=None, index_col=False,
                             names=['kunta_id', 'hmaa_id', 'hmaa_name'], sep=',', quotechar='"', na_values=['  '])
@@ -441,7 +445,6 @@ if __name__ == "__main__":
         surma_onto.add((ns_schema.hautausmaakunta, RDFS.range, ns_schema.Kunta))
         surma_onto.add((ns_schema.hautausmaakunta, ns_skos.prefLabel, Literal('Hautausmaan kunta', lang='fi')))
 
-        # TODO: Fix narcs:hautausmaa rdf:type and rdfs:Range
         surma_onto.remove((ns_schema.hautausmaa, RDF.type, ns_owl.DatatypeProperty))
         surma_onto.add((ns_schema.hautausmaa, RDF.type, ns_owl.ObjectProperty))
 
