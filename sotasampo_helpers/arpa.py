@@ -64,7 +64,7 @@ def link_to_military_units(graph, target_prop, source_prop):
 
 
 def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_prop, source_firstname_prop,
-                          source_lastname_prop, birthdate_prop, preprocessor=None, validator=None,
+                          source_lastname_prop, birthdate_prop, deathdate_prop, preprocessor=None, validator=None,
                           endpoint='http://demo.seco.tkk.fi/arpa/warsa_actor_persons'):
     """
     Link a person to known Warsa persons
@@ -121,8 +121,11 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
 
                     res_birthdates = (person['properties'].get('birth_start', [''])[0].split('^')[0].replace('"', ''),
                                       person['properties'].get('birth_end', [''])[0].split('^')[0].replace('"', ''))
+                    res_deathdates = (person['properties'].get('death_start', [''])[0].split('^')[0].replace('"', ''),
+                                      person['properties'].get('death_end', [''])[0].split('^')[0].replace('"', ''))
 
                     birthdate = str(graph.value(s, birthdate_prop))
+                    deathdate = str(graph.value(s, deathdate_prop))
 
                     if res_birthdates[0] and birthdate:
                         assert res_birthdates[0] <= birthdate
@@ -134,7 +137,11 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                         if res_birthdates[1] == birthdate:
                             score += 25
 
-                    # TODO: Add score [50] from death date match
+                    if res_deathdates[0] and deathdate:
+                        score += 50 if res_deathdates[0] <= deathdate else -50
+
+                    if res_deathdates[1] and deathdate:
+                        score += 50 if deathdate <= res_deathdates[1] else -50
 
                     s_first1 = ' '.join(firstnames)
                     s_first2 = ' '.join(res_firstnames)
