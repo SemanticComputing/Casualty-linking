@@ -56,11 +56,34 @@ def link_to_military_units(graph, target_prop, source_prop):
     :param source_prop: source property as URIRef
     """
 
-    arpa = Arpa('http://demo.seco.tkk.fi/sotasampo_helpers/warsa_actor_units')
+    arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_actor_units')
 
     # Query the ARPA service and add the matches
     return arpafy(graph, target_prop, arpa, source_prop,
                   preprocessor=_create_unit_abbreviations, progress=True)
+
+
+def link_to_pnr(graph, target_prop, source_prop):
+    """
+    Link municipalities to Paikannimirekisteri.
+    :returns dict containing some statistics and a list of errors
+
+    :type graph: rdflib.Graph
+    :param target_prop: target property to use for new links
+    :param source_prop: source property as URIRef
+    """
+
+    def _get_municipality_label(uri, *args):
+        """
+        :param uri: municipality URI
+        """
+        return graph.value(uri, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel')).replace('/', ' ')
+
+    arpa = Arpa('http://demo.seco.tkk.fi/arpa/pnr_municipality')
+
+    # Query the ARPA service and add the matches
+    return arpafy(graph, target_prop, arpa, source_prop,
+                  preprocessor=_get_municipality_label, progress=True)
 
 
 def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_prop, source_firstname_prop,
@@ -102,18 +125,8 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                     res_firstnames = person['properties'].get('etunimet')[0].split('^')[0].replace('"', '').lower()
                     res_firstnames = res_firstnames.split()
 
-                    if rank != 'tuntematon':
-                        if rank == res_rank:
-                            score += 50
-
-                    # assert len(firstnames) and len(res_firstnames)
-                    #
-                    # for i in range(0, min(len(firstnames), len(res_firstnames))):
-                    #     if '.' not in ''.join((firstnames[i], res_firstnames[i])):
-                    #         assert firstnames[i] == res_firstnames[i]
-                    #     else:
-                    #         pos = min(firstnames[i].find('.'), res_firstnames[i].find('.'))
-                    #         assert firstnames[i][:pos] == res_firstnames[i][:pos]
+                    if rank != 'tuntematon' and rank == res_rank:
+                        score += 50
 
                     log.debug('Potential match for person {p1text} <{p1}> : {p2text} {p2}'.
                               format(p1text=' '.join([rank] + firstnames + [lastname]), p1=s,
@@ -152,7 +165,7 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
 
                     if fuzzy_firstname_match > 50:
                         log.info('Fuzzy first name match for {f1} and {f2}: {fuzzy}'
-                                  .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
+                                 .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
                     # if set(firstnames) & set(res_firstnames):
                     #     log.debug('Common firstnames for {f1} and {f2}: {fc}'
                     #               .format(f1=firstnames, f2=res_firstnames, fc=set(firstnames) & set(res_firstnames)))
