@@ -14,6 +14,7 @@ import logging
 import os
 
 import re
+from arpa_linker.arpa import Arpa
 import iso8601
 
 import joblib
@@ -24,6 +25,7 @@ from SPARQLWrapper import SPARQLWrapper, JSON
 from sotasampo_helpers import arpa
 
 import rdf_dm as r
+from sotasampo_helpers.arpa import link_to_pnr
 
 INPUT_FILE_DIRECTORY = 'data/'
 OUTPUT_FILE_DIRECTORY = 'data/new/'
@@ -175,6 +177,8 @@ def link_to_warsa_municipalities():
     munics = r.helpers.read_graph_from_sparql("http://ldf.fi/warsa/sparql",
                                               graph_name='http://ldf.fi/warsa/places/municipalities')
 
+    pnr_arpa = Arpa('http://demo.seco.tkk.fi/arpa/pnr_municipality')
+
     for s in list(surma_onto[:RDF.type:ns_schema.Kunta]):
         label = next(surma_onto[s:ns_skos.prefLabel:])
 
@@ -198,18 +202,17 @@ def link_to_warsa_municipalities():
                 warsa_s = list(munics[:ns_skos.prefLabel:Literal(lbl)])
             if not warsa_s:
                 warsa_s = list(munics[:ns_skos.prefLabel:Literal(lbl.replace(' kunta', ' mlk'))])
-            if not warsa_s:
-                # TODO: Kunnat jotka ei löydy Warsasta ja hautauskunnat (nykyisiä kuntia) voisi linkittää paikannimirekisterin paikkoihin
-                # http://demo.seco.tkk.fi/arpa/pnr_municipality
-                pass
 
-        # NOTE! hautauskunta seems to refer to current municipalities, unlike the rest
+            if not warsa_s:
+                warsa_s = [URIRef(uri) for uri in pnr_arpa.get_uri_matches(lbl)]  # Link to Paikannimirekisteri
+
+        # NOTE! hautauskunta refers to current municipalities, unlike the rest
 
         if len(warsa_s) == 0:
             if set(surma.subjects(None, s)) - set(surma[:ns_schema.hautauskunta:s]):
-                log.warning('Couldn\'t find Warsa URI for {lbl}'.format(lbl=label))
+                log.warning("Couldn't find URIs for municipality {lbl}".format(lbl=label))
         elif len(warsa_s) == 1:
-            log.info('Found {lbl} as Warsa URI {s}'.format(lbl=label, s=warsa_s[0]))
+            log.info('Found {lbl} municipality URI {s}'.format(lbl=label, s=warsa_s[0]))
             for subj in list(surma[:ns_schema.synnyinkunta:s]):
                 surma.add((subj, ns_schema.synnyinkunta, warsa_s[0]))
                 surma.remove((subj, ns_schema.synnyinkunta, s))
@@ -237,15 +240,21 @@ def link_to_warsa_municipalities():
                 surma_onto.add((subj, ns_schema.hautausmaakunta, s))  # Add hautausmaakunta to cemeteries
                 surma_onto.remove((subj, ns_schema.hautauskunta, s))
         else:
-            log.warning('Found multiple Warsa URIs for {lbl}: {s}'.format(lbl=label, s=warsa_s))
+            log.warning('Found multiple URIs for municipality {lbl}: {s}'.format(lbl=label, s=warsa_s))
 
+    link_to_pnr(surma, ns_schema.hautauskunta_pnr, ns_schema.hautauskunta)
+    for (sub, obj) in list(surma[:ns_schema.hautauskunta_pnr:]):
+        surma.remove((sub, ns_schema.hautauskunta_pnr, obj))
+        surma.add((sub, ns_schema.hautauskunta, obj))
 
 def validate():
     """
     Do some validation to find remaining errors
     """
 
+    log.info('Combining data and ontology graphs')
     full_rdf = surma + surma_onto
+    log.info('Starting validation')
 
     unknown_links = r.get_unknown_links(full_rdf)
 
@@ -259,7 +268,8 @@ def validate():
                                  or str(uri).startswith('http://ldf.fi/warsa/'))
                          ]
 
-    log.warning('\nFound {num} unlinked subjects'.format(num=len(unlinked_subjects)))
+    if len(unlinked_subjects):
+        log.warning('\nFound {num} unlinked subjects'.format(num=len(unlinked_subjects)))
     for s in sorted(unlinked_subjects):
         log.warning('Unlinked subject {uri}'.format(uri=str(s)))
 
@@ -294,14 +304,13 @@ def link_persons(ranks):
     :param ranks: military ranks
     """
     # Unify previous last names to same format as WARSA actors: LASTNAME (ent PREVIOUS)
-    for (person, lname) in list(surma[:ns_schema.sukunimi:]):
-        new_lname = Literal(re.sub(r'(\w\w )(E.)\s?(\w+)', r'\1(ent \3)', str(lname)))
-        if new_lname and new_lname != lname:
-            log.info('Unifying lastname {ln} to {nln}'.format(ln=lname, nln=new_lname))
-            fname = list(surma[person:ns_schema.etunimet:])[0]
-
-            surma.add((person, ns_schema.sukunimi, new_lname))
-            surma.remove((person, ns_schema.sukunimi, lname))
+    for lbl_pred in [ns_schema.sukunimi, ns_skos.prefLabel]:
+        for (person, lname) in list(surma[:lbl_pred:]):
+            new_lname = Literal(re.sub(r'(\w\w )(E.)\s?(\w+)', r'\1(ent \3)', str(lname)))
+            if new_lname and new_lname != lname:
+                log.info('Unifying lastname {ln} to {nln}'.format(ln=lname, nln=new_lname))
+                surma.add((person, lbl_pred, new_lname))
+                surma.remove((person, lbl_pred, lname))
 
     # Change names from all uppercase to capitalized
     for lbl_pred in [ns_schema.etunimet, ns_schema.sukunimi, ns_skos.prefLabel]:
@@ -317,25 +326,10 @@ def link_persons(ranks):
     #                                      ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika,
     #                                      endpoint='http://demo.seco.tkk.fi/arpa/menehtyneet_persons'))
     log.debug(arpa.link_to_warsa_persons(surma, ranks, ns_crm.P70_documents, ns_schema.sotilasarvo,
-                                         ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika,
+                                         ns_schema.etunimet, ns_schema.sukunimi,
+                                         ns_schema.syntymaeaika, ns_schema.kuolinaika,
                                          endpoint='http://demo.seco.tkk.fi/arpa/menehtyneet_persons'))
 
-    # TODO: Make sure these get linked
-    # # Verner Viikla (ent. Viklund)
-    # surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p752512'),
-    #            ns_crm.P70_documents,
-    #            URIRef('http://ldf.fi/warsa/actors/person_251')))
-    #
-    # # VARSTALA, MATTI
-    # surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p282493'),
-    #            ns_crm.P70_documents,
-    #            URIRef('http://ldf.fi/warsa/actors/person_232')))
-    #
-    # # KAUSTI, ESKO
-    # surma.add((URIRef('http://ldf.fi/narc-menehtyneet1939-45/p11344'),
-    #            ns_crm.P70_documents,
-    #            URIRef('http://ldf.fi/warsa/actors/person_334')))
-    #
     for s, o in surma[:ns_crm.P70_documents:]:
         log.info('ARPA found that {s} is the death record of person {o}'.format(s=s, o=o))
 
@@ -349,6 +343,7 @@ def link_persons(ranks):
         try:
             results = sparql.query().convert()
         except ValueError:
+            results = None
             log.error('Malformed result from SPARQL endpoint for person {p_uri}'.format(p_uri=person))
 
         warsa_person = None
@@ -416,8 +411,9 @@ if __name__ == "__main__":
 
             input_dir = '{base}/{dir}'.format(base=os.getcwd(), dir=INPUT_FILE_DIRECTORY)
             for f in os.listdir(input_dir):
-                if f != DATA_FILE and f.endswith('.ttl'):
+                if f not in [DATA_FILE, "void.ttl"] and f.endswith('.ttl'):
                     surma_onto.parse(input_dir + f, format='turtle')
+
             print('Parsed {len} data triples.'.format(len=len(surma)))
             print('Parsed {len} ontology triples.'.format(len=len(surma_onto)))
             print('Writing graphs to pickle objects...')
@@ -432,6 +428,8 @@ if __name__ == "__main__":
 
     # TODO: Add military rank group ontology description
     # TODO: Add english ontology descriptions?
+
+    # TODO: Remove numeric occupations (they are removed from updated primary data source)
 
     if not SKIP_CEMETERIES:
         print('Fixing cemeteries...')
@@ -477,12 +475,12 @@ if __name__ == "__main__":
 
     if not SKIP_UNITS:
         print('Finding links for military units...')
-        unit_link_uri = ns_schema.warsa_unit
+        unit_link_uri = ns_schema.osasto
 
         log.debug(arpa.link_to_military_units(surma, unit_link_uri, ns_schema.joukko_osasto))
 
-        surma_onto.remove((ns_schema.osasto, None, None))  # TODO: Remove
-        surma.remove((None, ns_schema.osasto, None))  # TODO: Remove
+        # surma_onto.remove((ns_schema.osasto, None, None))
+        # surma.remove((None, ns_schema.osasto, None))
 
         surma_onto.add((unit_link_uri, RDF.type, OWL.ObjectProperty))
         surma_onto.add((unit_link_uri, RDFS.label, Literal('Tunnettu joukko-osasto', lang='fi')))
