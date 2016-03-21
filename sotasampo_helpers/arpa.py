@@ -63,7 +63,7 @@ def link_to_military_units(graph, target_prop, source_prop):
                   preprocessor=_create_unit_abbreviations, progress=True)
 
 
-def link_to_pnr(graph, target_prop, source_prop):
+def link_to_pnr(graph, graph_schema, target_prop, source_prop):
     """
     Link municipalities to Paikannimirekisteri.
     :returns dict containing some statistics and a list of errors
@@ -77,7 +77,7 @@ def link_to_pnr(graph, target_prop, source_prop):
         """
         :param uri: municipality URI
         """
-        return graph.value(uri, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel')).replace('/', ' ')
+        return str(graph_schema.value(uri, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel'))).replace('/', ' ')
 
     arpa = Arpa('http://demo.seco.tkk.fi/arpa/pnr_municipality')
 
@@ -118,7 +118,14 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                 score = 0
                 try:
                     res_lastname = person['properties'].get('sukunimi')[0].replace('"', '').lower()
-                    assert lastname == res_lastname
+                    
+                    fuzzy_lastname_match = max(fuzz.partial_ratio(lastname, res_lastname),
+                                               fuzz.token_set_ratio(lastname, res_lastname))
+
+                    if fuzzy_lastname_match > 50:
+                        log.info('Fuzzy last name match for {f1} and {f2}: {fuzzy}'
+                                 .format(f1=lastname, f2=res_lastname, fuzzy=fuzzy_lastname_match))
+                        score += fuzzy_lastname_match
 
                     res_id = person['properties'].get('id')[0].replace('"', '')
                     res_rank = person['properties'].get('sotilasarvolabel', [''])[0].replace('"', '').lower()
@@ -176,7 +183,7 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
 
                     person['score'] = score
 
-                    if score >= 100:
+                    if score >= 200:
                         filtered.append(person)
 
                         log.info('Found matching Warsa person for {text}: {fnames} {lname} [score: {score}]'.
@@ -197,13 +204,8 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                                                  for p in filtered)))
 
                 best_matches = sorted(filtered, key=lambda p: p['score'], reverse=True)
-                if len(best_matches) == 1 or best_matches[0]['score'] > 0:
-                    return best_matches[0]
-                else:
-                    log.error('Would have to guess from multiple matches without birthdate for {text}: {ids}'.
-                              format(text=text,
-                                     ids=', '.join(p['properties'].get('id')[0].split('^')[0].replace('"', '')
-                                                   for p in filtered)))
+                log.warning('Choosing best match: {id}'.format(id=best_matches[0].get('id')))
+                return [best_matches[0]]
 
             return []
 

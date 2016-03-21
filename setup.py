@@ -7,7 +7,7 @@ def read(fname):
 
 setup(
     name="sotasampo_helpers",
-    version="0.0.3",
+    version="0.1.0",
     author="Mikko Koho",
     author_email="mikko.koho@aalto.fi",
     description="Sotasampo helper functions",
@@ -16,7 +16,4 @@ setup(
     url="",
     long_description=read('README'),
     packages=['sotasampo_helpers'],
-    install_requires=[
-        'rdflib >= 4.2.1',
-    ],
 )
