@@ -14,6 +14,7 @@ import logging
 import os
 
 import re
+from time import sleep
 from arpa_linker.arpa import Arpa
 import iso8601
 
@@ -22,6 +23,7 @@ import pandas as pd
 from rdflib import *
 import rdflib
 from SPARQLWrapper import SPARQLWrapper, JSON
+from requests import HTTPError
 from sotasampo_helpers import arpa
 
 import rdf_dm as r
@@ -204,7 +206,18 @@ def link_to_warsa_municipalities():
                 warsa_s = list(munics[:ns_skos.prefLabel:Literal(lbl.replace(' kunta', ' mlk'))])
 
             if not warsa_s:
-                warsa_s = [URIRef(uri) for uri in pnr_arpa.get_uri_matches(lbl)]  # Link to Paikannimirekisteri
+                retry = 0
+                while not warsa_s:
+                    try:
+                        warsa_s = [URIRef(uri) for uri in pnr_arpa.get_uri_matches(lbl)]  # Link to Paikannimirekisteri
+                        break
+                    except (HTTPError, ValueError):
+                        if retry < 10:
+                            log.error('Error getting "Paikannimirekisteri" matches from ARPA, waiting 10 seconds before retrying...')
+                            retry += 1
+                            sleep(10)
+                        else:
+                            raise
 
         # NOTE! hautauskunta refers to current municipalities, unlike the rest
 
@@ -219,9 +232,6 @@ def link_to_warsa_municipalities():
             for subj in list(surma[:ns_schema.kotikunta:s]):
                 surma.add((subj, ns_schema.kotikunta, warsa_s[0]))
                 surma.remove((subj, ns_schema.kotikunta, s))
-            # for subj in list(surma[:ns_schema.hautauskunta:s]):
-                # surma.add((subj, ns_schema.hautauskunta, s))
-                # surma.remove((subj, ns_schema.hautauskunta, s))
             for subj in list(surma[:ns_schema.asuinkunta:s]):
                 surma.add((subj, ns_schema.asuinkunta, warsa_s[0]))
                 surma.remove((subj, ns_schema.asuinkunta, s))
@@ -237,14 +247,15 @@ def link_to_warsa_municipalities():
 
             for subj in list(surma_onto[:ns_schema.hautauskunta:s]):
                 # Fixes cemetery municipalities
-                surma_onto.add((subj, ns_schema.hautausmaakunta, s))  # Add hautausmaakunta to cemeteries
                 surma_onto.remove((subj, ns_schema.hautauskunta, s))
+                surma_onto.add((subj, ns_schema.hautausmaakunta, warsa_s[0]))
         else:
             log.warning('Found multiple URIs for municipality {lbl}: {s}'.format(lbl=label, s=warsa_s))
 
-    link_to_pnr(surma, ns_schema.hautauskunta_pnr, ns_schema.hautauskunta)
+    link_to_pnr(surma, surma_onto, ns_schema.hautauskunta_pnr, ns_schema.hautauskunta)
     for (sub, obj) in list(surma[:ns_schema.hautauskunta_pnr:]):
         surma.remove((sub, ns_schema.hautauskunta_pnr, obj))
+        surma.remove((sub, ns_schema.hautauskunta, None))
         surma.add((sub, ns_schema.hautauskunta, obj))
 
 def validate():
@@ -258,7 +269,7 @@ def validate():
 
     unknown_links = r.get_unknown_links(full_rdf)
 
-    log.warning('\nFound {num} unknown URI references'.format(num=len(unknown_links)))
+    log.warning('Found {num} unknown URI references'.format(num=len(unknown_links)))
     for o in sorted(unknown_links):
         if not str(o).startswith('http://ldf.fi/warsa/'):
             log.warning('Unknown URI references: {uri}  (referenced {num} times)'.format(uri=str(o), num=str(len(list(surma[::o])) + len(list(surma_onto[::o])))))
@@ -269,7 +280,7 @@ def validate():
                          ]
 
     if len(unlinked_subjects):
-        log.warning('\nFound {num} unlinked subjects'.format(num=len(unlinked_subjects)))
+        log.warning('Found {num} unlinked subjects'.format(num=len(unlinked_subjects)))
     for s in sorted(unlinked_subjects):
         log.warning('Unlinked subject {uri}'.format(uri=str(s)))
 
@@ -299,14 +310,16 @@ def link_to_military_ranks(ranks):
 
 def link_persons(ranks):
     """
-    Link death records to WARSA persons, unify and stylize name representations
+    Link death records to WARSA persons, unify and stylize name representations, fix some errors.
 
     :param ranks: military ranks
     """
     # Unify previous last names to same format as WARSA actors: LASTNAME (ent PREVIOUS)
     for lbl_pred in [ns_schema.sukunimi, ns_skos.prefLabel]:
         for (person, lname) in list(surma[:lbl_pred:]):
-            new_lname = Literal(re.sub(r'(\w\w )(E.)\s?(\w+)', r'\1(ent \3)', str(lname)))
+            new_name = re.sub(r'(\w)0(\w)', r'\1O\2', lname)
+            new_name = re.sub('%', '/', new_name)
+            new_lname = Literal(re.sub(r'(\w\w )(E(?:NT)?\.)\s?(\w+)', r'\1(ent \3)', str(new_name)))
             if new_lname and new_lname != lname:
                 log.info('Unifying lastname {ln} to {nln}'.format(ln=lname, nln=new_lname))
                 surma.add((person, lbl_pred, new_lname))
@@ -322,9 +335,6 @@ def link_persons(ranks):
             log.debug('Changed name {orig} to {new}'.format(orig=name, new=new_name))
 
     # Link to WARSA actor persons
-    # log.debug(arpa.link_to_warsa_persons(surma, ranks, ns_crm.P70_documents, ns_schema.sotilasarvo,
-    #                                      ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika,
-    #                                      endpoint='http://demo.seco.tkk.fi/arpa/menehtyneet_persons'))
     log.debug(arpa.link_to_warsa_persons(surma, ranks, ns_crm.P70_documents, ns_schema.sotilasarvo,
                                          ns_schema.etunimet, ns_schema.sukunimi,
                                          ns_schema.syntymaeaika, ns_schema.kuolinaika,
@@ -354,6 +364,30 @@ def link_persons(ranks):
 
         if not warsa_person:
             log.warning('{person} didn\'t match any WARSA persons.'.format(person=person))
+
+    for (sub, pred) in surma[::ns_foaf.Person]:
+        surma.add((sub, pred, ns_crm.E31_Document))
+        surma.remove((sub, pred, ns_foaf.Person))
+
+    for (sub, pred) in surma_onto[::ns_foaf.Person]:
+        surma_onto.add((sub, pred, ns_crm.E31_Document))
+        surma_onto.remove((sub, pred, ns_foaf.Person))
+
+    dateset = set()
+    date_props = [ns_schema.haavoittumisaika, ns_schema.katoamisaika, ns_schema.kuolinaika, ns_schema.syntymaeaika]
+    for date_prop in date_props:
+        dateset |= set(surma.objects(None, date_prop))
+
+    for date in dateset:
+        try:
+            parsed_date = iso8601.parse_date(str(date))
+            if parsed_date.year < 1840:
+                raise TypeError
+        except (iso8601.ParseError, TypeError):
+            log.info('Removing references to invalid date: {date}'.format(date=str(date)))
+            for date_prop in date_props:
+                surma.remove((None, date_prop, date))
+
 
 
 #######
@@ -429,8 +463,6 @@ if __name__ == "__main__":
     # TODO: Add military rank group ontology description
     # TODO: Add english ontology descriptions?
 
-    # TODO: Remove numeric occupations (they are removed from updated primary data source)
-
     if not SKIP_CEMETERIES:
         print('Fixing cemeteries...')
         fix_cemetery_links()
@@ -452,13 +484,15 @@ if __name__ == "__main__":
     if not SKIP_MUNICIPALITIES:
         print('Linking to municipalities...')
 
-        # TODO: Link graveyards to Warsa municipalities
+        # TODO: Link graveyards to Warsa municipalities (done?)
 
         link_to_warsa_municipalities()
 
     if not SKIP_RANKS:
         print('Linking to military ranks...')
-        ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
+        ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/ranks/')
+        if len(list(ranks)) == 0:
+            log.error('Unable to read military ranks from SPARQL endpoint')
         link_to_military_ranks(ranks)
 
         surma_onto.remove((ns_schema.sotilasarvo, RDFS.range, None))
@@ -490,30 +524,7 @@ if __name__ == "__main__":
         surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
         surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Military unit', lang='en')))
 
-    print('Applying final corrections...')
-
-    dateset = set()
-    date_props = [ns_schema.haavoittumisaika, ns_schema.katoamisaika, ns_schema.kuolinaika, ns_schema.syntymaeaika]
-    for date_prop in date_props:
-        dateset |= set(surma.objects(None, date_prop))
-
-    for date in dateset:
-        try:
-            parsed_date = iso8601.parse_date(str(date))
-            if parsed_date.year < 1840:
-                raise TypeError
-        except (iso8601.ParseError, TypeError):
-            log.info('Removing references to invalid date: {date}'.format(date=str(date)))
-            for date_prop in date_props:
-                surma.remove((None, date_prop, date))
-
-    for (sub, pred) in surma[::ns_foaf.Person]:
-        surma.add((sub, pred, ns_crm.E31_Document))
-        surma.remove((sub, pred, ns_foaf.Person))
-
-    for (sub, pred) in surma_onto[::ns_foaf.Person]:
-        surma_onto.add((sub, pred, ns_crm.E31_Document))
-        surma_onto.remove((sub, pred, ns_foaf.Person))
+    # print('Applying final corrections...')
 
     ##################
     # SERIALIZE GRAPHS
@@ -528,7 +539,6 @@ if __name__ == "__main__":
 
         surma.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
         surma.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
-
         surma.bind("narc-kieli", "http://ldf.fi/narc-menehtyneet1939-45/aeidinkieli/")
         surma.bind("narc-hautausmaa", "http://ldf.fi/narc-menehtyneet1939-45/hautausmaat/")
         surma.bind("narc-kansalaisuus", "http://ldf.fi/narc-menehtyneet1939-45/kansalaisuus/")
@@ -548,7 +558,6 @@ if __name__ == "__main__":
 
         surma_onto.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
         surma_onto.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
-
         surma_onto.bind("narc-kieli", "http://ldf.fi/narc-menehtyneet1939-45/aeidinkieli/")
         surma_onto.bind("narc-hautausmaa", "http://ldf.fi/narc-menehtyneet1939-45/hautausmaat/")
         surma_onto.bind("narc-kansalaisuus", "http://ldf.fi/narc-menehtyneet1939-45/kansalaisuus/")

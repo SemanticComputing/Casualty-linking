@@ -1,3 +1,4 @@
+requests
 joblib>=0.8.4
 pandas>=0.17.0
 SPARQLWrapper
