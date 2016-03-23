@@ -22,7 +22,7 @@ def _create_unit_abbreviations(text, *args):
     :return: String containing all possible abbrevations separated by '#'
 
     >>> _create_unit_abbreviations('3./JR 1')
-    '3./JR 1 # 3./JR. 1. # 3./JR.1. # 3./JR1 # 3/JR 1 # 3/JR. 1. # 3/JR.1. # 3/JR1 # 3 # 3. # JR 1 # JR. 1. # JR.1. # JR1'
+    '3./JR 1 # 3./JR. 1. # 3./JR.1. # 3./JR1 # 3/JR 1 # 3/JR. 1. # 3/JR.1. # 3/JR1 # JR 1 # JR. 1. # JR.1. # JR1'
     """
 
     def _split(part):
@@ -42,8 +42,11 @@ def _create_unit_abbreviations(text, *args):
 
     combined_variations = sorted(set(['/'.join(combined).strip().replace(' /', '/')
                                       for combined in sorted(set(itertools.product(*variation_lists)))]))
-    return ' # '.join(combined_variations) + \
-           ' # ' + ' # '.join(sorted(set(variation.strip() for var_list in variation_lists for variation in var_list)))
+
+    variationset = set(variation.strip() for var_list in variation_lists for variation in var_list
+                       if not re.search(r'^[0-9](\.)?$', variation.strip()))
+
+    return ' # '.join(combined_variations) + ' # ' + ' # '.join(sorted(variationset))
 
 
 def link_to_military_units(graph, target_prop, source_prop):
@@ -56,7 +59,7 @@ def link_to_military_units(graph, target_prop, source_prop):
     :param source_prop: source property as URIRef
     """
 
-    arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_actor_units')
+    arpa = Arpa('http://demo.seco.tkk.fi/arpa/menehtyneet_units')
 
     # Query the ARPA service and add the matches
     return arpafy(graph, target_prop, arpa, source_prop,
