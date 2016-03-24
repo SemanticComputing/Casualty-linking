@@ -117,88 +117,106 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
             lastname = text.lower()
 
             filtered = []
+            _fuzzy_lastname_match_limit = 65
+            _fuzzy_firstname_match_limit = 60
+
             for person in results:
                 score = 0
+                res_id = None
                 try:
-                    res_lastname = person['properties'].get('sukunimi')[0].replace('"', '').lower()
-                    
-                    fuzzy_lastname_match = max(fuzz.token_set_ratio(lastname, res_lastname, force_ascii=False))
-
-                    if fuzzy_lastname_match > 60:
-                        log.debug('Fuzzy last name match for {f1} and {f2}: {fuzzy}'
-                                  .format(f1=lastname, f2=res_lastname, fuzzy=fuzzy_lastname_match))
-                        score += fuzzy_lastname_match
-
                     res_id = person['properties'].get('id')[0].replace('"', '')
                     res_rank = person['properties'].get('sotilasarvolabel', [''])[0].replace('"', '').lower()
+
+                    res_lastname = person['properties'].get('sukunimi')[0].replace('"', '').lower()
                     res_firstnames = person['properties'].get('etunimet')[0].split('^')[0].replace('"', '').lower()
                     res_firstnames = res_firstnames.split()
 
-                    log.debug('Potential match for person {p1text} <{p1}> : {p2text} {p2}'.
-                              format(p1text=' '.join([rank] + firstnames + [lastname]), p1=s,
-                                     p2text=' '.join([res_rank] + res_firstnames + [lastname]), p2=res_id))
+                    res_birthdates = (min(person['properties'].get('birth_start', [''])).split('^')[0].replace('"', ''),
+                                      max(person['properties'].get('birth_end', [''])).split('^')[0].replace('"', ''))
+                    res_deathdates = (min(person['properties'].get('death_start', [''])).split('^')[0].replace('"', ''),
+                                      max(person['properties'].get('death_end', [''])).split('^')[0].replace('"', ''))
 
-                    if rank != 'tuntematon':
-                        if rank == res_rank:
-                            score += 25
-                        else:
-                            score -= 25
-
-                    res_birthdates = (person['properties'].get('birth_start', [''])[0].split('^')[0].replace('"', ''),
-                                      person['properties'].get('birth_end', [''])[0].split('^')[0].replace('"', ''))
-                    res_deathdates = (person['properties'].get('death_start', [''])[0].split('^')[0].replace('"', ''),
-                                      person['properties'].get('death_end', [''])[0].split('^')[0].replace('"', ''))
-
-                    birthdate = str(graph.value(s, birthdate_prop))
-                    deathdate = str(graph.value(s, deathdate_prop))
-
-                    if res_birthdates[0] and birthdate:
-                        if res_birthdates[0] <= birthdate:
-                            if res_birthdates[0] == birthdate:
-                                score += 50
-                        else:
-                            score -= 50
-
-                    if res_birthdates[1] and birthdate:
-                        if birthdate <= res_birthdates[1]:
-                            if res_birthdates[1] == birthdate:
-                                score += 50
-                        else:
-                            score -= 50
-
-                    if res_deathdates[0] and deathdate:
-                        score += 50 if res_deathdates[0] <= deathdate else -50
-
-                    if res_deathdates[1] and deathdate:
-                        score += 50 if deathdate <= res_deathdates[1] else -50
-
-                    s_first1 = ' '.join(firstnames)
-                    s_first2 = ' '.join(res_firstnames)
-                    fuzzy_firstname_match = max(fuzz.partial_ratio(s_first1, s_first2),
-                                                fuzz.token_sort_ratio(s_first1, s_first2, force_ascii=False),
-                                                fuzz.token_set_ratio(s_first1, s_first2, force_ascii=False))
-
-                    if fuzzy_firstname_match > 60:
-                        log.debug('Fuzzy first name match for {f1} and {f2}: {fuzzy}'
-                                 .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
-                        score += fuzzy_firstname_match
-                    else:
-                        log.debug('No fuzzy first name match for {f1} and {f2}: {fuzzy}'
-                                  .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
-
-                    person['score'] = score
-
-                    if score > 200:
-                        filtered.append(person)
-
-                        log.info('Found matching Warsa person for {text}: {fnames} {lname} [score: {score}]'.
-                                 format(text=text, lname=lastname, fnames=' '.join(res_firstnames), score=score))
-                    else:
-                        log.info('Skipping potential match because of too low score [{score}]: {p1}  <<-->>  {p2}'.
-                                 format(p1=s, p2=res_id, score=score))
-
-                except AssertionError:
+                except TypeError:
+                    log.info('Unable to read data for validation for {uri} , skipping result...'.format(uri=res_id))
                     continue
+
+                log.debug('Potential match for person {p1text} <{p1}> : {p2text} {p2}'.
+                          format(p1text=' '.join([rank] + firstnames + [lastname]), p1=s,
+                                 p2text=' '.join([res_rank] + res_firstnames + [lastname]), p2=res_id))
+
+                fuzzy_lastname_match = fuzz.token_set_ratio(lastname, res_lastname, force_ascii=False)
+
+                if fuzzy_lastname_match >= _fuzzy_lastname_match_limit:
+                    log.debug('Fuzzy last name match for {f1} and {f2}: {fuzzy}'
+                              .format(f1=lastname, f2=res_lastname, fuzzy=fuzzy_lastname_match))
+                    score += int((fuzzy_lastname_match - _fuzzy_lastname_match_limit) /
+                                 (100 - _fuzzy_lastname_match_limit) * 100)
+
+                if rank != 'tuntematon':
+                    if rank == res_rank:
+                        score += 25
+                    else:
+                        score -= 25
+
+                birthdate = str(graph.value(s, birthdate_prop))
+                deathdate = str(graph.value(s, deathdate_prop))
+
+                if res_birthdates[0] and birthdate:
+                    if res_birthdates[0] <= birthdate:
+                        if res_birthdates[0] == birthdate:
+                            score += 50
+                    else:
+                        score -= 25
+
+                if res_birthdates[1] and birthdate:
+                    if birthdate <= res_birthdates[1]:
+                        if res_birthdates[1] == birthdate:
+                            score += 50
+                    else:
+                        score -= 25
+
+                if res_deathdates[0] and deathdate:
+                    if res_deathdates[0] <= deathdate:
+                        if res_deathdates[0] == deathdate:
+                            score += 50
+                    else:
+                        score -= 25
+
+                if res_deathdates[1] and deathdate:
+                    if deathdate <= res_deathdates[1]:
+                        if deathdate == res_deathdates[1]:
+                            score += 50
+                    else:
+                        score -= 25
+
+                s_first1 = ' '.join(firstnames)
+                s_first2 = ' '.join(res_firstnames)
+                fuzzy_firstname_match = max(fuzz.partial_ratio(s_first1, s_first2),
+                                            fuzz.token_sort_ratio(s_first1, s_first2, force_ascii=False),
+                                            fuzz.token_set_ratio(s_first1, s_first2, force_ascii=False))
+
+                if fuzzy_firstname_match >= _fuzzy_firstname_match_limit:
+                    log.debug('Fuzzy first name match for {f1} and {f2}: {fuzzy}'
+                             .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
+                    score += int((fuzzy_firstname_match - _fuzzy_firstname_match_limit) /
+                                 (100 - _fuzzy_firstname_match_limit) * 100)
+                else:
+                    log.debug('No fuzzy first name match for {f1} and {f2}: {fuzzy}'
+                              .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
+
+                person['score'] = score
+
+                if score > 200:
+                    filtered.append(person)
+
+                    log.info('Found matching Warsa person for {rank} {fn} {ln} {uri}: '
+                             '{res_rank} {res_fn} {res_ln} {res_uri} [score: {score}]'.
+                             format(rank=rank, fn=s_first1, lname=lastname, uri=s,
+                                    res_rank=res_rank, res_fn=s_first2, res_ln = res_lastname, res_uri=id,
+                                    score=score))
+                else:
+                    log.info('Skipping potential match because of too low score [{score}]: {p1}  <<-->>  {p2}'.
+                             format(p1=s, p2=res_id, score=score))
 
             if len(filtered) == 1:
                 return filtered
