@@ -211,8 +211,8 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
 
                     log.info('Found matching Warsa person for {rank} {fn} {ln} {uri}: '
                              '{res_rank} {res_fn} {res_ln} {res_uri} [score: {score}]'.
-                             format(rank=rank, fn=s_first1, lname=lastname, uri=s,
-                                    res_rank=res_rank, res_fn=s_first2, res_ln = res_lastname, res_uri=id,
+                             format(rank=rank, fn=s_first1, ln=lastname, uri=s,
+                                    res_rank=res_rank, res_fn=s_first2, res_ln=res_lastname, res_uri=id,
                                     score=score))
                 else:
                     log.info('Skipping potential match because of too low score [{score}]: {p1}  <<-->>  {p2}'.
