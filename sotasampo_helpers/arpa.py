@@ -63,7 +63,7 @@ def link_to_military_units(graph, target_prop, source_prop):
 
     # Query the ARPA service and add the matches
     return arpafy(graph, target_prop, arpa, source_prop,
-                  preprocessor=_create_unit_abbreviations, progress=True, retry_amount=10)
+                  preprocessor=_create_unit_abbreviations, progress=True, retry_amount=50)
 
 
 def link_to_pnr(graph, graph_schema, target_prop, source_prop):
@@ -86,7 +86,7 @@ def link_to_pnr(graph, graph_schema, target_prop, source_prop):
 
     # Query the ARPA service and add the matches
     return arpafy(graph, target_prop, arpa, source_prop,
-                  preprocessor=_get_municipality_label, progress=True, retry_amount=10)
+                  preprocessor=_get_municipality_label, progress=True, retry_amount=50)
 
 
 def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_prop, source_firstname_prop,
@@ -142,7 +142,7 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
 
                 log.debug('Potential match for person {p1text} <{p1}> : {p2text} {p2}'.
                           format(p1text=' '.join([rank] + firstnames + [lastname]), p1=s,
-                                 p2text=' '.join([res_rank] + res_firstnames + [lastname]), p2=res_id))
+                                 p2text=' '.join([res_rank] + res_firstnames + [res_lastname]), p2=res_id))
 
                 fuzzy_lastname_match = fuzz.token_set_ratio(lastname, res_lastname, force_ascii=False)
 
@@ -152,7 +152,7 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                     score += int((fuzzy_lastname_match - _fuzzy_lastname_match_limit) /
                                  (100 - _fuzzy_lastname_match_limit) * 100)
 
-                if rank != 'tuntematon':
+                if rank and res_rank and rank != 'tuntematon':
                     if rank == res_rank:
                         score += 25
                     else:
@@ -212,7 +212,7 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                     log.info('Found matching Warsa person for {rank} {fn} {ln} {uri}: '
                              '{res_rank} {res_fn} {res_ln} {res_uri} [score: {score}]'.
                              format(rank=rank, fn=s_first1, ln=lastname, uri=s,
-                                    res_rank=res_rank, res_fn=s_first2, res_ln=res_lastname, res_uri=id,
+                                    res_rank=res_rank, res_fn=s_first2, res_ln=res_lastname, res_uri=res_id,
                                     score=score))
                 else:
                     log.info('Skipping potential match because of too low score [{score}]: {p1}  <<-->>  {p2}'.
@@ -244,7 +244,7 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
 
     # Query the ARPA service and add the matches
     return arpafy(graph_data, target_prop, arpa, source_lastname_prop,
-                  preprocessor=preprocessor, progress=True, validator=validator, retry_amount=10)
+                  preprocessor=preprocessor, progress=True, validator=validator, retry_amount=50)
     # return arpafy(graph_data, target_prop, arpa, source_rank_prop,
     #               preprocessor=preprocessor, progress=True, validator=validator)
 
