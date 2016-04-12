@@ -212,7 +212,7 @@ def link_to_warsa_municipalities():
                         warsa_s = [URIRef(uri) for uri in pnr_arpa.get_uri_matches(lbl)]  # Link to Paikannimirekisteri
                         break
                     except (HTTPError, ValueError):
-                        if retry < 10:
+                        if retry < 50:
                             log.error('Error getting "Paikannimirekisteri" matches from ARPA, waiting 10 seconds before retrying...')
                             retry += 1
                             sleep(10)
@@ -319,7 +319,7 @@ def link_persons(ranks):
         for (person, lname) in list(surma[:lbl_pred:]):
             new_name = re.sub(r'(\w)0(\w)', r'\1O\2', lname)
             new_name = re.sub('%', '/', new_name)
-            new_lname = Literal(re.sub(r'(\w\w )(E(?:NT)?\.)\s?(\w+)', r'\1(ent \3)', str(new_name)))
+            new_lname = Literal(re.sub(r'(\w\w +)(E(?:NT)?\.)\s?(\w+)', r'\1(ent \3)', str(new_name)))
             if new_lname and new_lname != lname:
                 log.info('Unifying lastname {ln} to {nln}'.format(ln=lname, nln=new_lname))
                 surma.add((person, lbl_pred, new_lname))
@@ -350,11 +350,19 @@ def link_persons(ranks):
                         SELECT * WHERE {{ ?sub crm:P70i_is_documented_in <{person_uri}> . }}
                         """.format(person_uri=person))
         sparql.setReturnFormat(JSON)
-        try:
-            results = sparql.query().convert()
-        except ValueError:
-            results = None
-            log.error('Malformed result from SPARQL endpoint for person {p_uri}'.format(p_uri=person))
+
+        results = None
+        retry = 0
+        while not results:
+            try:
+                results = sparql.query().convert()
+            except ValueError:
+                if retry < 50:
+                    log.error('Malformed result from SPARQL endpoint for person {p_uri}, waiting 10 seconds before retrying...'.format(p_uri=person))
+                    retry += 1
+                    sleep(10)
+                else:
+                    raise
 
         warsa_person = None
         for result in results["results"]["bindings"]:
@@ -490,7 +498,7 @@ if __name__ == "__main__":
 
     if not SKIP_RANKS:
         print('Linking to military ranks...')
-        ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/ranks/')
+        ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/ranks')
         if len(list(ranks)) == 0:
             log.error('Unable to read military ranks from SPARQL endpoint')
         link_to_military_ranks(ranks)
