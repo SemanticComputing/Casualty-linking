@@ -23,6 +23,8 @@ def _create_unit_abbreviations(text, *args):
 
     >>> _create_unit_abbreviations('3./JR 1')
     '3./JR 1 # 3./JR. 1. # 3./JR.1. # 3./JR1 # 3/JR 1 # 3/JR. 1. # 3/JR.1. # 3/JR1 # JR 1 # JR. 1. # JR.1. # JR1'
+    >>> _create_unit_abbreviations('27.LK')
+    '27 LK # 27. LK. # 27.LK # 27.LK. # 27LK # 27 LK # 27. LK. # 27.LK # 27.LK. # 27LK'
     """
 
     def _split(part):
