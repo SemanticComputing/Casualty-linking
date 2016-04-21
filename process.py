@@ -74,6 +74,7 @@ parser.add_argument('-skip_units', action='store_true', help='Skip linking to Wa
 parser.add_argument('-skip_ranks', action='store_true', help='Skip linking to Warsa military ranks')
 parser.add_argument('-skip_municipalities', action='store_true', help='Skip linking to municipalities')
 parser.add_argument('-skip_persons', action='store_true', help='Skip linking to Warsa persons')
+parser.add_argument('-skip_occupations', action='store_true', help='Skip creation of occupation ontology')
 parser.add_argument('-d', action='store_true', help='Dry run, don\'t serialize created graphs')
 args = parser.parse_args()
 
@@ -86,6 +87,7 @@ SKIP_UNITS = args.skip_units
 SKIP_MUNICIPALITIES = args.skip_municipalities
 SKIP_RANKS = args.skip_ranks
 SKIP_PERSONS = args.skip_persons
+SKIP_OCCUPATIONS = args.skip_occupations
 
 surma = rdflib.Graph()
 surma_onto = rdflib.Graph()
@@ -219,7 +221,7 @@ def link_to_warsa_municipalities():
                         else:
                             raise
 
-        # NOTE! hautauskunta refers to current municipalities, unlike the rest
+        # NOTE! hautausmaakunta refers to current municipalities, unlike the rest
 
         if len(warsa_s) == 0:
             if set(surma.subjects(None, s)) - set(surma[:ns_schema.hautauskunta:s]):
@@ -252,11 +254,11 @@ def link_to_warsa_municipalities():
         else:
             log.warning('Found multiple URIs for municipality {lbl}: {s}'.format(lbl=label, s=warsa_s))
 
-    link_to_pnr(surma, surma_onto, ns_schema.hautauskunta_pnr, ns_schema.hautauskunta)
-    for (sub, obj) in list(surma[:ns_schema.hautauskunta_pnr:]):
-        surma.remove((sub, ns_schema.hautauskunta_pnr, obj))
-        surma.remove((sub, ns_schema.hautauskunta, None))
-        surma.add((sub, ns_schema.hautauskunta, obj))
+    link_to_pnr(surma_onto, surma_onto, ns_schema.hautausmaakunta_pnr, ns_schema.hautausmaakunta)
+    for (sub, obj) in list(surma_onto[:ns_schema.hautausmaakunta_pnr:]):
+        surma_onto.remove((sub, ns_schema.hautausmaakunta_pnr, obj))
+        surma_onto.remove((sub, ns_schema.hautausmaakunta, None))
+        surma_onto.add((sub, ns_schema.hautausmaakunta, obj))
 
 def validate():
     """
@@ -492,7 +494,9 @@ if __name__ == "__main__":
     if not SKIP_MUNICIPALITIES:
         print('Linking to municipalities...')
 
-        # TODO: Link graveyards to Warsa municipalities (done?)
+        for p in list(surma[:RDF.type:ns_crm.E31_Document]):
+            # Removing hautauskunta from death records
+            surma.remove((p, ns_schema.hautauskunta, None))
 
         link_to_warsa_municipalities()
 
@@ -532,7 +536,9 @@ if __name__ == "__main__":
         surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
         surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Military unit', lang='en')))
 
-    # print('Applying final corrections...')
+    if not SKIP_OCCUPATIONS:
+        # TODO
+        pass
 
     ##################
     # SERIALIZE GRAPHS
