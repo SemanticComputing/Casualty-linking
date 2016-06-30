@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 #  -*- coding: UTF-8 -*-
 """
-Code for processing, validating and fixing some errors in the original RDF version of
+Code for processing the original RDF version of
 "Casualties during the Finnish wars 1939–1945" (Suomen sodissa 1939–1945 menehtyneet) RDF dataset.
+
+Validates, improves and automatically links to other WarSampo datasets.
 
 Input CSV data used is not publicly available.
 
