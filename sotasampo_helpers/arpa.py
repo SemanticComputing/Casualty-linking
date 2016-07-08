@@ -1,18 +1,154 @@
 """
 ARPA service functions for common Sotasampo tasks
 """
-import pprint
 import logging
 
 import sys
 import re
 import itertools
 
-from arpa_linker.arpa import Arpa, process, parse_args, arpafy
+from arpa_linker.arpa import Arpa, ArpaMimic, parse_args, arpafy
 from rdflib import URIRef, Namespace, Graph
 from fuzzywuzzy import fuzz
 
 log = logging.getLogger(__name__)
+
+
+class Validator:
+    def __init__(self, graph, graph_schema, birthdate_prop, deathdate_prop, source_rank_prop,
+                    source_firstname_prop, source_lastname_prop):
+        self.graph = graph
+        self.graph_schema = graph_schema
+        self.birthdate_prop = birthdate_prop
+        self.deathdate_prop = deathdate_prop
+        self.source_rank_prop = source_rank_prop
+        self.source_firstname_prop = source_firstname_prop
+        self.source_lastname_prop = source_lastname_prop
+
+    def validate(self, results, text, s):
+        if not results:
+            return results
+
+        rank = self.graph.value(s, self.source_rank_prop)
+        rank = str(self.graph_schema.value(rank, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel'))).lower()
+        firstnames = str(self.graph.value(s, self.source_firstname_prop)).replace('/', ' ').lower().split()
+        lastname = str(self.graph.value(s, self.source_lastname_prop)).replace('/', ' ').lower().split()
+
+        filtered = []
+        _fuzzy_lastname_match_limit = 50
+        _fuzzy_firstname_match_limit = 60
+
+        for person in results:
+            score = 0
+            res_id = None
+            try:
+                res_id = person['properties'].get('id')[0].replace('"', '')
+                res_ranks = [r.replace('"', '').lower() for r in person['properties'].get('rank_label', [''])]
+
+                res_lastname = person['properties'].get('sukunimi')[0].replace('"', '').lower()
+                res_firstnames = person['properties'].get('etunimet')[0].split('^')[0].replace('"', '').lower()
+                res_firstnames = res_firstnames.split()
+
+                res_birthdates = (min(person['properties'].get('birth_start', [''])).split('^')[0].replace('"', ''),
+                                    max(person['properties'].get('birth_end', [''])).split('^')[0].replace('"', ''))
+                res_deathdates = (min(person['properties'].get('death_start', [''])).split('^')[0].replace('"', ''),
+                                    max(person['properties'].get('death_end', [''])).split('^')[0].replace('"', ''))
+
+            except TypeError:
+                log.info('Unable to read data for validation for {uri} , skipping result...'.format(uri=res_id))
+                continue
+
+            log.debug('Potential match for person {p1text} <{p1}> : {p2text} {p2}'.
+                        format(p1text=' '.join([rank] + firstnames + [lastname]), p1=s,
+                                p2text=' '.join([' '.join([res_ranks])] + res_firstnames + [res_lastname]), p2=res_id))
+
+            fuzzy_lastname_match = fuzz.token_set_ratio(lastname, res_lastname, force_ascii=False)
+
+            if fuzzy_lastname_match >= _fuzzy_lastname_match_limit:
+                log.debug('Fuzzy last name match for {f1} and {f2}: {fuzzy}'
+                            .format(f1=lastname, f2=res_lastname, fuzzy=fuzzy_lastname_match))
+                score += int((fuzzy_lastname_match - _fuzzy_lastname_match_limit) /
+                                (100 - _fuzzy_lastname_match_limit) * 100)
+
+            if rank and res_ranks and rank != 'tuntematon':
+                if rank in res_ranks:
+                    score += 25
+                else:
+                    score -= 25
+
+            birthdate = str(self.graph.value(s, self.birthdate_prop))
+            deathdate = str(self.graph.value(s, self.deathdate_prop))
+
+            if res_birthdates[0] and birthdate:
+                if res_birthdates[0] <= birthdate:
+                    if res_birthdates[0] == birthdate:
+                        score += 50
+                else:
+                    score -= 25
+
+            if res_birthdates[1] and birthdate:
+                if birthdate <= res_birthdates[1]:
+                    if res_birthdates[1] == birthdate:
+                        score += 50
+                else:
+                    score -= 25
+
+            if res_deathdates[0] and deathdate:
+                if res_deathdates[0] <= deathdate:
+                    if res_deathdates[0] == deathdate:
+                        score += 50
+                else:
+                    score -= 25
+
+            if res_deathdates[1] and deathdate:
+                if deathdate <= res_deathdates[1]:
+                    if deathdate == res_deathdates[1]:
+                        score += 50
+                else:
+                    score -= 25
+
+            s_first1 = ' '.join(firstnames)
+            s_first2 = ' '.join(res_firstnames)
+            fuzzy_firstname_match = max(fuzz.partial_ratio(s_first1, s_first2),
+                                        fuzz.token_sort_ratio(s_first1, s_first2, force_ascii=False),
+                                        fuzz.token_set_ratio(s_first1, s_first2, force_ascii=False))
+
+            if fuzzy_firstname_match >= _fuzzy_firstname_match_limit:
+                log.debug('Fuzzy first name match for {f1} and {f2}: {fuzzy}'
+                            .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
+                score += int((fuzzy_firstname_match - _fuzzy_firstname_match_limit) /
+                                (100 - _fuzzy_firstname_match_limit) * 100)
+            else:
+                log.debug('No fuzzy first name match for {f1} and {f2}: {fuzzy}'
+                            .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
+
+            person['score'] = score
+
+            if score > 200:
+                filtered.append(person)
+
+                log.info('Found matching Warsa person for {rank} {fn} {ln} {uri}: '
+                            '{res_rank} {res_fn} {res_ln} {res_uri} [score: {score}]'.
+                            format(rank=rank, fn=s_first1, ln=lastname, uri=s,
+                                res_rank=res_ranks, res_fn=s_first2, res_ln=res_lastname, res_uri=res_id,
+                                score=score))
+            else:
+                log.info('Skipping potential match because of too low score [{score}]: {p1}  <<-->>  {p2}'.
+                            format(p1=s, p2=res_id, score=score))
+
+        if len(filtered) == 1:
+            return filtered
+        elif len(filtered) > 1:
+            log.warning('Found several matches for Warsa person {s} ({text}): {ids}'.
+                        format(s=s, text=text,
+                                ids=', '.join(p['properties'].get('id')[0].split('^')[0].replace('"', '')
+                                                for p in filtered)))
+
+            best_matches = sorted(filtered, key=lambda p: p['score'], reverse=True)
+            log.warning('Choosing best match: {id}'.format(id=best_matches[0].get('id')))
+            return [best_matches[0]]
+
+        return []
 
 
 def _create_unit_abbreviations(text, *args):
@@ -94,9 +230,9 @@ def link_to_pnr(graph, graph_schema, target_prop, source_prop):
                   preprocessor=_get_municipality_label, progress=True, retry_amount=50)
 
 
-def link_to_warsa_persons(graph_schema, target_prop, source_rank_prop, source_firstname_prop,
-                          source_lastname_prop, birthdate_prop, deathdate_prop, arpa_args, preprocessor=None,
-                          validator=None):
+def link_to_warsa_persons(graph, graph_schema, target_prop, source_rank_prop, source_firstname_prop,
+                          source_lastname_prop, birthdate_prop, deathdate_prop, arpa,
+                          preprocessor=None, validator=None, **kwargs):
     """
     Link a person to known Warsa persons
 
@@ -115,167 +251,53 @@ def link_to_warsa_persons(graph_schema, target_prop, source_rank_prop, source_fi
 
     # TODO: ARPAn sijaan voisi kysellä suoraan SPARQL-kyselyllä kandidaatit
 
-    class Validator:
-        def __init__(self, graph):
-            self.graph = graph
-
-        def validate(self, results, text, s):
-            if not results:
-                return results
-
-            rank = self.graph.value(s, source_rank_prop)
-            rank = str(graph_schema.value(rank, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel'))).lower()
-            firstnames = str(self.graph.value(s, source_firstname_prop)).replace('/', ' ').lower().split()
-            lastname = text.lower()
-
-            filtered = []
-            _fuzzy_lastname_match_limit = 50
-            _fuzzy_firstname_match_limit = 60
-
-            for person in results:
-                score = 0
-                res_id = None
-                try:
-                    res_id = person['properties'].get('id')[0].replace('"', '')
-                    res_ranks = [rank.replace('"', '').lower() for rank in person['properties'].get('rank_label', [''])]
-
-                    res_lastname = person['properties'].get('sukunimi')[0].replace('"', '').lower()
-                    res_firstnames = person['properties'].get('etunimet')[0].split('^')[0].replace('"', '').lower()
-                    res_firstnames = res_firstnames.split()
-
-                    res_birthdates = (min(person['properties'].get('birth_start', [''])).split('^')[0].replace('"', ''),
-                                      max(person['properties'].get('birth_end', [''])).split('^')[0].replace('"', ''))
-                    res_deathdates = (min(person['properties'].get('death_start', [''])).split('^')[0].replace('"', ''),
-                                      max(person['properties'].get('death_end', [''])).split('^')[0].replace('"', ''))
-
-                except TypeError:
-                    log.info('Unable to read data for validation for {uri} , skipping result...'.format(uri=res_id))
-                    continue
-
-                log.debug('Potential match for person {p1text} <{p1}> : {p2text} {p2}'.
-                          format(p1text=' '.join([rank] + firstnames + [lastname]), p1=s,
-                                 p2text=' '.join([' '.join([res_ranks])] + res_firstnames + [res_lastname]), p2=res_id))
-
-                fuzzy_lastname_match = fuzz.token_set_ratio(lastname, res_lastname, force_ascii=False)
-
-                if fuzzy_lastname_match >= _fuzzy_lastname_match_limit:
-                    log.debug('Fuzzy last name match for {f1} and {f2}: {fuzzy}'
-                              .format(f1=lastname, f2=res_lastname, fuzzy=fuzzy_lastname_match))
-                    score += int((fuzzy_lastname_match - _fuzzy_lastname_match_limit) /
-                                 (100 - _fuzzy_lastname_match_limit) * 100)
-
-                if rank and res_ranks and rank != 'tuntematon':
-                    if rank in res_ranks:
-                        score += 25
-                    else:
-                        score -= 25
-
-                birthdate = str(self.graph.value(s, birthdate_prop))
-                deathdate = str(self.graph.value(s, deathdate_prop))
-
-                if res_birthdates[0] and birthdate:
-                    if res_birthdates[0] <= birthdate:
-                        if res_birthdates[0] == birthdate:
-                            score += 50
-                    else:
-                        score -= 25
-
-                if res_birthdates[1] and birthdate:
-                    if birthdate <= res_birthdates[1]:
-                        if res_birthdates[1] == birthdate:
-                            score += 50
-                    else:
-                        score -= 25
-
-                if res_deathdates[0] and deathdate:
-                    if res_deathdates[0] <= deathdate:
-                        if res_deathdates[0] == deathdate:
-                            score += 50
-                    else:
-                        score -= 25
-
-                if res_deathdates[1] and deathdate:
-                    if deathdate <= res_deathdates[1]:
-                        if deathdate == res_deathdates[1]:
-                            score += 50
-                    else:
-                        score -= 25
-
-                s_first1 = ' '.join(firstnames)
-                s_first2 = ' '.join(res_firstnames)
-                fuzzy_firstname_match = max(fuzz.partial_ratio(s_first1, s_first2),
-                                            fuzz.token_sort_ratio(s_first1, s_first2, force_ascii=False),
-                                            fuzz.token_set_ratio(s_first1, s_first2, force_ascii=False))
-
-                if fuzzy_firstname_match >= _fuzzy_firstname_match_limit:
-                    log.debug('Fuzzy first name match for {f1} and {f2}: {fuzzy}'
-                             .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
-                    score += int((fuzzy_firstname_match - _fuzzy_firstname_match_limit) /
-                                 (100 - _fuzzy_firstname_match_limit) * 100)
-                else:
-                    log.debug('No fuzzy first name match for {f1} and {f2}: {fuzzy}'
-                              .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
-
-                person['score'] = score
-
-                if score > 200:
-                    filtered.append(person)
-
-                    log.info('Found matching Warsa person for {rank} {fn} {ln} {uri}: '
-                             '{res_rank} {res_fn} {res_ln} {res_uri} [score: {score}]'.
-                             format(rank=rank, fn=s_first1, ln=lastname, uri=s,
-                                    res_rank=res_ranks, res_fn=s_first2, res_ln=res_lastname, res_uri=res_id,
-                                    score=score))
-                else:
-                    log.info('Skipping potential match because of too low score [{score}]: {p1}  <<-->>  {p2}'.
-                             format(p1=s, p2=res_id, score=score))
-
-            if len(filtered) == 1:
-                return filtered
-            elif len(filtered) > 1:
-                log.warning('Found several matches for Warsa person {s} ({text}): {ids}'.
-                            format(s=s, text=text,
-                                   ids=', '.join(p['properties'].get('id')[0].split('^')[0].replace('"', '')
-                                                 for p in filtered)))
-
-                best_matches = sorted(filtered, key=lambda p: p['score'], reverse=True)
-                log.warning('Choosing best match: {id}'.format(id=best_matches[0].get('id')))
-                return [best_matches[0]]
-
-            return []
-
     # if preprocessor is None:
     #     preprocessor = _combine_rank_and_names
     #
     if validator is None:
-        validator = Validator
-
-    arpa = Arpa(arpa_args.arpa, arpa_args.no_duplicates, arpa_args.min_ngram,
-            retries=arpa_args.retries, wait_between_tries=arpa_args.wait)
+        validator = Validator(graph, graph_schema, birthdate_prop, deathdate_prop,
+                source_rank_prop, source_firstname_prop, source_lastname_prop)
 
     # Query the ARPA service, add the matches and serialize the graph to disk.
-    process(arpa_args.input, arpa_args.fi, arpa_args.output, arpa_args.fo, arpa_args.tprop, arpa,
-            source_prop=arpa_args.prop, rdf_class=arpa_args.rdf_class, new_graph=arpa_args.new_graph,
-            preprocessor=preprocessor, validator_class=validator, progress=True,
-            candidates_only=arpa_args.candidates_only)
+    return arpafy(graph, target_prop, arpa, source_prop=source_lastname_prop,
+            preprocessor=preprocessor, validator=validator, progress=True, **kwargs)
 
 
 if __name__ == "__main__":
     if sys.argv[1] == 'test':
-    print('Running doctests')
-    import doctest
+        print('Running doctests')
+        import doctest
 
-    res = doctest.testmod()
-    if not res[0]:
-        print('OK!')
+        res = doctest.testmod()
+        if not res[0]:
+            print('OK!')
     else:
-        args = parse_args(sys.argv[1:])
+        if len(sys.agrv) < 3:
+            print('usage: arpa.py rank_schema_ttl_file arpa_linker_args')
+            exit()
 
+        args = parse_args(sys.argv[2:])
+
+        if args.candidates_only:
+            arpa_cls = Arpa
+        else:
+            arpa_cls = ArpaMimic
+
+        data = Graph()
+        data.parse(args.input, format=args.fi)
         ranks = Graph()
-        ranks.parse('surma_ranks.ttl', format='turtle')
+        ranks.parse(sys.argv[1], format=args.fi)
         ns_crm = Namespace('http://www.cidoc-crm.org/cidoc-crm/')
         ns_schema = Namespace('http://ldf.fi/schema/narc-menehtyneet1939-45/')
 
-        link_to_warsa_persons(ranks, ns_crm.P70_documents, ns_schema.sotilasarvo,
+        prop = args.prop
+        del args.prop
+        tprop = args.tprop
+        del args.tprop
+
+        arpa = arpa_cls(args.arpa, args.no_duplicates, args.min_ngram,
+                retries=args.retries, wait_between_tries=args.wait)
+
+        link_to_warsa_persons(data, ranks, args.tprop, args.prop, ns_schema.sotilasarvo,
                 ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika,
-                ns_schema.kuolinaika, args)
+                ns_schema.kuolinaika, arpa, **args)
