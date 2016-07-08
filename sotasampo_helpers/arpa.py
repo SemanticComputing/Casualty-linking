@@ -1,14 +1,14 @@
 """
 ARPA service functions for common Sotasampo tasks
 """
-import pprint
 import logging
 
+import sys
 import re
 import itertools
 
-from arpa_linker.arpa import Arpa, arpafy
-from rdflib import URIRef
+from arpa_linker.arpa import Arpa, process, parse_args, arpafy
+from rdflib import URIRef, Namespace, Graph
 from fuzzywuzzy import fuzz
 
 log = logging.getLogger(__name__)
@@ -91,14 +91,11 @@ def link_to_pnr(graph, graph_schema, target_prop, source_prop):
                   preprocessor=_get_municipality_label, progress=True, retry_amount=50)
 
 
-def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_prop, source_firstname_prop,
-                          source_lastname_prop, birthdate_prop, deathdate_prop, preprocessor=None, validator=None,
-                          endpoint='http://demo.seco.tkk.fi/arpa/warsa_actor_persons'):
+def link_to_warsa_persons(graph_schema, target_prop, source_rank_prop, source_firstname_prop,
+                          source_lastname_prop, birthdate_prop, deathdate_prop, arpa_args, preprocessor=None,
+                          validator=None):
     """
     Link a person to known Warsa persons
-
-    :param graph_data: RDF graph where the names and such are found
-    :type graph_data: rdflib.Graph
 
     :param graph_schema: RDF graph where is the military rank label
     :type graph_schema: rdflib.Graph
@@ -108,14 +105,17 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
     :param source_fullname_prop: full name property
     """
 
-    def _validator(graph, s):
-        def _validate_name(text, results):
+    class Validator:
+        def __init__(self, graph):
+            self.graph = graph
+
+        def validate(self, results, text, s):
             if not results:
                 return results
 
-            rank = graph.value(s, source_rank_prop)
+            rank = self.graph.value(s, source_rank_prop)
             rank = str(graph_schema.value(rank, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel'))).lower()
-            firstnames = str(graph.value(s, source_firstname_prop)).replace('/', ' ').lower().split()
+            firstnames = str(self.graph.value(s, source_firstname_prop)).replace('/', ' ').lower().split()
             lastname = text.lower()
 
             filtered = []
@@ -160,8 +160,8 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                     else:
                         score -= 25
 
-                birthdate = str(graph.value(s, birthdate_prop))
-                deathdate = str(graph.value(s, deathdate_prop))
+                birthdate = str(self.graph.value(s, birthdate_prop))
+                deathdate = str(self.graph.value(s, deathdate_prop))
 
                 if res_birthdates[0] and birthdate:
                     if res_birthdates[0] <= birthdate:
@@ -234,27 +234,38 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
 
             return []
 
-        return _validate_name
-
-    arpa = Arpa(endpoint)
-
     # if preprocessor is None:
     #     preprocessor = _combine_rank_and_names
     #
     if validator is None:
-        validator = _validator
+        validator = Validator
 
-    # Query the ARPA service and add the matches
-    return arpafy(graph_data, target_prop, arpa, source_lastname_prop,
-                  preprocessor=preprocessor, progress=True, validator=validator, retry_amount=50)
-    # return arpafy(graph_data, target_prop, arpa, source_rank_prop,
-    #               preprocessor=preprocessor, progress=True, validator=validator)
+    arpa = Arpa(arpa_args.arpa, arpa_args.no_duplicates, arpa_args.min_ngram,
+            retries=arpa_args.retries, wait_between_tries=arpa_args.wait)
+
+    # Query the ARPA service, add the matches and serialize the graph to disk.
+    process(arpa_args.input, arpa_args.fi, arpa_args.output, arpa_args.fo, arpa_args.tprop, arpa,
+            source_prop=arpa_args.prop, rdf_class=arpa_args.rdf_class, new_graph=arpa_args.new_graph,
+            preprocessor=preprocessor, validator_class=validator, progress=True,
+            candidates_only=arpa_args.candidates_only)
 
 
 if __name__ == "__main__":
-    print('Running doctests')
-    import doctest
+    if sys.argv[1] == 'test':
+        print('Running doctests')
+        import doctest
 
-    res = doctest.testmod()
-    if not res[0]:
-        print('OK!')
+        res = doctest.testmod()
+        if not res[0]:
+            print('OK!')
+    else:
+        args = parse_args(sys.argv[1:])
+
+        ranks = Graph()
+        ranks.parse('surma_ranks.ttl', format='turtle')
+        ns_crm = Namespace('http://www.cidoc-crm.org/cidoc-crm/')
+        ns_schema = Namespace('http://ldf.fi/schema/narc-menehtyneet1939-45/')
+
+        link_to_warsa_persons(ranks, ns_crm.P70_documents, ns_schema.sotilasarvo,
+                ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika,
+                ns_schema.kuolinaika, args)

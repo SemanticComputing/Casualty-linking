@@ -25,3 +25,10 @@ pip-log.txt
 
 # Backup files
 *~
+*.swp
+
+# virtualenv
+venv
+
+# rdf files
+*.ttl
