@@ -14,20 +14,18 @@ Copyright (c) 2016 Mikko Koho
 import argparse
 import logging
 import os
-
 import re
 from time import sleep
+from requests import HTTPError
+
 from arpa_linker.arpa import Arpa
 import iso8601
-
 import joblib
 import pandas as pd
 from rdflib import *
 import rdflib
 from SPARQLWrapper import SPARQLWrapper, JSON
-from requests import HTTPError
 from sotasampo_helpers import arpa
-
 import rdf_dm as r
 from sotasampo_helpers.arpa import link_to_pnr
 
@@ -96,8 +94,8 @@ surma_onto = rdflib.Graph()
 
 logging.basicConfig(filename='Sotasurma.log',
                     filemode='a',
-                    level=logging.DEBUG,
-                    # level=logging.INFO,
+                    # level=logging.DEBUG,
+                    level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 log = logging.getLogger(__name__)
@@ -347,6 +345,7 @@ def link_persons(ranks):
     for s, o in surma[:ns_crm.P70_documents:]:
         log.info('ARPA found that {s} is the death record of person {o}'.format(s=s, o=o))
 
+    # Create person links based on inverse links that have been made when creating the person instances from casualties.
     sparql = SPARQLWrapper('http://ldf.fi/warsa/sparql')
     for person in list(surma[:RDF.type:ns_foaf.Person]):
         sparql.setQuery("""
@@ -378,12 +377,15 @@ def link_persons(ranks):
             log.warning('{person} didn\'t match any WARSA persons.'.format(person=person))
 
     for (sub, pred) in surma[::ns_foaf.Person]:
-        surma.add((sub, pred, ns_crm.E31_Document))
+        surma.add((sub, pred, ns_schema.DeathRecord))
+        # surma.add((sub, pred, ns_crm.E31_Document))
         surma.remove((sub, pred, ns_foaf.Person))
 
     for (sub, pred) in surma_onto[::ns_foaf.Person]:
-        surma_onto.add((sub, pred, ns_crm.E31_Document))
+        surma_onto.add((sub, pred, ns_schema.DeathRecord))
         surma_onto.remove((sub, pred, ns_foaf.Person))
+
+    # Remove invalid dates
 
     dateset = set()
     date_props = [ns_schema.haavoittumisaika, ns_schema.katoamisaika, ns_schema.kuolinaika, ns_schema.syntymaeaika]
@@ -496,7 +498,7 @@ if __name__ == "__main__":
     if not SKIP_MUNICIPALITIES:
         print('Linking to municipalities...')
 
-        for p in list(surma[:RDF.type:ns_crm.E31_Document]):
+        for p in list(surma[:RDF.type:ns_schema.DeathRecord]):
             # Removing hautauskunta from death records
             surma.remove((p, ns_schema.hautauskunta, None))
 
@@ -533,14 +535,25 @@ if __name__ == "__main__":
         surma_onto.add((unit_link_uri, RDF.type, OWL.ObjectProperty))
         surma_onto.add((unit_link_uri, RDFS.label, Literal('Tunnettu joukko-osasto', lang='fi')))
         surma_onto.add((unit_link_uri, RDFS.label, Literal('Military unit', lang='en')))
-        surma_onto.add((unit_link_uri, RDFS.domain, ns_crm.E31_Document))
+        surma_onto.add((unit_link_uri, RDFS.domain, ns_schema.DeathRecord))
+        # surma_onto.add((unit_link_uri, RDFS.domain, ns_crm.E31_Document))
         surma_onto.add((unit_link_uri, RDFS.range, URIRef('http://ldf.fi/warsa/actors/actor_types/MilitaryUnit')))
         surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
         surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Military unit', lang='en')))
 
     if not SKIP_OCCUPATIONS:
-        # TODO
-        pass
+        for s, o in list(surma[:ns_schema.ammatti:]):
+            # TODO: Filter some o values
+            occupation_uri = ns_schema[str(o)]
+            surma.remove((s, ns_schema.ammatti, o))
+            surma.add((s, ns_schema.ammatti, occupation_uri))
+
+            surma_onto.add((occupation_uri, ns_skos.prefLabel, o))
+            surma_onto.add((occupation_uri, RDF.type, ns_schema.Ammatti))
+
+    surma_onto.add((ns_schema.DeathRecord, RDFS.subClassOf, ns_crm.E31_Document))
+    surma_onto.add((ns_schema.DeathRecord, ns_skos.prefLabel, Literal('Death Record', lang='en')))
+    surma_onto.add((ns_schema.DeathRecord, ns_skos.prefLabel, Literal('Kuolinasiakirja', lang='fi')))
 
     ##################
     # SERIALIZE GRAPHS
@@ -592,4 +605,3 @@ if __name__ == "__main__":
 
         surma.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma.ttl")
         surma_onto.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma_onto.ttl")
-
