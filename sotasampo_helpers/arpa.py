@@ -25,6 +25,8 @@ def _create_unit_abbreviations(text, *args):
     '3./JR 1 # 3./JR. 1. # 3./JR.1. # 3./JR1 # 3/JR 1 # 3/JR. 1. # 3/JR.1. # 3/JR1 # JR 1 # JR. 1. # JR.1. # JR1'
     >>> _create_unit_abbreviations('27.LK')
     '27 LK # 27. LK. # 27.LK # 27.LK. # 27LK # 27 LK # 27. LK. # 27.LK # 27.LK. # 27LK'
+    >>> _create_unit_abbreviations('P/L Ilmarinen')
+    'P./L Ilmarinen # P./L. Ilmarinen. # P./L.Ilmarinen. # P./LIlmarinen # P/L Ilmarinen # P/L. Ilmarinen. # P/L.Ilmarinen. # P/LIlmarinen # L Ilmarinen # L. Ilmarinen. # L.Ilmarinen. # LIlmarinen # P # P.'
     """
 
     def _split(part):
@@ -108,6 +110,11 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
     :param source_fullname_prop: full name property
     """
 
+    # TODO: sotilasarvolabel --> rank_label, pisteytys pitää säätää uusiksi (tarkasta)
+    # TODO: henkilöllä voi olla useita sotilasarvoja, vertailu kaikkiin (tarkasta toimiiko)
+
+    # TODO: ARPAn sijaan voisi kysellä suoraan SPARQL-kyselyllä kandidaatit
+
     def _validator(graph, s):
         def _validate_name(text, results):
             if not results:
@@ -119,7 +126,7 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
             lastname = text.lower()
 
             filtered = []
-            _fuzzy_lastname_match_limit = 65
+            _fuzzy_lastname_match_limit = 50
             _fuzzy_firstname_match_limit = 60
 
             for person in results:
@@ -127,7 +134,7 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                 res_id = None
                 try:
                     res_id = person['properties'].get('id')[0].replace('"', '')
-                    res_rank = person['properties'].get('sotilasarvolabel', [''])[0].replace('"', '').lower()
+                    res_ranks = [rank.replace('"', '').lower() for rank in person['properties'].get('rank_label', [''])]
 
                     res_lastname = person['properties'].get('sukunimi')[0].replace('"', '').lower()
                     res_firstnames = person['properties'].get('etunimet')[0].split('^')[0].replace('"', '').lower()
@@ -144,7 +151,7 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
 
                 log.debug('Potential match for person {p1text} <{p1}> : {p2text} {p2}'.
                           format(p1text=' '.join([rank] + firstnames + [lastname]), p1=s,
-                                 p2text=' '.join([res_rank] + res_firstnames + [res_lastname]), p2=res_id))
+                                 p2text=' '.join([' '.join([res_ranks])] + res_firstnames + [res_lastname]), p2=res_id))
 
                 fuzzy_lastname_match = fuzz.token_set_ratio(lastname, res_lastname, force_ascii=False)
 
@@ -154,8 +161,8 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                     score += int((fuzzy_lastname_match - _fuzzy_lastname_match_limit) /
                                  (100 - _fuzzy_lastname_match_limit) * 100)
 
-                if rank and res_rank and rank != 'tuntematon':
-                    if rank == res_rank:
+                if rank and res_ranks and rank != 'tuntematon':
+                    if rank in res_ranks:
                         score += 25
                     else:
                         score -= 25
@@ -214,7 +221,7 @@ def link_to_warsa_persons(graph_data, graph_schema, target_prop, source_rank_pro
                     log.info('Found matching Warsa person for {rank} {fn} {ln} {uri}: '
                              '{res_rank} {res_fn} {res_ln} {res_uri} [score: {score}]'.
                              format(rank=rank, fn=s_first1, ln=lastname, uri=s,
-                                    res_rank=res_rank, res_fn=s_first2, res_ln=res_lastname, res_uri=res_id,
+                                    res_rank=res_ranks, res_fn=s_first2, res_ln=res_lastname, res_uri=res_id,
                                     score=score))
                 else:
                     log.info('Skipping potential match because of too low score [{score}]: {p1}  <<-->>  {p2}'.
