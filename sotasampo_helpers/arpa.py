@@ -7,7 +7,8 @@ import sys
 import re
 import itertools
 
-from arpa_linker.arpa import Arpa, ArpaMimic, parse_args, arpafy
+from arpa_linker.arpa import (Arpa, ArpaMimic, parse_args, arpafy, process,
+        process_graph, log_to_file)
 from rdflib import URIRef, Namespace, Graph
 from fuzzywuzzy import fuzz
 
@@ -32,7 +33,7 @@ class Validator:
         rank = self.graph.value(s, self.source_rank_prop)
         rank = str(self.graph_schema.value(rank, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel'))).lower()
         firstnames = str(self.graph.value(s, self.source_firstname_prop)).replace('/', ' ').lower().split()
-        lastname = str(self.graph.value(s, self.source_lastname_prop)).replace('/', ' ').lower().split()
+        lastname = str(self.graph.value(s, self.source_lastname_prop)).replace('/', ' ').lower()
 
         filtered = []
         _fuzzy_lastname_match_limit = 50
@@ -59,8 +60,10 @@ class Validator:
                 continue
 
             log.debug('Potential match for person {p1text} <{p1}> : {p2text} {p2}'.
-                        format(p1text=' '.join([rank] + firstnames + [lastname]), p1=s,
-                                p2text=' '.join([' '.join([res_ranks])] + res_firstnames + [res_lastname]), p2=res_id))
+                        format(p1text=' '.join([rank] + firstnames + [lastname]),
+                                p1=s,
+                                p2text=' '.join(res_ranks + res_firstnames + [res_lastname]),
+                                p2=res_id))
 
             fuzzy_lastname_match = fuzz.token_set_ratio(lastname, res_lastname, force_ascii=False)
 
@@ -230,9 +233,9 @@ def link_to_pnr(graph, graph_schema, target_prop, source_prop):
                   preprocessor=_get_municipality_label, progress=True, retry_amount=50)
 
 
-def link_to_warsa_persons(graph, graph_schema, target_prop, source_rank_prop, source_firstname_prop,
-                          source_lastname_prop, birthdate_prop, deathdate_prop, arpa,
-                          preprocessor=None, validator=None, **kwargs):
+def link_to_warsa_persons(graph, graph_schema, target_prop, source_prop, source_lastname_prop,
+        source_firstname_prop, source_rank_prop, birthdate_prop, deathdate_prop,
+        arpa, preprocessor=None, validator=None, **kwargs):
     """
     Link a person to known Warsa persons
 
@@ -259,11 +262,60 @@ def link_to_warsa_persons(graph, graph_schema, target_prop, source_rank_prop, so
                 source_rank_prop, source_firstname_prop, source_lastname_prop)
 
     # Query the ARPA service, add the matches and serialize the graph to disk.
-    return arpafy(graph, target_prop, arpa, source_prop=source_lastname_prop,
+    return process_graph(graph, target_prop, arpa, source_prop=source_prop,
             preprocessor=preprocessor, validator=validator, progress=True, **kwargs)
 
 
+def process_stage(stage, arpa_args, query_template_file=None, rank_schema_file=None):
+    log_to_file('process.log', arpa_args.log_level)
+    del arpa_args.log_level
+
+    if stage == 'join':
+        process(arpa_args.input, arpa_args.fi, arpa_args.output, arpa_args.fo, arpa_args.tprop, source_prop=arpa_args.prop,
+                rdf_class=arpa_args.rdf_class, new_graph=arpa_args.new_graph, join_candidates=True,
+                run_arpafy=False, progress=True)
+    else:
+        arpa_args = vars(arpa_args)
+
+        input_format = arpa_args.pop('fi')
+        output = arpa_args.pop('output')
+        output_format = arpa_args.pop('fo')
+
+        data = Graph()
+        data.parse(arpa_args.pop('input'), format=input_format)
+
+        ns_schema = Namespace('http://ldf.fi/schema/narc-menehtyneet1939-45/')
+
+        arpa_url = arpa_args.pop('arpa', None)
+
+        if stage == 'candidates':
+            arpa_args['candidates_only'] = True
+            ranks = None
+
+            arpa = Arpa(arpa_url, arpa_args.pop('no_duplicates'), arpa_args.pop('min_ngram'),
+                    retries=arpa_args.pop('retries'), wait_between_tries=arpa_args.pop('wait'),
+                    ignore=arpa_args.pop('ignore'))
+
+        else:
+            with open(query_template_file) as f:
+                qry = f.read()
+
+            ranks = Graph()
+            ranks.parse(rank_schema_file, format=input_format)
+
+            arpa = ArpaMimic(qry, arpa_url, arpa_args.pop('no_duplicates'), arpa_args.pop('min_ngram'),
+                    retries=arpa_args.pop('retries'), wait_between_tries=arpa_args.pop('wait'),
+                    ignore=arpa_args.pop('ignore'))
+
+        res = link_to_warsa_persons(data, ranks, arpa_args.pop('tprop'), arpa_args.pop('prop'),
+                ns_schema.sukunimi, ns_schema.etunimet, ns_schema.sotilasarvo, ns_schema.syntymaeaika,
+                ns_schema.kuolinaika, arpa, **arpa_args)
+
+        res['graph'].serialize(output, format=output_format)
+
+
 if __name__ == "__main__":
+
     if sys.argv[1] == 'test':
         print('Running doctests')
         import doctest
@@ -271,33 +323,15 @@ if __name__ == "__main__":
         res = doctest.testmod()
         if not res[0]:
             print('OK!')
+        exit()
+
+    if len(sys.argv) < 3:
+        print('usage: arpa.py test|candidates|join|(disambiguate query_template_file rank_schema_ttl_file) [arpa_linker_args]')
+        exit()
+
+    stage = sys.argv[1]
+    if stage == 'disambiguate':
+        process_stage(stage, parse_args(sys.argv[4:]), query_template_file=sys.argv[2],
+                rank_schema_file=sys.argv[3])
     else:
-        if len(sys.agrv) < 3:
-            print('usage: arpa.py rank_schema_ttl_file arpa_linker_args')
-            exit()
-
-        args = parse_args(sys.argv[2:])
-
-        if args.candidates_only:
-            arpa_cls = Arpa
-        else:
-            arpa_cls = ArpaMimic
-
-        data = Graph()
-        data.parse(args.input, format=args.fi)
-        ranks = Graph()
-        ranks.parse(sys.argv[1], format=args.fi)
-        ns_crm = Namespace('http://www.cidoc-crm.org/cidoc-crm/')
-        ns_schema = Namespace('http://ldf.fi/schema/narc-menehtyneet1939-45/')
-
-        prop = args.prop
-        del args.prop
-        tprop = args.tprop
-        del args.tprop
-
-        arpa = arpa_cls(args.arpa, args.no_duplicates, args.min_ngram,
-                retries=args.retries, wait_between_tries=args.wait)
-
-        link_to_warsa_persons(data, ranks, args.tprop, args.prop, ns_schema.sotilasarvo,
-                ns_schema.etunimet, ns_schema.sukunimi, ns_schema.syntymaeaika,
-                ns_schema.kuolinaika, arpa, **args)
+        process_stage(stage, parse_args(sys.argv[2:]))
