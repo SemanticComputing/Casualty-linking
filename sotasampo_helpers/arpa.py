@@ -7,8 +7,7 @@ import sys
 import re
 import itertools
 
-from arpa_linker.arpa import (Arpa, ArpaMimic, parse_args, arpafy, process,
-        process_graph, log_to_file)
+from arpa_linker.arpa import Arpa, ArpaMimic, parse_args, process, process_graph, log_to_file
 from rdflib import URIRef, Namespace, Graph
 from fuzzywuzzy import fuzz
 
@@ -159,7 +158,7 @@ def _create_unit_abbreviations(text, *args):
     Preprocess military unit abbreviation strings for all possible combinations
 
     :param text: Military unit abbreviation
-    :return: String containing all possible abbrevations separated by '#'
+    :return: List containing all possible abbrevations
 
     >>> _create_unit_abbreviations('3./JR 1')
     '3./JR 1 # 3./JR. 1. # 3./JR.1. # 3./JR1 # 3/JR 1 # 3/JR. 1. # 3/JR.1. # 3/JR1 # JR 1 # JR. 1. # JR.1. # JR1'
@@ -193,24 +192,25 @@ def _create_unit_abbreviations(text, *args):
     return ' # '.join(combined_variations) + ' # ' + ' # '.join(sorted(variationset))
 
 
-def link_to_military_units(graph, target_prop, source_prop):
+def link_to_military_units(graph, graph_schema, target_prop, source_prop, arpa, *args, **kwargs):
     """
     Link military units to known matching military units in Warsa
     :returns dict containing some statistics and a list of errors
 
+    :param graph: RDF graph containing the units strings to be linked
     :type graph: rdflib.Graph
+
     :param target_prop: target property to use for new links
     :param source_prop: source property as URIRef
+    :param arpa: the Arpa instance
     """
 
-    arpa = Arpa('http://demo.seco.tkk.fi/arpa/menehtyneet_units')
-
     # Query the ARPA service and add the matches
-    return arpafy(graph, target_prop, arpa, source_prop,
-                  preprocessor=_create_unit_abbreviations, progress=True, retry_amount=50)
+    return process_graph(graph, target_prop, arpa, source_prop=source_prop,
+            preprocessor=_create_unit_abbreviations, progress=True, **kwargs)
 
 
-def link_to_pnr(graph, graph_schema, target_prop, source_prop):
+def link_to_pnr(graph, graph_schema, target_prop, source_prop, arpa, *args, **kwargs):
     """
     Link municipalities to Paikannimirekisteri.
     :returns dict containing some statistics and a list of errors
@@ -226,28 +226,35 @@ def link_to_pnr(graph, graph_schema, target_prop, source_prop):
         """
         return str(graph_schema.value(uri, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel'))).replace('/', ' ')
 
-    arpa = Arpa('http://demo.seco.tkk.fi/arpa/pnr_municipality')
-
     # Query the ARPA service and add the matches
-    return arpafy(graph, target_prop, arpa, source_prop,
-                  preprocessor=_get_municipality_label, progress=True, retry_amount=50)
+    return process_graph(graph, target_prop, arpa, source_prop=source_prop,
+                  preprocessor=_get_municipality_label, progress=True, **kwargs)
 
 
-def link_to_warsa_persons(graph, graph_schema, target_prop, source_prop, source_lastname_prop,
+def link_to_warsa_persons(graph, graph_schema, target_prop, source_prop, arpa, source_lastname_prop,
         source_firstname_prop, source_rank_prop, birthdate_prop, deathdate_prop,
-        arpa, preprocessor=None, validator=None, **kwargs):
+        preprocessor=None, validator=None, **kwargs):
     """
     Link a person to known Warsa persons
 
-    :param graph_data: RDF graph where the names and such are found
-    :type graph_data: rdflib.Graph
+    :param graph: RDF graph where the names and such are found
+    :type graph: rdflib.Graph
 
-    :param graph_schema: RDF graph where is the military rank label
+    :param graph_schema: RDF graph containing military rank labels
     :type graph_schema: rdflib.Graph
 
     :param target_prop: target property to use for new links
+    :param source_prop: source property to use for linking
+    :param arpa: the Arpa instance
+
+    :param source_lastname_prop: last name property
+    :param source_firstname_prop: first name property
     :param source_rank_prop: military rank property
-    :param source_fullname_prop: full name property
+    :param birthdate_prop: birth date property
+    :param deathdate_prop: death date property
+
+    :preprocessor: text preprocessor
+    :validator: link validator
     """
     # TODO: sotilasarvolabel --> rank_label, pisteytys pitää säätää uusiksi (tarkasta)
     # TODO: henkilöllä voi olla useita sotilasarvoja, vertailu kaikkiin (tarkasta toimiiko)
@@ -266,7 +273,7 @@ def link_to_warsa_persons(graph, graph_schema, target_prop, source_prop, source_
             preprocessor=preprocessor, validator=validator, progress=True, **kwargs)
 
 
-def process_stage(stage, arpa_args, query_template_file=None, rank_schema_file=None):
+def process_stage(link_function, stage, arpa_args, query_template_file=None, rank_schema_file=None):
     log_to_file('process.log', arpa_args.log_level)
     del arpa_args.log_level
 
@@ -290,7 +297,7 @@ def process_stage(stage, arpa_args, query_template_file=None, rank_schema_file=N
 
         if stage == 'candidates':
             arpa_args['candidates_only'] = True
-            ranks = None
+            schema = None
 
             arpa = Arpa(arpa_url, arpa_args.pop('no_duplicates'), arpa_args.pop('min_ngram'),
                     retries=arpa_args.pop('retries'), wait_between_tries=arpa_args.pop('wait'),
@@ -300,21 +307,27 @@ def process_stage(stage, arpa_args, query_template_file=None, rank_schema_file=N
             with open(query_template_file) as f:
                 qry = f.read()
 
-            ranks = Graph()
-            ranks.parse(rank_schema_file, format=input_format)
+            schema = Graph()
+            schema.parse(rank_schema_file, format=input_format)
 
             arpa = ArpaMimic(qry, arpa_url, arpa_args.pop('no_duplicates'), arpa_args.pop('min_ngram'),
                     retries=arpa_args.pop('retries'), wait_between_tries=arpa_args.pop('wait'),
                     ignore=arpa_args.pop('ignore'))
 
-        res = link_to_warsa_persons(data, ranks, arpa_args.pop('tprop'), arpa_args.pop('prop'),
+        res = link_function(data, schema, arpa_args.pop('tprop'), arpa_args.pop('prop'), arpa,
                 ns_schema.sukunimi, ns_schema.etunimet, ns_schema.sotilasarvo, ns_schema.syntymaeaika,
-                ns_schema.kuolinaika, arpa, **arpa_args)
+                ns_schema.kuolinaika, **arpa_args)
 
         res['graph'].serialize(output, format=output_format)
 
 
-if __name__ == "__main__":
+def print_usage(exit_=True):
+    print('usage: arpa.py test|(persons|units|pnr candidates|join|(disambiguate query_template_file rank_schema_ttl_file) [arpa_linker_args])')
+    if exit_:
+        exit()
+
+
+if __name__ == '__main__':
 
     if sys.argv[1] == 'test':
         print('Running doctests')
@@ -326,12 +339,21 @@ if __name__ == "__main__":
         exit()
 
     if len(sys.argv) < 3:
-        print('usage: arpa.py test|candidates|join|(disambiguate query_template_file rank_schema_ttl_file) [arpa_linker_args]')
-        exit()
+        print_usage()
 
-    stage = sys.argv[1]
-    if stage == 'disambiguate':
-        process_stage(stage, parse_args(sys.argv[4:]), query_template_file=sys.argv[2],
-                rank_schema_file=sys.argv[3])
+    target = sys.argv[1]
+    if target == 'persons':
+        link_fn = link_to_warsa_persons
+    elif target == 'units':
+        link_fn = link_to_military_units
+    elif target == 'pnr':
+        link_fn = link_to_pnr
     else:
-        process_stage(stage, parse_args(sys.argv[2:]))
+        print_usage()
+
+    stage = sys.argv[2]
+    if stage == 'disambiguate':
+        process_stage(link_fn, stage, parse_args(sys.argv[5:]), query_template_file=sys.argv[3],
+                rank_schema_file=sys.argv[4])
+    else:
+        process_stage(link_fn, stage, parse_args(sys.argv[3:]))
