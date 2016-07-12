@@ -192,7 +192,7 @@ def _create_unit_abbreviations(text, *args):
     return ' # '.join(combined_variations) + ' # ' + ' # '.join(sorted(variationset))
 
 
-def link_to_military_units(graph, graph_schema, target_prop, source_prop, arpa, *args, **kwargs):
+def link_to_military_units(graph, graph_schema, target_prop, source_prop, arpa, *args, preprocess=True, **kwargs):
     """
     Link military units to known matching military units in Warsa
     :returns dict containing some statistics and a list of errors
@@ -205,12 +205,17 @@ def link_to_military_units(graph, graph_schema, target_prop, source_prop, arpa, 
     :param arpa: the Arpa instance
     """
 
+    if preprocess:
+        preprocessor = _create_unit_abbreviations
+    else:
+        preprocessor = None
+
     # Query the ARPA service and add the matches
     return process_graph(graph, target_prop, arpa, source_prop=source_prop,
-            preprocessor=_create_unit_abbreviations, progress=True, **kwargs)
+            preprocessor=preprocessor, progress=True, **kwargs)
 
 
-def link_to_pnr(graph, graph_schema, target_prop, source_prop, arpa, *args, **kwargs):
+def link_to_pnr(graph, graph_schema, target_prop, source_prop, arpa, *args, preprocess=True, **kwargs):
     """
     Link municipalities to Paikannimirekisteri.
     :returns dict containing some statistics and a list of errors
@@ -226,13 +231,18 @@ def link_to_pnr(graph, graph_schema, target_prop, source_prop, arpa, *args, **kw
         """
         return str(graph_schema.value(uri, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel'))).replace('/', ' ')
 
+    if preprocess:
+        preprocessor = _get_municipality_label
+    else:
+        preprocessor = None
+
     # Query the ARPA service and add the matches
     return process_graph(graph, target_prop, arpa, source_prop=source_prop,
-                  preprocessor=_get_municipality_label, progress=True, **kwargs)
+                  preprocessor=preprocessor, progress=True, **kwargs)
 
 
 def link_to_warsa_persons(graph, graph_schema, target_prop, source_prop, arpa, source_lastname_prop,
-        source_firstname_prop, source_rank_prop, birthdate_prop, deathdate_prop,
+        source_firstname_prop, source_rank_prop, birthdate_prop, deathdate_prop, preprocess=False,
         preprocessor=None, validator=None, **kwargs):
     """
     Link a person to known Warsa persons
@@ -298,6 +308,7 @@ def process_stage(link_function, stage, arpa_args, query_template_file=None, ran
         if stage == 'candidates':
             arpa_args['candidates_only'] = True
             schema = None
+            preprocess = True
 
             arpa = Arpa(arpa_url, arpa_args.pop('no_duplicates'), arpa_args.pop('min_ngram'),
                     retries=arpa_args.pop('retries'), wait_between_tries=arpa_args.pop('wait'),
@@ -309,6 +320,7 @@ def process_stage(link_function, stage, arpa_args, query_template_file=None, ran
 
             schema = Graph()
             schema.parse(rank_schema_file, format=input_format)
+            preprocess = False
 
             arpa = ArpaMimic(qry, arpa_url, arpa_args.pop('no_duplicates'), arpa_args.pop('min_ngram'),
                     retries=arpa_args.pop('retries'), wait_between_tries=arpa_args.pop('wait'),
@@ -316,13 +328,13 @@ def process_stage(link_function, stage, arpa_args, query_template_file=None, ran
 
         res = link_function(data, schema, arpa_args.pop('tprop'), arpa_args.pop('prop'), arpa,
                 ns_schema.sukunimi, ns_schema.etunimet, ns_schema.sotilasarvo, ns_schema.syntymaeaika,
-                ns_schema.kuolinaika, **arpa_args)
+                ns_schema.kuolinaika, preprocess=preprocess, **arpa_args)
 
         res['graph'].serialize(output, format=output_format)
 
 
 def print_usage(exit_=True):
-    print('usage: arpa.py test|(persons|units|pnr candidates|join|(disambiguate query_template_file rank_schema_ttl_file) [arpa_linker_args])')
+    print('usage: arpa.py test|(persons|units|pnr candidates|join|(disambiguate query_template_file schema_ttl_file) [arpa_linker_args])')
     if exit_:
         exit()
 
