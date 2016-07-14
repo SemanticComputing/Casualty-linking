@@ -1,3 +1,0 @@
-rdflib>=4.2.1
-fuzzywuzzy>=0.10.0
-git+https://github.com/SemanticComputing/python-arpa-linker.git#egg=arpa_linker-master
