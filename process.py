@@ -16,7 +16,7 @@ import logging
 import os
 import re
 from time import sleep
-from requests import HTTPError
+from urllib.error import HTTPError
 
 from arpa_linker.arpa import Arpa
 import iso8601
@@ -68,6 +68,7 @@ URI_MAPPINGS = {
 parser = argparse.ArgumentParser(description='Casualties of war')
 parser.add_argument('-reload', action='store_true', help='Reload RDF graphs, instead of using pickle object')
 parser.add_argument('-generated', action='store_true', help='Use previously generated new data files as input')
+parser.add_argument('-generated_pkl', action='store_true', help='Use previously generated new data pickles')
 parser.add_argument('-skip_cemeteries', action='store_true', help='Skip cemetery fixing')
 parser.add_argument('-skip_validation', action='store_true', help='Skip validation')
 parser.add_argument('-skip_units', action='store_true', help='Skip linking to Warsa military units')
@@ -80,6 +81,7 @@ args = parser.parse_args()
 
 reload = args.reload
 USE_GENERATED_FILES = args.generated
+USE_GENERATED_PKL = args.generated_pkl
 DRYRUN = args.d
 SKIP_CEMETERIES = args.skip_cemeteries
 SKIP_VALIDATION = args.skip_validation
@@ -94,8 +96,8 @@ surma_onto = rdflib.Graph()
 
 logging.basicConfig(filename='Sotasurma.log',
                     filemode='a',
-                    # level=logging.DEBUG,
-                    level=logging.INFO,
+                    level=logging.DEBUG,
+                    # level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 log = logging.getLogger(__name__)
@@ -295,6 +297,10 @@ def link_to_military_ranks(ranks):
     for s, o in list(surma[:p:]):
         rank_label = next(surma_onto[o:ns_skos.prefLabel:], '')
         rank_label = Literal(str(rank_label).capitalize())  # Strip lang attribute and capitalize
+        if not rank_label:
+            # This happens when military ranks are already linked
+            continue
+
         found_ranks = list(ranks[:ns_skos.prefLabel:rank_label])
 
         new_o = None
@@ -332,36 +338,43 @@ def link_persons(ranks):
         for (sub, obj) in list(surma[:lbl_pred:]):
             name = str(obj)
             new_name = str.title(name)
-            surma.remove((sub, lbl_pred, obj))
-            surma.add((sub, lbl_pred, Literal(new_name)))
-            log.debug('Changed name {orig} to {new}'.format(orig=name, new=new_name))
+            if name != new_name:
+                surma.remove((sub, lbl_pred, obj))
+                surma.add((sub, lbl_pred, Literal(new_name)))
+                log.debug('Changed name {orig} to {new}'.format(orig=name, new=new_name))
 
     # Link to WARSA actor persons
-    log.debug(arpa.link_to_warsa_persons(surma, ranks, ns_crm.P70_documents, ns_schema.sotilasarvo,
-                                         ns_schema.etunimet, ns_schema.sukunimi,
-                                         ns_schema.syntymaeaika, ns_schema.kuolinaika,
-                                         endpoint='http://demo.seco.tkk.fi/arpa/menehtyneet_persons'))
+    # log.debug(arpa.link_to_warsa_persons(surma, ranks, ns_crm.P70_documents, ns_schema.sotilasarvo,
+    #                                      ns_schema.etunimet, ns_schema.sukunimi,
+    #                                      ns_schema.syntymaeaika, ns_schema.kuolinaika,
+    #                                      endpoint='http://demo.seco.tkk.fi/arpa/menehtyneet_persons'))
 
-    for s, o in surma[:ns_crm.P70_documents:]:
-        log.info('ARPA found that {s} is the death record of person {o}'.format(s=s, o=o))
+    # for s, o in surma[:ns_crm.P70_documents:]:
+    #     log.info('ARPA found that {s} is the death record of person {o}'.format(s=s, o=o))
 
     # Create person links based on inverse links that have been made when creating the person instances from casualties.
+    # sparql = 'http://ldf.fi/warsa/sparql'
     sparql = SPARQLWrapper('http://ldf.fi/warsa/sparql')
-    for person in list(surma[:RDF.type:ns_foaf.Person]):
-        sparql.setQuery("""
-                        PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
-                        SELECT * WHERE {{ ?sub crm:P70i_is_documented_in <{person_uri}> . }}
-                        """.format(person_uri=person))
+
+    log.debug('Finding inverse person links via SPARQL')
+    for person in list(surma[:RDF.type:ns_schema.DeathRecord]):
+        query = """
+              PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
+               SELECT * WHERE {{ ?sub crm:P70i_is_documented_in <{person_uri}> . }}
+               """.format(person_uri=person)
+        sparql.setQuery(query)
         sparql.setReturnFormat(JSON)
 
         results = None
         retry = 0
         while not results:
             try:
+                log.debug('Querying SPARQL with: {}'.format(query))
                 results = sparql.query().convert()
-            except ValueError:
+                # results = requests.post(sparql, data={'query': query})
+            except (HTTPError, ValueError):
                 if retry < 50:
-                    log.error('Malformed result from SPARQL endpoint for person {p_uri}, waiting 10 seconds before retrying...'.format(p_uri=person))
+                    log.error('Error getting SPARQL result for person {p_uri}, waiting 10 seconds before retrying...'.format(p_uri=person))
                     retry += 1
                     sleep(10)
                 else:
@@ -376,16 +389,7 @@ def link_persons(ranks):
         if not warsa_person:
             log.warning('{person} didn\'t match any WARSA persons.'.format(person=person))
 
-    for (sub, pred) in surma[::ns_foaf.Person]:
-        surma.add((sub, pred, ns_schema.DeathRecord))
-        # surma.add((sub, pred, ns_crm.E31_Document))
-        surma.remove((sub, pred, ns_foaf.Person))
-
-    for (sub, pred) in surma_onto[::ns_foaf.Person]:
-        surma_onto.add((sub, pred, ns_schema.DeathRecord))
-        surma_onto.remove((sub, pred, ns_foaf.Person))
-
-    # Remove invalid dates
+    # Remove invalid dates and fix obvious OCR errors
 
     dateset = set()
     date_props = [ns_schema.haavoittumisaika, ns_schema.katoamisaika, ns_schema.kuolinaika, ns_schema.syntymaeaika]
@@ -398,8 +402,19 @@ def link_persons(ranks):
             if parsed_date.year < 1840:
                 raise TypeError
         except (iso8601.ParseError, TypeError):
+            if str(date).startswith('09') or str(date).startswith('10'):
+                new_date = '19' + str(date)[2:]
+            elif str(date).startswith('1940-93'):
+                new_date = '1940-03' + str(date)[7:]
+            else:
+                new_date = None
+
             log.info('Removing references to invalid date: {date}'.format(date=str(date)))
             for date_prop in date_props:
+                if new_date:
+                    for triple in surma.triples((None, date_prop, date)):
+                        log.info('Adding a reference to fixed date: {date}'.format(date=str(new_date)))
+                        surma.add((triple[0], date_prop, Literal(new_date, datatype=XSD.date)))
                 surma.remove((None, date_prop, date))
 
 
@@ -434,12 +449,19 @@ if __name__ == "__main__":
     # READ IN RDF DATA
 
     if USE_GENERATED_FILES:
-            # Read RDF graph from TTL files
-            print('Processing previously generated RDF files...')
-            surma.parse(OUTPUT_FILE_DIRECTORY + "surma.ttl", format='turtle')
-            surma_onto.parse(OUTPUT_FILE_DIRECTORY + "surma_onto.ttl", format='turtle')
-            print('Parsed {len} data triples.'.format(len=len(surma)))
-            print('Parsed {len} ontology triples.'.format(len=len(surma_onto)))
+        # Read RDF graph from TTL files
+        print('Processing previously generated RDF files...')
+        surma.parse(OUTPUT_FILE_DIRECTORY + "surma.ttl", format='turtle')
+        surma_onto.parse(OUTPUT_FILE_DIRECTORY + "surma_onto.ttl", format='turtle')
+        print('Parsed {len} data triples.'.format(len=len(surma)))
+        print('Parsed {len} ontology triples.'.format(len=len(surma_onto)))
+    elif USE_GENERATED_PKL:
+        # Read RDF graph from generated output pickles
+        print('Processing previously generated pickles...')
+        surma = joblib.load(OUTPUT_FILE_DIRECTORY + 'surma.pkl')
+        surma_onto = joblib.load(OUTPUT_FILE_DIRECTORY + 'surma_onto.pkl')
+        print('Parsed {len} data triples.'.format(len=len(surma)))
+        print('Parsed {len} ontology triples.'.format(len=len(surma_onto)))
     else:
         if not reload:
             # Read RDF graph from pickle
@@ -468,32 +490,64 @@ if __name__ == "__main__":
             joblib.dump(surma, INPUT_FILE_DIRECTORY + 'surma.pkl')
             joblib.dump(surma_onto, INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
 
-    ##########################################################
-    # FIX KNOWN ISSUES AND ADD LINKS TO OTHER SOTASAMPO GRAPHS
+    #####################################
+    # FIX KNOWN ISSUES IN DATA AND SCHEMA
 
     print('Applying direct URI mapping fixes...')
     fix_by_direct_uri_mappings()
 
+    # FOAF Person instances to DeathRecord instances
+    for (sub, pred) in surma[::ns_foaf.Person]:
+        surma.add((sub, pred, ns_schema.DeathRecord))
+        # surma.add((sub, pred, ns_crm.E31_Document))
+        surma.remove((sub, pred, ns_foaf.Person))
+
+    for (sub, pred) in surma_onto[::ns_foaf.Person]:
+        surma_onto.add((sub, pred, ns_schema.DeathRecord))
+        surma_onto.remove((sub, pred, ns_foaf.Person))
+
+    # Additional fixes to schema
+    UNIT_LINK_URI = ns_schema.osasto
+
+    surma_onto.add((UNIT_LINK_URI, RDF.type, OWL.ObjectProperty))
+    surma_onto.add((UNIT_LINK_URI, RDFS.label, Literal('Tunnettu joukko-osasto', lang='fi')))
+    surma_onto.add((UNIT_LINK_URI, RDFS.label, Literal('Military unit', lang='en')))
+    surma_onto.add((UNIT_LINK_URI, RDFS.domain, ns_schema.DeathRecord))
+    # surma_onto.add((unit_link_uri, RDFS.domain, ns_crm.E31_Document))
+    surma_onto.add((UNIT_LINK_URI, RDFS.range, URIRef('http://ldf.fi/warsa/actors/actor_types/MilitaryUnit')))
+    surma_onto.add((UNIT_LINK_URI, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
+    surma_onto.add((UNIT_LINK_URI, ns_skos.prefLabel, Literal('Military unit', lang='en')))
+
+    surma_onto.add((ns_schema.DeathRecord, RDFS.subClassOf, ns_crm.E31_Document))
+    surma_onto.add((ns_schema.DeathRecord, ns_skos.prefLabel, Literal('Death Record', lang='en')))
+    surma_onto.add((ns_schema.DeathRecord, ns_skos.prefLabel, Literal('Kuolinasiakirja', lang='fi')))
+
+    # TODO: Add graveyard ontology description
+
+    surma_onto.add((ns_schema.hautausmaakunta, RDF.type, OWL.ObjectProperty))
+    surma_onto.add((ns_schema.hautausmaakunta, RDFS.label, Literal('Hautausmaan kunta', lang='fi')))
+    surma_onto.add((ns_schema.hautausmaakunta, RDFS.domain, ns_schema.Hautausmaa))
+    surma_onto.add((ns_schema.hautausmaakunta, RDFS.range, ns_schema.Kunta))
+    surma_onto.add((ns_schema.hautausmaakunta, ns_skos.prefLabel, Literal('Hautausmaan kunta', lang='fi')))
+
+    surma_onto.remove((ns_schema.hautausmaa, RDF.type, ns_owl.DatatypeProperty))
+    surma_onto.add((ns_schema.hautausmaa, RDF.type, ns_owl.ObjectProperty))
+
+    surma_onto.remove((ns_schema.hautausmaa, RDFS.range, XSD.string))
+    surma_onto.add((ns_schema.hautausmaa, RDFS.range, ns_schema.Hautausmaa))
+
+    surma_onto.remove((ns_schema.sotilasarvo, RDFS.range, None))
+    surma_onto.add((ns_schema.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/warsa/actors/ranks/Rank')))
+
     # TODO: Add military rank group ontology description
     # TODO: Add english ontology descriptions?
+
+    ############################################
+    # LINK TO OTHER SOTASAMPO DATASETS AND STUFF
 
     if not SKIP_CEMETERIES:
         print('Fixing cemeteries...')
         fix_cemetery_links()
-
-        # TODO: Add graveyard ontology description
-
-        surma_onto.add((ns_schema.hautausmaakunta, RDF.type, OWL.ObjectProperty))
-        surma_onto.add((ns_schema.hautausmaakunta, RDFS.label, Literal('Hautausmaan kunta', lang='fi')))
-        surma_onto.add((ns_schema.hautausmaakunta, RDFS.domain, ns_schema.Hautausmaa))
-        surma_onto.add((ns_schema.hautausmaakunta, RDFS.range, ns_schema.Kunta))
-        surma_onto.add((ns_schema.hautausmaakunta, ns_skos.prefLabel, Literal('Hautausmaan kunta', lang='fi')))
-
-        surma_onto.remove((ns_schema.hautausmaa, RDF.type, ns_owl.DatatypeProperty))
-        surma_onto.add((ns_schema.hautausmaa, RDF.type, ns_owl.ObjectProperty))
-
-        surma_onto.remove((ns_schema.hautausmaa, RDFS.range, XSD.string))
-        surma_onto.add((ns_schema.hautausmaa, RDFS.range, ns_schema.Hautausmaa))
 
     if not SKIP_MUNICIPALITIES:
         print('Linking to municipalities...')
@@ -511,49 +565,32 @@ if __name__ == "__main__":
             log.error('Unable to read military ranks from SPARQL endpoint')
         link_to_military_ranks(ranks)
 
-        surma_onto.remove((ns_schema.sotilasarvo, RDFS.range, None))
-        surma_onto.add((ns_schema.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/warsa/actors/ranks/Rank')))
-
     if not SKIP_PERSONS:
         print('Finding links for WARSA persons...')
 
         # Note: Requires updated military ranks
         if not ranks:
-            ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
+            ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/ranks')
 
         link_persons(ranks)
 
     if not SKIP_UNITS:
         print('Finding links for military units...')
-        unit_link_uri = ns_schema.osasto
 
-        log.debug(arpa.link_to_military_units(surma, unit_link_uri, ns_schema.joukko_osasto))
+        log.debug(arpa.link_to_military_units(surma, UNIT_LINK_URI, ns_schema.joukko_osasto))
 
         # surma_onto.remove((ns_schema.osasto, None, None))
         # surma.remove((None, ns_schema.osasto, None))
 
-        surma_onto.add((unit_link_uri, RDF.type, OWL.ObjectProperty))
-        surma_onto.add((unit_link_uri, RDFS.label, Literal('Tunnettu joukko-osasto', lang='fi')))
-        surma_onto.add((unit_link_uri, RDFS.label, Literal('Military unit', lang='en')))
-        surma_onto.add((unit_link_uri, RDFS.domain, ns_schema.DeathRecord))
-        # surma_onto.add((unit_link_uri, RDFS.domain, ns_crm.E31_Document))
-        surma_onto.add((unit_link_uri, RDFS.range, URIRef('http://ldf.fi/warsa/actors/actor_types/MilitaryUnit')))
-        surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
-        surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Military unit', lang='en')))
-
     if not SKIP_OCCUPATIONS:
         for s, o in list(surma[:ns_schema.ammatti:]):
             # TODO: Filter some o values
-            occupation_uri = ns_schema[str(o)]
+            occupation_uri = ns_schema[str(o).replace(' ', '_')]
             surma.remove((s, ns_schema.ammatti, o))
             surma.add((s, ns_schema.ammatti, occupation_uri))
 
             surma_onto.add((occupation_uri, ns_skos.prefLabel, o))
             surma_onto.add((occupation_uri, RDF.type, ns_schema.Ammatti))
-
-    surma_onto.add((ns_schema.DeathRecord, RDFS.subClassOf, ns_crm.E31_Document))
-    surma_onto.add((ns_schema.DeathRecord, ns_skos.prefLabel, Literal('Death Record', lang='en')))
-    surma_onto.add((ns_schema.DeathRecord, ns_skos.prefLabel, Literal('Kuolinasiakirja', lang='fi')))
 
     ##################
     # SERIALIZE GRAPHS
@@ -565,6 +602,7 @@ if __name__ == "__main__":
     if not DRYRUN:
         print('Serializing graphs...')
         surma.bind("crm", "http://www.cidoc-crm.org/cidoc-crm/")
+        surma.bind("skos", "http://www.w3.org/2004/02/skos/core#")
 
         surma.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
         surma.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
@@ -584,6 +622,7 @@ if __name__ == "__main__":
         # TODO: Move schema stuff to schema namespace? (e.g. skos:ConceptSchemes)
 
         surma_onto.bind("crm", "http://www.cidoc-crm.org/cidoc-crm/")
+        surma_onto.bind("skos", "http://www.w3.org/2004/02/skos/core#")
 
         surma_onto.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
         surma_onto.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
@@ -605,3 +644,7 @@ if __name__ == "__main__":
 
         surma.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma.ttl")
         surma_onto.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma_onto.ttl")
+
+        print('Saving pickles...')
+        joblib.dump(surma, OUTPUT_FILE_DIRECTORY + 'surma.pkl')
+        joblib.dump(surma_onto, OUTPUT_FILE_DIRECTORY + 'surma_onto.pkl')
