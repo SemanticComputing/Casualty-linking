@@ -95,6 +95,10 @@ class Validator:
                 else:
                     score -= 25
 
+            # If both are single dates, allow one different character before penalizing
+            if res_birthdates[0] == res_birthdates[1] and fuzz.partial_ratio(res_birthdates[0], birthdate) <= 80:
+                score -= 25
+
             if res_deathdates[0] and deathdate:
                 if res_deathdates[0] <= deathdate:
                     if res_deathdates[0] == deathdate:
@@ -108,6 +112,10 @@ class Validator:
                         score += 50
                 else:
                     score -= 25
+
+            # If both are single dates, allow one different character before penalizing
+            if res_deathdates[0] == res_deathdates[1] and fuzz.partial_ratio(res_deathdates[0], deathdate) <= 80:
+                score -= 25
 
             s_first1 = ' '.join(firstnames)
             s_first2 = ' '.join(res_firstnames)
@@ -212,7 +220,7 @@ def link_to_military_units(graph, graph_schema, target_prop, source_prop, arpa, 
 
     # Query the ARPA service and add the matches
     return process_graph(graph, target_prop, arpa, source_prop=source_prop,
-            preprocessor=preprocessor, progress=True, **kwargs)
+                         preprocessor=preprocessor, progress=True, **kwargs)
 
 
 def link_to_pnr(graph, graph_schema, target_prop, source_prop, arpa, *args, preprocess=True, **kwargs):
@@ -238,7 +246,7 @@ def link_to_pnr(graph, graph_schema, target_prop, source_prop, arpa, *args, prep
 
     # Query the ARPA service and add the matches
     return process_graph(graph, target_prop, arpa, source_prop=source_prop,
-                  preprocessor=preprocessor, progress=True, **kwargs)
+                         preprocessor=preprocessor, progress=True, **kwargs)
 
 
 def link_to_warsa_persons(graph, graph_schema, target_prop, source_prop, arpa, source_lastname_prop,

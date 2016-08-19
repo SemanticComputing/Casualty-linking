@@ -70,10 +70,10 @@ parser.add_argument('-reload', action='store_true', help='Reload RDF graphs, ins
 parser.add_argument('-generated', action='store_true', help='Use previously generated new data files as input')
 parser.add_argument('-skip_cemeteries', action='store_true', help='Skip cemetery fixing')
 parser.add_argument('-skip_validation', action='store_true', help='Skip validation')
-parser.add_argument('-skip_units', action='store_true', help='Skip linking to Warsa military units')
+# parser.add_argument('-skip_units', action='store_true', help='Skip linking to Warsa military units')
 parser.add_argument('-skip_ranks', action='store_true', help='Skip linking to Warsa military ranks')
 parser.add_argument('-skip_municipalities', action='store_true', help='Skip linking to municipalities')
-parser.add_argument('-skip_persons', action='store_true', help='Skip linking to Warsa persons')
+# parser.add_argument('-skip_persons', action='store_true', help='Skip linking to Warsa persons')
 parser.add_argument('-skip_occupations', action='store_true', help='Skip creation of occupation ontology')
 parser.add_argument('-d', action='store_true', help='Dry run, don\'t serialize created graphs')
 args = parser.parse_args()
@@ -83,10 +83,12 @@ USE_GENERATED_FILES = args.generated
 DRYRUN = args.d
 SKIP_CEMETERIES = args.skip_cemeteries
 SKIP_VALIDATION = args.skip_validation
-SKIP_UNITS = args.skip_units
+SKIP_UNITS = True
+# SKIP_UNITS = args.skip_units
 SKIP_MUNICIPALITIES = args.skip_municipalities
 SKIP_RANKS = args.skip_ranks
-SKIP_PERSONS = args.skip_persons
+SKIP_PERSONS = True
+# SKIP_PERSONS = args.skip_persons
 SKIP_OCCUPATIONS = args.skip_occupations
 
 surma = rdflib.Graph()
@@ -174,7 +176,7 @@ def fix_cemetery_links():
             surma.add((s, p, new_o))
 
 
-def link_to_warsa_municipalities():
+def link_to_municipalities():
     """
     Link to Warsa municipalities used in SotaSampo project.
     """
@@ -183,35 +185,49 @@ def link_to_warsa_municipalities():
 
     pnr_arpa = Arpa('http://demo.seco.tkk.fi/arpa/pnr_municipality')
 
-    for s in list(surma_onto[:RDF.type:ns_schema.Kunta]):
-        label = next(surma_onto[s:ns_skos.prefLabel:])
+    # Find
+    log.info('Hautauskuntia: {h}'.format(h=len(list(surma_onto[ns_schema.hautauskunta::]))))
+    log.info('Hautausmaakuntia: {h}'.format(h=len(list(surma_onto[ns_schema.hautausmaakunta::]))))
 
-        warsa_s = []
+    for (sub, obj) in list(surma_onto[:ns_schema.hautauskunta:]):  # hautauskunta --> hautausmaakunta
+        surma_onto.remove((sub, ns_schema.hautauskunta, obj))
+        surma_onto.add((sub, ns_schema.hautausmaakunta, obj))
+
+    link_to_pnr(surma_onto, surma_onto, ns_schema.hautausmaakunta_pnr, ns_schema.hautausmaakunta, pnr_arpa)
+    for (sub, obj) in list(surma_onto[:ns_schema.hautausmaakunta_pnr:]):
+        surma_onto.remove((sub, ns_schema.hautausmaakunta_pnr, obj))
+        surma_onto.remove((sub, ns_schema.hautausmaakunta, None))
+        surma_onto.add((sub, ns_schema.hautausmaakunta, obj))
+
+    for kunta in list(surma_onto[:RDF.type:ns_schema.Kunta]):
+        label = next(surma_onto[kunta:ns_skos.prefLabel:])
+
+        warsa_matches = []
 
         for lbl in str(label).strip().split('/'):
             if lbl == 'Pyhäjärvi Ol':
-                warsa_s = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_75')]
+                warsa_matches = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_75')]
             elif lbl == 'Pyhäjärvi Ul.':
-                warsa_s = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_543')]
+                warsa_matches = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_543')]
             elif lbl == 'Pyhäjärvi Vl':
-                warsa_s = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_586')]
+                warsa_matches = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_586')]
             elif lbl == 'Koski Tl.':
-                warsa_s = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_291')]
+                warsa_matches = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_291')]
             elif lbl == 'Koski Hl.':
-                warsa_s = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_391')]
+                warsa_matches = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_391')]
             elif lbl == 'Uusikirkko Vl':
-                warsa_s = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_609')]
+                warsa_matches = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_609')]
 
-            if not warsa_s:
-                warsa_s = list(munics[:ns_skos.prefLabel:Literal(lbl)])
-            if not warsa_s:
-                warsa_s = list(munics[:ns_skos.prefLabel:Literal(lbl.replace(' kunta', ' mlk'))])
+            if not warsa_matches:
+                warsa_matches = list(munics[:ns_skos.prefLabel:Literal(lbl)])
+            if not warsa_matches:
+                warsa_matches = list(munics[:ns_skos.prefLabel:Literal(lbl.replace(' kunta', ' mlk'))])
 
-            if not warsa_s:
+            if not warsa_matches:
                 retry = 0
-                while not warsa_s:
+                while not warsa_matches:
                     try:
-                        warsa_s = [URIRef(uri) for uri in pnr_arpa.get_uri_matches(lbl)]  # Link to Paikannimirekisteri
+                        warsa_matches = [URIRef(uri) for uri in pnr_arpa.get_uri_matches(lbl)]  # Link to Paikannimirekisteri
                         break
                     except (HTTPError, ValueError):
                         if retry < 50:
@@ -223,42 +239,44 @@ def link_to_warsa_municipalities():
 
         # NOTE! hautausmaakunta refers to current municipalities, unlike the rest
 
-        if len(warsa_s) == 0:
-            if set(surma.subjects(None, s)) - set(surma[:ns_schema.hautauskunta:s]):
+        if len(warsa_matches) == 0:
+            if set(surma.subjects(None, kunta)) - set(surma[:ns_schema.hautausmaakunta:kunta]):
                 log.warning("Couldn't find URIs for municipality {lbl}".format(lbl=label))
-        elif len(warsa_s) == 1:
-            log.info('Found {lbl} municipality URI {s}'.format(lbl=label, s=warsa_s[0]))
-            for subj in list(surma[:ns_schema.synnyinkunta:s]):
-                surma.add((subj, ns_schema.synnyinkunta, warsa_s[0]))
-                surma.remove((subj, ns_schema.synnyinkunta, s))
-            for subj in list(surma[:ns_schema.kotikunta:s]):
-                surma.add((subj, ns_schema.kotikunta, warsa_s[0]))
-                surma.remove((subj, ns_schema.kotikunta, s))
-            for subj in list(surma[:ns_schema.asuinkunta:s]):
-                surma.add((subj, ns_schema.asuinkunta, warsa_s[0]))
-                surma.remove((subj, ns_schema.asuinkunta, s))
-            for subj in list(surma[:ns_schema.kuolinkunta:s]):
-                surma.add((subj, ns_schema.kuolinkunta, warsa_s[0]))
-                surma.remove((subj, ns_schema.kuolinkunta, s))
-            for subj in list(surma[:ns_schema.haavoittumiskunta:s]):
-                surma.add((subj, ns_schema.haavoittumiskunta, warsa_s[0]))
-                surma.remove((subj, ns_schema.haavoittumiskunta, s))
-            for subj in list(surma[:ns_schema.katoamiskunta:s]):
-                surma.add((subj, ns_schema.katoamiskunta, warsa_s[0]))
-                surma.remove((subj, ns_schema.katoamiskunta, s))
+        elif len(warsa_matches) == 1:
+            match = warsa_matches[0]
+            log.info('Found {lbl} municipality URI {s}'.format(lbl=label, s=match))
 
-            for subj in list(surma_onto[:ns_schema.hautauskunta:s]):
+            for subj in list(surma[:ns_schema.synnyinkunta:kunta]):
+                surma.add((subj, ns_schema.synnyinkunta, match))
+                surma.remove((subj, ns_schema.synnyinkunta, kunta))
+
+            for subj in list(surma[:ns_schema.kotikunta:kunta]):
+                surma.add((subj, ns_schema.kotikunta, match))
+                surma.remove((subj, ns_schema.kotikunta, kunta))
+
+            for subj in list(surma[:ns_schema.asuinkunta:kunta]):
+                surma.add((subj, ns_schema.asuinkunta, match))
+                surma.remove((subj, ns_schema.asuinkunta, kunta))
+
+            for subj in list(surma[:ns_schema.kuolinkunta:kunta]):
+                surma.add((subj, ns_schema.kuolinkunta, match))
+                surma.remove((subj, ns_schema.kuolinkunta, kunta))
+
+            for subj in list(surma[:ns_schema.haavoittumiskunta:kunta]):
+                surma.add((subj, ns_schema.haavoittumiskunta, match))
+                surma.remove((subj, ns_schema.haavoittumiskunta, kunta))
+
+            for subj in list(surma[:ns_schema.katoamiskunta:kunta]):
+                surma.add((subj, ns_schema.katoamiskunta, match))
+                surma.remove((subj, ns_schema.katoamiskunta, kunta))
+
+            for subj in list(surma_onto[:ns_schema.hautausmaakunta:kunta]):
                 # Fixes cemetery municipalities
-                surma_onto.remove((subj, ns_schema.hautauskunta, s))
-                surma_onto.add((subj, ns_schema.hautausmaakunta, warsa_s[0]))
+                surma_onto.remove((subj, ns_schema.hautausmaakunta, kunta))
+                surma_onto.add((subj, ns_schema.hautausmaakunta, match))
         else:
-            log.warning('Found multiple URIs for municipality {lbl}: {s}'.format(lbl=label, s=warsa_s))
+            log.warning('Found multiple URIs for municipality {lbl}: {s}'.format(lbl=label, s=warsa_matches))
 
-    link_to_pnr(surma_onto, surma_onto, ns_schema.hautausmaakunta_pnr, ns_schema.hautausmaakunta)
-    for (sub, obj) in list(surma_onto[:ns_schema.hautausmaakunta_pnr:]):
-        surma_onto.remove((sub, ns_schema.hautausmaakunta_pnr, obj))
-        surma_onto.remove((sub, ns_schema.hautausmaakunta, None))
-        surma_onto.add((sub, ns_schema.hautausmaakunta, obj))
 
 def validate():
     """
@@ -498,7 +516,7 @@ if __name__ == "__main__":
             # Removing hautauskunta from death records
             surma.remove((p, ns_schema.hautauskunta, None))
 
-        link_to_warsa_municipalities()
+        link_to_municipalities()
 
     if not SKIP_RANKS:
         print('Linking to military ranks...')
