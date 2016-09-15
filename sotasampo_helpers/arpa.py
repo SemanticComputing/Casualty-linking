@@ -11,7 +11,7 @@ from arpa_linker.arpa import Arpa, ArpaMimic, parse_args, process, process_graph
 from rdflib import URIRef, Namespace, Graph
 from fuzzywuzzy import fuzz
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('arpa_linker.arpa')
 
 
 class Validator:
@@ -75,6 +75,10 @@ class Validator:
             if rank and res_ranks and rank != 'tuntematon':
                 if rank in res_ranks:
                     score += 25
+                    if rank != 'sotamies':
+                        # More than half of the casualties have rank private and
+                        # they are not likely to be found from other sources
+                        score += 25
                 else:
                     score -= 25
 
@@ -96,7 +100,8 @@ class Validator:
                     score -= 25
 
             # If both are single dates, allow one different character before penalizing
-            if res_birthdates[0] == res_birthdates[1] and fuzz.partial_ratio(res_birthdates[0], birthdate) <= 80:
+            if res_birthdates[0] and res_birthdates[0] == res_birthdates[1] and \
+                            fuzz.partial_ratio(res_birthdates[0], birthdate) <= 80:
                 score -= 25
 
             if res_deathdates[0] and deathdate:
@@ -114,7 +119,8 @@ class Validator:
                     score -= 25
 
             # If both are single dates, allow one different character before penalizing
-            if res_deathdates[0] == res_deathdates[1] and fuzz.partial_ratio(res_deathdates[0], deathdate) <= 80:
+            if res_deathdates[0] and res_deathdates[0] == res_deathdates[1] and \
+                            fuzz.partial_ratio(res_deathdates[0], deathdate) <= 80:
                 score -= 25
 
             s_first1 = ' '.join(firstnames)
@@ -291,14 +297,16 @@ def link_to_warsa_persons(graph, graph_schema, target_prop, source_prop, arpa, s
             preprocessor=preprocessor, validator=validator, progress=True, **kwargs)
 
 
-def process_stage(link_function, stage, arpa_args, query_template_file=None, rank_schema_file=None):
+def process_stage(link_function, stage, arpa_args, query_template_file=None, rank_schema_file=None, pruner=None):
     log_to_file('process.log', arpa_args.log_level)
     del arpa_args.log_level
+
+    log.debug('Now at process_stage')
 
     if stage == 'join':
         process(arpa_args.input, arpa_args.fi, arpa_args.output, arpa_args.fo, arpa_args.tprop, source_prop=arpa_args.prop,
                 rdf_class=arpa_args.rdf_class, new_graph=arpa_args.new_graph, join_candidates=True,
-                run_arpafy=False, progress=True)
+                run_arpafy=False, progress=True, pruner=pruner, prune=bool(pruner))
     else:
         arpa_args = vars(arpa_args)
 
@@ -342,10 +350,13 @@ def process_stage(link_function, stage, arpa_args, query_template_file=None, ran
 
 
 def print_usage(exit_=True):
-    print('usage: arpa.py test|(persons|units|pnr candidates|join|(disambiguate query_template_file schema_ttl_file) [arpa_linker_args])')
+    print('usage: arpa.py test|(persons|units|pnr|(disambiguate query_template_file schema_ttl_file) [arpa_linker_args])')
     if exit_:
         exit()
 
+
+def prune_extra_unit_candidates(obj):
+    return False if '#' in obj else obj
 
 if __name__ == '__main__':
 
@@ -361,19 +372,25 @@ if __name__ == '__main__':
     if len(sys.argv) < 3:
         print_usage()
 
+    link_fn = None
+    prune_function = None
     target = sys.argv[1]
+    stage = sys.argv[2]
+
     if target == 'persons':
         link_fn = link_to_warsa_persons
     elif target == 'units':
         link_fn = link_to_military_units
+        if stage == 'join':
+            prune_function = prune_extra_unit_candidates
     elif target == 'pnr':
+        # NOT NEEDED HERE
         link_fn = link_to_pnr
     else:
         print_usage()
 
-    stage = sys.argv[2]
     if stage == 'disambiguate':
         process_stage(link_fn, stage, parse_args(sys.argv[5:]), query_template_file=sys.argv[3],
-                rank_schema_file=sys.argv[4])
+                      rank_schema_file=sys.argv[4])
     else:
-        process_stage(link_fn, stage, parse_args(sys.argv[3:]))
+        process_stage(link_fn, stage, parse_args(sys.argv[3:]), pruner=prune_function)
