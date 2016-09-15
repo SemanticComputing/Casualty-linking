@@ -74,7 +74,7 @@ parser.add_argument('-skip_validation', action='store_true', help='Skip validati
 parser.add_argument('-skip_ranks', action='store_true', help='Skip linking to Warsa military ranks')
 parser.add_argument('-skip_municipalities', action='store_true', help='Skip linking to municipalities')
 # parser.add_argument('-skip_persons', action='store_true', help='Skip linking to Warsa persons')
-parser.add_argument('-skip_occupations', action='store_true', help='Skip creation of occupation ontology')
+# parser.add_argument('-skip_occupations', action='store_true', help='Skip creation of occupation ontology')
 parser.add_argument('-d', action='store_true', help='Dry run, don\'t serialize created graphs')
 args = parser.parse_args()
 
@@ -89,7 +89,6 @@ SKIP_MUNICIPALITIES = args.skip_municipalities
 SKIP_RANKS = args.skip_ranks
 SKIP_PERSONS = True
 # SKIP_PERSONS = args.skip_persons
-SKIP_OCCUPATIONS = args.skip_occupations
 
 surma = rdflib.Graph()
 surma_onto = rdflib.Graph()
@@ -313,7 +312,7 @@ def link_to_military_ranks(ranks):
     for s, o in list(surma[:p:]):
         rank_label = next(surma_onto[o:ns_skos.prefLabel:], '')
         rank_label = Literal(str(rank_label).capitalize())  # Strip lang attribute and capitalize
-        found_ranks = list(ranks[:ns_skos.prefLabel:rank_label])
+        found_ranks = list(ranks[:ns_skos.prefLabel:rank_label]) + list(ranks[:ns_skos.altLabel:rank_label])
 
         new_o = None
         if len(found_ranks) == 1:
@@ -328,7 +327,7 @@ def link_to_military_ranks(ranks):
             surma.add((s, p, new_o))
 
 
-def link_persons(ranks):
+def handle_persons(ranks):
     """
     Link death records to WARSA persons, unify and stylize name representations, fix some errors.
 
@@ -339,7 +338,7 @@ def link_persons(ranks):
         for (person, lname) in list(surma[:lbl_pred:]):
             new_name = re.sub(r'(\w)0(\w)', r'\1O\2', lname)
             new_name = re.sub('%', '/', new_name)
-            new_lname = Literal(re.sub(r'(\w\w +)(E(?:NT)?\.)\s?(\w+)', r'\1(ent \3)', str(new_name)))
+            new_lname = Literal(re.sub(r'(\w\w +)(E(?:NT)?\.)\s?(\w+)', r'\1(ent. \3)', str(new_name)))
             if new_lname and new_lname != lname:
                 log.info('Unifying lastname {ln} to {nln}'.format(ln=lname, nln=new_lname))
                 surma.add((person, lbl_pred, new_lname))
@@ -355,43 +354,44 @@ def link_persons(ranks):
             log.debug('Changed name {orig} to {new}'.format(orig=name, new=new_name))
 
     # Link to WARSA actor persons
-    log.debug(arpa.link_to_warsa_persons(surma, ranks, ns_crm.P70_documents, ns_schema.sotilasarvo,
-                                         ns_schema.etunimet, ns_schema.sukunimi,
-                                         ns_schema.syntymaeaika, ns_schema.kuolinaika,
-                                         endpoint='http://demo.seco.tkk.fi/arpa/menehtyneet_persons'))
+    if not SKIP_PERSONS:
+        log.debug(arpa.link_to_warsa_persons(surma, ranks, ns_crm.P70_documents, ns_schema.sotilasarvo,
+                                             ns_schema.etunimet, ns_schema.sukunimi,
+                                             ns_schema.syntymaeaika, ns_schema.kuolinaika,
+                                             endpoint='http://demo.seco.tkk.fi/arpa/menehtyneet_persons'))
 
-    for s, o in surma[:ns_crm.P70_documents:]:
-        log.info('ARPA found that {s} is the death record of person {o}'.format(s=s, o=o))
+        for s, o in surma[:ns_crm.P70_documents:]:
+            log.info('ARPA found that {s} is the death record of person {o}'.format(s=s, o=o))
 
-    sparql = SPARQLWrapper('http://ldf.fi/warsa/sparql')
-    for person in list(surma[:RDF.type:ns_foaf.Person]):
-        sparql.setQuery("""
-                        PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
-                        SELECT * WHERE {{ ?sub crm:P70i_is_documented_in <{person_uri}> . }}
-                        """.format(person_uri=person))
-        sparql.setReturnFormat(JSON)
+        sparql = SPARQLWrapper('http://ldf.fi/warsa/sparql')
+        for person in list(surma[:RDF.type:ns_foaf.Person]):
+            sparql.setQuery("""
+                            PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
+                            SELECT * WHERE {{ ?sub crm:P70i_is_documented_in <{person_uri}> . }}
+                            """.format(person_uri=person))
+            sparql.setReturnFormat(JSON)
 
-        results = None
-        retry = 0
-        while not results:
-            try:
-                results = sparql.query().convert()
-            except ValueError:
-                if retry < 50:
-                    log.error('Malformed result from SPARQL endpoint for person {p_uri}, waiting 10 seconds before retrying...'.format(p_uri=person))
-                    retry += 1
-                    sleep(10)
-                else:
-                    raise
+            results = None
+            retry = 0
+            while not results:
+                try:
+                    results = sparql.query().convert()
+                except ValueError:
+                    if retry < 50:
+                        log.error('Malformed result from SPARQL endpoint for person {p_uri}, waiting 10 seconds before retrying...'.format(p_uri=person))
+                        retry += 1
+                        sleep(10)
+                    else:
+                        raise
 
-        warsa_person = None
-        for result in results["results"]["bindings"]:
-            warsa_person = result["sub"]["value"]
-            log.debug('{pers} matches WARSA person {warsa_pers}'.format(pers=person, warsa_pers=warsa_person))
-            surma.add((person, ns_crm.P70_documents, URIRef(warsa_person)))
+            warsa_person = None
+            for result in results["results"]["bindings"]:
+                warsa_person = result["sub"]["value"]
+                log.debug('{pers} matches WARSA person {warsa_pers}'.format(pers=person, warsa_pers=warsa_person))
+                surma.add((person, ns_crm.P70_documents, URIRef(warsa_person)))
 
-        if not warsa_person:
-            log.warning('{person} didn\'t match any WARSA persons.'.format(person=person))
+            if not warsa_person:
+                log.warning('{person} didn\'t match any WARSA persons.'.format(person=person))
 
     for (sub, pred) in surma[::ns_foaf.Person]:
         surma.add((sub, pred, ns_crm.E31_Document))
@@ -528,35 +528,31 @@ if __name__ == "__main__":
         surma_onto.remove((ns_schema.sotilasarvo, RDFS.range, None))
         surma_onto.add((ns_schema.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/warsa/actors/ranks/Rank')))
 
-    if not SKIP_PERSONS:
-        print('Finding links for WARSA persons...')
+    print('Handling persons...')
 
-        # Note: Requires updated military ranks
-        if not ranks:
-            ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
+    # Note: Requires updated military ranks
+    if not ranks:
+        ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
 
-        link_persons(ranks)
+    handle_persons(ranks)
+
+    print('Handling military units...')
+    unit_link_uri = ns_schema.osasto
 
     if not SKIP_UNITS:
-        print('Finding links for military units...')
-        unit_link_uri = ns_schema.osasto
-
         log.debug(arpa.link_to_military_units(surma, unit_link_uri, ns_schema.joukko_osasto))
 
-        # surma_onto.remove((ns_schema.osasto, None, None))
-        # surma.remove((None, ns_schema.osasto, None))
+    # surma_onto.remove((ns_schema.osasto, None, None))
+    # surma.remove((None, ns_schema.osasto, None))
 
-        surma_onto.add((unit_link_uri, RDF.type, OWL.ObjectProperty))
-        surma_onto.add((unit_link_uri, RDFS.label, Literal('Tunnettu joukko-osasto', lang='fi')))
-        surma_onto.add((unit_link_uri, RDFS.label, Literal('Military unit', lang='en')))
-        surma_onto.add((unit_link_uri, RDFS.domain, ns_crm.E31_Document))
-        surma_onto.add((unit_link_uri, RDFS.range, URIRef('http://ldf.fi/warsa/actors/actor_types/MilitaryUnit')))
-        surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
-        surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Military unit', lang='en')))
+    surma_onto.add((unit_link_uri, RDF.type, OWL.ObjectProperty))
+    surma_onto.add((unit_link_uri, RDFS.label, Literal('Tunnettu joukko-osasto', lang='fi')))
+    surma_onto.add((unit_link_uri, RDFS.label, Literal('Military unit', lang='en')))
+    surma_onto.add((unit_link_uri, RDFS.domain, ns_crm.E31_Document))
+    surma_onto.add((unit_link_uri, RDFS.range, URIRef('http://ldf.fi/warsa/actors/actor_types/MilitaryUnit')))
+    surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
+    surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Military unit', lang='en')))
 
-    if not SKIP_OCCUPATIONS:
-        # TODO
-        pass
 
     ##################
     # SERIALIZE GRAPHS
