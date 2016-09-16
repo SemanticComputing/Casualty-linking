@@ -16,7 +16,7 @@ log = logging.getLogger('arpa_linker.arpa')
 
 class Validator:
     def __init__(self, graph, graph_schema, birthdate_prop, deathdate_prop, source_rank_prop,
-                    source_firstname_prop, source_lastname_prop):
+                 source_firstname_prop, source_lastname_prop):
         self.graph = graph
         self.graph_schema = graph_schema
         self.birthdate_prop = birthdate_prop
@@ -50,27 +50,27 @@ class Validator:
                 res_firstnames = res_firstnames.split()
 
                 res_birthdates = (min(person['properties'].get('birth_start', [''])).split('^')[0].replace('"', ''),
-                                    max(person['properties'].get('birth_end', [''])).split('^')[0].replace('"', ''))
+                                  max(person['properties'].get('birth_end', [''])).split('^')[0].replace('"', ''))
                 res_deathdates = (min(person['properties'].get('death_start', [''])).split('^')[0].replace('"', ''),
-                                    max(person['properties'].get('death_end', [''])).split('^')[0].replace('"', ''))
+                                  max(person['properties'].get('death_end', [''])).split('^')[0].replace('"', ''))
 
             except TypeError:
                 log.info('Unable to read data for validation for {uri} , skipping result...'.format(uri=res_id))
                 continue
 
             log.debug('Potential match for person {p1text} <{p1}> : {p2text} {p2}'.
-                        format(p1text=' '.join([rank] + firstnames + [lastname]),
-                                p1=s,
-                                p2text=' '.join(res_ranks + res_firstnames + [res_lastname]),
-                                p2=res_id))
+                      format(p1text=' '.join([rank] + firstnames + [lastname]),
+                             p1=s,
+                             p2text=' '.join(res_ranks + res_firstnames + [res_lastname]),
+                             p2=res_id))
 
             fuzzy_lastname_match = fuzz.token_set_ratio(lastname, res_lastname, force_ascii=False)
 
             if fuzzy_lastname_match >= _fuzzy_lastname_match_limit:
                 log.debug('Fuzzy last name match for {f1} and {f2}: {fuzzy}'
-                            .format(f1=lastname, f2=res_lastname, fuzzy=fuzzy_lastname_match))
+                          .format(f1=lastname, f2=res_lastname, fuzzy=fuzzy_lastname_match))
                 score += int((fuzzy_lastname_match - _fuzzy_lastname_match_limit) /
-                                (100 - _fuzzy_lastname_match_limit) * 100)
+                             (100 - _fuzzy_lastname_match_limit) * 100)
 
             if rank and res_ranks and rank != 'tuntematon':
                 if rank in res_ranks:
@@ -101,7 +101,7 @@ class Validator:
 
             # If both are single dates, allow one different character before penalizing
             if res_birthdates[0] and res_birthdates[0] == res_birthdates[1] and \
-                            fuzz.partial_ratio(res_birthdates[0], birthdate) <= 80:
+               fuzz.partial_ratio(res_birthdates[0], birthdate) <= 80:
                 score -= 25
 
             if res_deathdates[0] and deathdate:
@@ -120,7 +120,7 @@ class Validator:
 
             # If both are single dates, allow one different character before penalizing
             if res_deathdates[0] and res_deathdates[0] == res_deathdates[1] and \
-                            fuzz.partial_ratio(res_deathdates[0], deathdate) <= 80:
+               fuzz.partial_ratio(res_deathdates[0], deathdate) <= 80:
                 score -= 25
 
             s_first1 = ' '.join(firstnames)
@@ -131,12 +131,12 @@ class Validator:
 
             if fuzzy_firstname_match >= _fuzzy_firstname_match_limit:
                 log.debug('Fuzzy first name match for {f1} and {f2}: {fuzzy}'
-                            .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
+                          .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
                 score += int((fuzzy_firstname_match - _fuzzy_firstname_match_limit) /
-                                (100 - _fuzzy_firstname_match_limit) * 100)
+                             (100 - _fuzzy_firstname_match_limit) * 100)
             else:
                 log.debug('No fuzzy first name match for {f1} and {f2}: {fuzzy}'
-                            .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
+                          .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
 
             person['score'] = score
 
@@ -144,21 +144,20 @@ class Validator:
                 filtered.append(person)
 
                 log.info('Found matching Warsa person for {rank} {fn} {ln} {uri}: '
-                            '{res_rank} {res_fn} {res_ln} {res_uri} [score: {score}]'.
-                            format(rank=rank, fn=s_first1, ln=lastname, uri=s,
-                                res_rank=res_ranks, res_fn=s_first2, res_ln=res_lastname, res_uri=res_id,
-                                score=score))
+                         '{res_rank} {res_fn} {res_ln} {res_uri} [score: {score}]'
+                         .format(rank=rank, fn=s_first1, ln=lastname, uri=s, res_rank=res_ranks, res_fn=s_first2,
+                                 res_ln=res_lastname, res_uri=res_id, score=score))
             else:
                 log.info('Skipping potential match because of too low score [{score}]: {p1}  <<-->>  {p2}'.
-                            format(p1=s, p2=res_id, score=score))
+                         format(p1=s, p2=res_id, score=score))
 
         if len(filtered) == 1:
             return filtered
         elif len(filtered) > 1:
             log.warning('Found several matches for Warsa person {s} ({text}): {ids}'.
                         format(s=s, text=text,
-                                ids=', '.join(p['properties'].get('id')[0].split('^')[0].replace('"', '')
-                                                for p in filtered)))
+                               ids=', '.join(p['properties'].get('id')[0].split('^')[0].replace('"', '')
+                                             for p in filtered)))
 
             best_matches = sorted(filtered, key=lambda p: p['score'], reverse=True)
             log.warning('Choosing best match: {id}'.format(id=best_matches[0].get('id')))
@@ -188,12 +187,12 @@ def _create_unit_abbreviations(text, *args):
 
     def _variations(part):
         inner_parts = _split(part) + ['']
-        vars = []
-        vars += ['.'.join(inner_parts)]
-        vars += ['. '.join(inner_parts)]
-        vars += [' '.join(inner_parts)]
-        vars += [''.join(inner_parts)]
-        return vars
+        variations = []
+        variations += ['.'.join(inner_parts)]
+        variations += ['. '.join(inner_parts)]
+        variations += [' '.join(inner_parts)]
+        variations += [''.join(inner_parts)]
+        return variations
 
     variation_lists = [_variations(part) + [part] for part in text.split('/')]
 
@@ -239,7 +238,7 @@ def link_to_pnr(graph, graph_schema, target_prop, source_prop, arpa, *args, prep
     :param source_prop: source property as URIRef
     """
 
-    def _get_municipality_label(uri, *args):
+    def _get_municipality_label(uri, *args2):
         """
         :param uri: municipality URI
         """
@@ -256,8 +255,8 @@ def link_to_pnr(graph, graph_schema, target_prop, source_prop, arpa, *args, prep
 
 
 def link_to_warsa_persons(graph, graph_schema, target_prop, source_prop, arpa, source_lastname_prop,
-        source_firstname_prop, source_rank_prop, birthdate_prop, deathdate_prop, preprocess=False,
-        preprocessor=None, validator=None, **kwargs):
+                          source_firstname_prop, source_rank_prop, birthdate_prop, deathdate_prop, preprocess=False,
+                          preprocessor=None, validator=None, **kwargs):
     """
     Link a person to known Warsa persons
 
@@ -290,11 +289,11 @@ def link_to_warsa_persons(graph, graph_schema, target_prop, source_prop, arpa, s
     #
     if validator is None:
         validator = Validator(graph, graph_schema, birthdate_prop, deathdate_prop,
-                source_rank_prop, source_firstname_prop, source_lastname_prop)
+                              source_rank_prop, source_firstname_prop, source_lastname_prop)
 
     # Query the ARPA service, add the matches and serialize the graph to disk.
     return process_graph(graph, target_prop, arpa, source_prop=source_prop,
-            preprocessor=preprocessor, validator=validator, progress=True, **kwargs)
+                         preprocessor=preprocessor, validator=validator, progress=True, **kwargs)
 
 
 def process_stage(link_function, stage, arpa_args, query_template_file=None, rank_schema_file=None, pruner=None):
@@ -304,9 +303,9 @@ def process_stage(link_function, stage, arpa_args, query_template_file=None, ran
     log.debug('Now at process_stage')
 
     if stage == 'join':
-        process(arpa_args.input, arpa_args.fi, arpa_args.output, arpa_args.fo, arpa_args.tprop, source_prop=arpa_args.prop,
-                rdf_class=arpa_args.rdf_class, new_graph=arpa_args.new_graph, join_candidates=True,
-                run_arpafy=False, progress=True, pruner=pruner, prune=bool(pruner))
+        process(arpa_args.input, arpa_args.fi, arpa_args.output, arpa_args.fo, arpa_args.tprop,
+                source_prop=arpa_args.prop, rdf_class=arpa_args.rdf_class, new_graph=arpa_args.new_graph,
+                join_candidates=True, run_arpafy=False, progress=True, pruner=pruner, prune=bool(pruner))
     else:
         arpa_args = vars(arpa_args)
 
@@ -327,8 +326,8 @@ def process_stage(link_function, stage, arpa_args, query_template_file=None, ran
             preprocess = True
 
             arpa = Arpa(arpa_url, arpa_args.pop('no_duplicates'), arpa_args.pop('min_ngram'),
-                    retries=arpa_args.pop('retries'), wait_between_tries=arpa_args.pop('wait'),
-                    ignore=arpa_args.pop('ignore'))
+                        retries=arpa_args.pop('retries'), wait_between_tries=arpa_args.pop('wait'),
+                        ignore=arpa_args.pop('ignore'))
 
         else:
             with open(query_template_file) as f:
@@ -339,14 +338,14 @@ def process_stage(link_function, stage, arpa_args, query_template_file=None, ran
             preprocess = False
 
             arpa = ArpaMimic(qry, arpa_url, arpa_args.pop('no_duplicates'), arpa_args.pop('min_ngram'),
-                    retries=arpa_args.pop('retries'), wait_between_tries=arpa_args.pop('wait'),
-                    ignore=arpa_args.pop('ignore'))
+                             retries=arpa_args.pop('retries'), wait_between_tries=arpa_args.pop('wait'),
+                             ignore=arpa_args.pop('ignore'))
 
-        res = link_function(data, schema, arpa_args.pop('tprop'), arpa_args.pop('prop'), arpa,
-                ns_schema.sukunimi, ns_schema.etunimet, ns_schema.sotilasarvo, ns_schema.syntymaeaika,
-                ns_schema.kuolinaika, preprocess=preprocess, **arpa_args)
+        result = link_function(data, schema, arpa_args.pop('tprop'), arpa_args.pop('prop'), arpa,
+                               ns_schema.sukunimi, ns_schema.etunimet, ns_schema.sotilasarvo, ns_schema.syntymaeaika,
+                               ns_schema.kuolinaika, preprocess=preprocess, **arpa_args)
 
-        res['graph'].serialize(output, format=output_format)
+        result['graph'].serialize(output, format=output_format)
 
 
 def print_usage(exit_=True):
@@ -356,6 +355,14 @@ def print_usage(exit_=True):
 
 
 def prune_extra_unit_candidates(obj):
+    """
+    Remove erroneous candidates with # in them
+    >>> prune_extra_unit_candidates('3./JR 1 #3./JR. 1.')
+    False
+    >>> prune_extra_unit_candidates('3./JR 1')
+    '3./JR 1'
+    """
+
     return False if '#' in obj else obj
 
 if __name__ == '__main__':
@@ -394,3 +401,4 @@ if __name__ == '__main__':
                       rank_schema_file=sys.argv[4])
     else:
         process_stage(link_fn, stage, parse_args(sys.argv[3:]), pruner=prune_function)
+

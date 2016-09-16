@@ -62,7 +62,7 @@ URI_MAPPINGS = {
     ns_kansallisuus.Fi_: ns_kansallisuus.Suomi,
     ns_hautausmaat.x___: ns_hautausmaat.hx_0,
     ns_kunnat.kx: ns_kunnat.k,
-    ns_menehtymisluokka._ : ns_menehtymisluokka.Tuntematon,
+    ns_menehtymisluokka._: ns_menehtymisluokka.Tuntematon,
 }
 
 parser = argparse.ArgumentParser(description='Casualties of war')
@@ -137,7 +137,8 @@ def fix_cemetery_links():
         k_name = ''
         h_name = ''
         try:
-            h_name = hmaat[hmaat['kunta_id'] == k_id][hmaat['hmaa_id'] == (int(h_id) if h_id.isnumeric() else 0)]['hmaa_name'].iloc[0]
+            h_name = hmaat[hmaat['kunta_id'] == k_id][hmaat['hmaa_id'] ==
+                                                      (int(h_id) if h_id.isnumeric() else 0)]['hmaa_name'].iloc[0]
         except IndexError:
             pass
 
@@ -226,11 +227,11 @@ def link_to_municipalities():
                 retry = 0
                 while not warsa_matches:
                     try:
-                        warsa_matches = [URIRef(uri) for uri in pnr_arpa.get_uri_matches(lbl)]  # Link to Paikannimirekisteri
+                        warsa_matches = [URIRef(uri) for uri in pnr_arpa.get_uri_matches(lbl)]  # Link to PNR
                         break
                     except (HTTPError, ValueError):
                         if retry < 50:
-                            log.error('Error getting "Paikannimirekisteri" matches from ARPA, waiting 10 seconds before retrying...')
+                            log.error('Error getting "PNR" matches from ARPA, waiting 10 seconds before retrying...')
                             retry += 1
                             sleep(10)
                         else:
@@ -291,7 +292,8 @@ def validate():
     log.warning('Found {num} unknown URI references'.format(num=len(unknown_links)))
     for o in sorted(unknown_links):
         if not str(o).startswith('http://ldf.fi/warsa/'):
-            log.warning('Unknown URI references: {uri}  (referenced {num} times)'.format(uri=str(o), num=str(len(list(surma[::o])) + len(list(surma_onto[::o])))))
+            log.warning('Unknown URI references: {uri}  (referenced {num} times)'
+                        .format(uri=str(o), num=str(len(list(surma[::o])) + len(list(surma_onto[::o])))))
 
     unlinked_subjects = [uri for uri in r.get_unlinked_uris(full_rdf)
                          if not (str(uri).startswith('http://ldf.fi/narc-menehtyneet1939-45/p')
@@ -378,7 +380,7 @@ def handle_persons(ranks):
                     results = sparql.query().convert()
                 except ValueError:
                     if retry < 50:
-                        log.error('Malformed result from SPARQL endpoint for person {p_uri}, waiting 10 seconds before retrying...'.format(p_uri=person))
+                        log.error('Malformed result for person {p_uri}, retrying in 10 seconds...'.format(p_uri=person))
                         retry += 1
                         sleep(10)
                     else:
@@ -416,8 +418,6 @@ def handle_persons(ranks):
             for date_prop in date_props:
                 surma.remove((None, date_prop, date))
 
-
-
 #######
 # MAIN
 
@@ -431,12 +431,13 @@ if __name__ == "__main__":
 
         print('Reading CSV data for cemeteries...')
 
-        hmaat = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_HMAAT.CSV', encoding='latin_1', header=None, index_col=False,
-                            names=['kunta_id', 'hmaa_id', 'hmaa_name'], sep=',', quotechar='"', na_values=['  '])
+        hmaat = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_HMAAT.CSV', encoding='latin_1', header=None,
+                            index_col=False, names=['kunta_id', 'hmaa_id', 'hmaa_name'], sep=',', quotechar='"',
+                            na_values=['  '])
         """:type : pd.DataFrame"""  # for PyCharm type hinting
 
-        kunta = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_KUNTA.CSV', encoding='latin_1', header=None, index_col=False,
-                            names=['kunta_id', 'kunta_name'], sep=',', quotechar='"', na_values=['  '])
+        kunta = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_KUNTA.CSV', encoding='latin_1', header=None,
+                            index_col=False, names=['kunta_id', 'kunta_name'], sep=',', quotechar='"', na_values=['  '])
         """:type : pd.DataFrame"""  # for PyCharm type hinting
 
         # Strip whitespace from cemetery names
@@ -553,7 +554,6 @@ if __name__ == "__main__":
     surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
     surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Military unit', lang='en')))
 
-
     ##################
     # SERIALIZE GRAPHS
 
@@ -604,4 +604,3 @@ if __name__ == "__main__":
 
         surma.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma.ttl")
         surma_onto.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma_onto.ttl")
-
