@@ -46,8 +46,8 @@ def _query_sparql(sparql_obj):
     """
     Query SPARQL with retry functionality
 
-    :param sparql_obj: SPARQLWrapper object
-    :return: result
+    :type sparql_obj: SPARQLWrapper
+    :return: SPARQL query results
     """
     results = None
     retry = 0
@@ -62,14 +62,19 @@ def _query_sparql(sparql_obj):
                 sleep(10)
             else:
                 raise
+    log.debug('Got results {res} for query {q}'.format(res=results, q=sparql_obj.queryString))
 
 def documents_links(data_graph):
     """
     Create crm:P70_documents links between death records and person instances.
     """
     sparql = SPARQLWrapper('http://ldf.fi/warsa/sparql')
-    for person in list(data_graph[:RDF.type:ns_crm.E31_Document]):
+    persons = list(data_graph[:RDF.type:ns_crm.E31_Document])
+    log.debug('Finding links for {len} death records'.format(len=len(persons)))
+
+    for person in persons:
         if data_graph[person:ns_crm.documents:]:
+            log.debug('Skipping already linked death record {uri}'.format(uri=person))
             continue
 
         sparql.setQuery("""
@@ -90,16 +95,19 @@ def documents_links(data_graph):
             log.warning('{person} didn\'t match any person instance.'.format(person=person))
 
 
-def load_death_records(filename):
+def load_input_file(filename):
     """
-    >>> load_death_records(StringIO('<http://example.com/res> a <http://example.com/class> .'))  #doctest: +ELLIPSIS
+    >>> load_input_file(StringIO('<http://example.com/res> a <http://example.com/class> .'))  #doctest: +ELLIPSIS
     <Graph identifier=...(<class 'rdflib.graph.Graph'>)>
     """
     return Graph().parse(filename, format=args.format)
 
 if args.task == 'documents_links':
-    death_records = load_death_records(args.input)
+    log.info('Loading input file...')
+    death_records = load_input_file(args.input)
+    log.info('Creating links...')
     documents_links(death_records)
+    log.info('Serializing output file...')
     death_records.serialize(format=args.format, destination=args.output)
 
 elif args.task == 'test':
