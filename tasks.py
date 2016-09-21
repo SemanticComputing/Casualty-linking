@@ -74,7 +74,7 @@ def documents_links(data_graph, endpoint):
     Create crm:P70_documents links between death records and person instances.
     """
     sparql = SPARQLWrapper(endpoint)
-    persons = list(data_graph[:RDF.type:ns_crm.E31_Document])
+    persons = list(data_graph[:RDF.type:ns_schema.DeathRecord])
     log.debug('Finding links for {len} death records'.format(len=len(persons)))
 
     for person in persons:

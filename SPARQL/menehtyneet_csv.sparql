@@ -2,10 +2,12 @@ PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX sf: <http://ldf.fi/functions#>
 PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
+PREFIX m_schema: <http://ldf.fi/schema/narc-menehtyneet1939-45/>
 
 SELECT (?s as ?id) ?Menehtymisluokka ?Kuolinaika ?Sukunimi ?Haavoittumiskunta ?Hautapaikka ?Ammatti ?Joukko_osastokoodi ?Haavoittumisaika ?Hautauskunta ?Joukko_osasto ?Kansallisuus (GROUP_CONCAT(DISTINCT ?Tunnettu_joukko_osastoS;separator=';') AS ?Tunnettu_joukko_osasto) (GROUP_CONCAT(DISTINCT ?Tunnettu_joukko_osasto_idS;separator=';') AS ?Tunnettu_joukko_osasto_id) ?Aidinkieli ?Kuolinkunta ?Kuolinkunta_id ?Synnyinkunta ?Synnyinkunta_id ?Asuinkunta ?Asuinkunta_id ?Katoamiskunta ?Syntymaaika ?prefLabel ?Etunimet ?Siviilisaaty ?Lasten_lukumaara ?Kansalaisuus ?Sotilasarvo ?Sukupuoli ?sameAs ?Hautausmaa ?Hautausmaa_id ?Kuolinpaikka ?Katoamisaika ?Haavoittumispaikka ?Katoamispaikka ?Kotikunta ?Kotikunta_id ?inScheme {
   # CONSTRAINTS
-  ?s a foaf:Person .
+  ?s a m_schema:DeathRecord .
   # /CONSTRAINTS
   # OSELECTOR
   OPTIONAL {
