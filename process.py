@@ -567,7 +567,7 @@ if __name__ == "__main__":
     surma_onto.add((unit_link_uri, RDF.type, OWL.ObjectProperty))
     surma_onto.add((unit_link_uri, RDFS.label, Literal('Tunnettu joukko-osasto', lang='fi')))
     surma_onto.add((unit_link_uri, RDFS.label, Literal('Military unit', lang='en')))
-    surma_onto.add((unit_link_uri, RDFS.domain, ns_crm.E31_Document))
+    surma_onto.add((unit_link_uri, RDFS.domain, ns_schema.DeathRecord))
     surma_onto.add((unit_link_uri, RDFS.range, URIRef('http://ldf.fi/warsa/actors/actor_types/MilitaryUnit')))
     surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
     surma_onto.add((unit_link_uri, ns_skos.prefLabel, Literal('Military unit', lang='en')))
