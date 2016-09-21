@@ -75,9 +75,9 @@ class Validator:
             if rank and res_ranks and rank != 'tuntematon':
                 if rank in res_ranks:
                     score += 25
-                    if rank != 'sotamies':
-                        # More than half of the casualties have rank private and
-                        # they are not likely to be found from other sources
+                    if rank not in ['sotamies', 'korpraali']:
+                        # More than half of the casualties have rank private and about 15% are corporals.
+                        # Give points to ranks higher than these.
                         score += 25
                 else:
                     score -= 25
@@ -140,10 +140,10 @@ class Validator:
 
             person['score'] = score
 
-            if score > 200:
+            if score > 210:
                 filtered.append(person)
 
-                log.info('Found matching Warsa person for {rank} {fn} {ln} {uri}: '
+                log.info('Found matching Warsa person for {rank} {fn} {ln} {uri} : '
                          '{res_rank} {res_fn} {res_ln} {res_uri} [score: {score}]'
                          .format(rank=rank, fn=s_first1, ln=lastname, uri=s, res_rank=res_ranks, res_fn=s_first2,
                                  res_ln=res_lastname, res_uri=res_id, score=score))
