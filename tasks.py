@@ -31,11 +31,15 @@ argparser.add_argument("task", help="Which task to run", choices=["documents_lin
 argparser.add_argument("input", help="Input RDF data file")
 argparser.add_argument("output", help="Output RDF data file")
 
+argparser.add_argument("--endpoint", default='http://ldf.fi/warsa/sparql', type=str, help="SPARQL endpoint")
 argparser.add_argument("--format", default='turtle', type=str, help="Format of RDF files [default: turtle]")
+argparser.add_argument("--loglevel", default='INFO',
+                       choices=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+                       help="Logging level, default is INFO.")
 
 args = argparser.parse_args()
 
-logging.basicConfig(filename='tasks.log', filemode='a', level=logging.DEBUG,
+logging.basicConfig(filename='tasks.log', filemode='a', level=getattr(logging, args.loglevel.upper()),
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 log = logging.getLogger(__name__)
@@ -63,17 +67,18 @@ def _query_sparql(sparql_obj):
             else:
                 raise
     log.debug('Got results {res} for query {q}'.format(res=results, q=sparql_obj.queryString))
+    return results
 
-def documents_links(data_graph):
+def documents_links(data_graph, endpoint):
     """
     Create crm:P70_documents links between death records and person instances.
     """
-    sparql = SPARQLWrapper('http://ldf.fi/warsa/sparql')
+    sparql = SPARQLWrapper(endpoint)
     persons = list(data_graph[:RDF.type:ns_crm.E31_Document])
     log.debug('Finding links for {len} death records'.format(len=len(persons)))
 
     for person in persons:
-        if data_graph[person:ns_crm.documents:]:
+        if len(list(data_graph[person:ns_crm.documents:])):
             log.debug('Skipping already linked death record {uri}'.format(uri=person))
             continue
 
@@ -88,7 +93,7 @@ def documents_links(data_graph):
         warsa_person = None
         for result in results["results"]["bindings"]:
             warsa_person = result["sub"]["value"]
-            log.debug('{pers} matches person instance {warsa_pers}'.format(pers=person, warsa_pers=warsa_person))
+            log.info('{pers} matches person instance {warsa_pers}'.format(pers=person, warsa_pers=warsa_person))
             data_graph.add((person, ns_crm.P70_documents, URIRef(warsa_person)))
 
         if not warsa_person:
@@ -106,7 +111,7 @@ if args.task == 'documents_links':
     log.info('Loading input file...')
     death_records = load_input_file(args.input)
     log.info('Creating links...')
-    documents_links(death_records)
+    documents_links(death_records, args.endpoint)
     log.info('Serializing output file...')
     death_records.serialize(format=args.format, destination=args.output)
 
@@ -116,7 +121,7 @@ elif args.task == 'test':
 
     res = doctest.testmod()
     if not res[0]:
-        print('OK!')
+        print('Doctests OK!')
     exit()
 
 log.info('All done.')
