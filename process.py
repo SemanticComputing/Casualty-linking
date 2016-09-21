@@ -96,7 +96,6 @@ surma_onto = rdflib.Graph()
 logging.basicConfig(filename='Sotasurma.log',
                     filemode='a',
                     level=logging.DEBUG,
-                    # level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 log = logging.getLogger(__name__)
@@ -364,36 +363,6 @@ def handle_persons(ranks):
 
         for s, o in surma[:ns_crm.P70_documents:]:
             log.info('ARPA found that {s} is the death record of person {o}'.format(s=s, o=o))
-
-        sparql = SPARQLWrapper('http://ldf.fi/warsa/sparql')
-        for person in list(surma[:RDF.type:ns_foaf.Person]):
-            sparql.setQuery("""
-                            PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
-                            SELECT * WHERE {{ ?sub crm:P70i_is_documented_in <{person_uri}> . }}
-                            """.format(person_uri=person))
-            sparql.setReturnFormat(JSON)
-
-            results = None
-            retry = 0
-            while not results:
-                try:
-                    results = sparql.query().convert()
-                except ValueError:
-                    if retry < 50:
-                        log.error('Malformed result for person {p_uri}, retrying in 10 seconds...'.format(p_uri=person))
-                        retry += 1
-                        sleep(10)
-                    else:
-                        raise
-
-            warsa_person = None
-            for result in results["results"]["bindings"]:
-                warsa_person = result["sub"]["value"]
-                log.debug('{pers} matches WARSA person {warsa_pers}'.format(pers=person, warsa_pers=warsa_person))
-                surma.add((person, ns_crm.P70_documents, URIRef(warsa_person)))
-
-            if not warsa_person:
-                log.warning('{person} didn\'t match any WARSA persons.'.format(person=person))
 
     for (sub, pred) in surma[::ns_foaf.Person]:
         surma.add((sub, pred, ns_crm.E31_Document))
