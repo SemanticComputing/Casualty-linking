@@ -8,6 +8,7 @@ import argparse
 import logging
 
 from rdflib import *
+from rdflib.namespace import SKOS
 from slugify import slugify
 
 logging.basicConfig(filename='ontologizer.log', filemode='a', level=logging.DEBUG,
@@ -48,10 +49,28 @@ output_schema = Graph()
 output = Graph()
 onto = Graph()
 
+########################
+
+OCCUPATION_MAPPING = {'aliupseeri (????)': 'aliupseeri ?',
+                      'rakennus-       työmies': 'rakennustyömies',
+                      'rakennus-    työmies': 'rakennustyömies',
+                      'rakennus-   työmies': 'rakennustyömies',
+                      'rakennus-työmies': 'rakennustyömies',
+                      }
+
 for (sub, obj) in input.subject_objects(URIRef(args.property)):
-    new_obj = ns_target[slugify(obj)]
-    output.add((sub, URIRef(args.tproperty), new_obj))
-    output_schema.add((new_obj, RDF.type, URIRef(args.tclass)))
+    for occupation in [occ.strip().lower() for occ in str(obj).split('/')]:
+        occupation = OCCUPATION_MAPPING.get(occupation, occupation)
+        uncertain = (occupation[-1] == '?')
+        if uncertain:
+            occupation = occupation[:-1].strip()
+            output.add((sub, SKOS.note, Literal('Occupation "{occ}" uncertain'.format(occ=occupation), lang="en")))
+            output.add((sub, SKOS.note, Literal('Ammatti "{occ}" epävarma'.format(occ=occupation), lang="fi")))
+
+        new_obj = ns_target[slugify(occupation)]
+        output.add((sub, URIRef(args.tproperty), new_obj))
+        output_schema.add((new_obj, RDF.type, URIRef(args.tclass)))
+        output_schema.add((new_obj, SKOS.prefLabel, Literal(occupation, lang="fi")))
 
 output.serialize(format=args.format, destination=args.output)
 output_schema.serialize(format=args.format, destination=args.output_schema)
