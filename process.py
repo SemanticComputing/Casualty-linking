@@ -459,9 +459,10 @@ if __name__ == "__main__":
             surma.parse(INPUT_FILE_DIRECTORY + DATA_FILE, format='turtle')
 
             input_dir = '{base}/{dir}'.format(base=os.getcwd(), dir=INPUT_FILE_DIRECTORY)
-            for f in os.listdir(input_dir):
-                if f not in [DATA_FILE, "void.ttl"] and f.endswith('.ttl'):
-                    surma_onto.parse(input_dir + f, format='turtle')
+            for f in ['aidinkieli.ttl', 'hautausmaat.ttl', 'kansalaisuus.ttl', 'kansallisuus.ttl',
+                      'kunnat.ttl', 'menehtymisluokka.ttl', 'narc-schema.ttl', 'siviilisaaty.ttl',
+                      'sukupuoli.ttl']:
+                surma_onto.parse(input_dir + f, format='turtle')
 
             print('Parsed {len} data triples.'.format(len=len(surma)))
             print('Parsed {len} ontology triples.'.format(len=len(surma_onto)))
