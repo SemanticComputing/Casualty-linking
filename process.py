@@ -576,6 +576,64 @@ if __name__ == "__main__":
 
     surma.parse(INPUT_FILE_DIRECTORY + 'surma_additions.ttl', format='turtle')  # Add handmade annotations
 
+    # Take cemeteries into a separate file and change their URIs to general WARSA URIs
+
+    C_SCHEMA = Namespace('http://ldf.fi/schema/warsa/places/cemeteries/')
+    CEMETERIES = Namespace('http://ldf.fi/warsa/places/cemeteries/')
+
+    # Modify predicate in casualties schema
+
+    surma_onto.remove((NARCS.hautausmaa, RDFS.range, None))
+    surma_onto.add((NARCS.hautausmaa, RDFS.range, C_SCHEMA.Cemetery))
+
+    # Move cemeteries to own graph and namespace
+
+    cemetery_schema = Graph()
+    cemeteries = Graph()
+
+    for s in list(surma_onto[:RDF.type:NARCS.Hautausmaa]):
+        for (p, o) in list(surma_onto[s::]):
+            new_p = None
+            if p == NARCS.hautausmaakunta:
+                new_p = C_SCHEMA.temporary_municipality
+                # if 'http://ldf.fi/pnr/' in str(o):
+                # elif 'http://ldf.fi/narc-menehtyneet1939-45/kunnat/' in str(o):
+                #     new_p = C_SCHEMA.municipality_wartime
+
+            new_s = URIRef(CEMETERIES[str(s).split('/')[-1]])
+            cemeteries.add((new_s, new_p or p, o))
+            surma_onto.remove((s, p, o))
+
+    # Modify predicate in schema
+
+    surma_onto.remove((NARCS.hautausmaakunta, None, None))
+
+    # Move cemetery class to own graph, add schema stuff
+
+    surma.remove((NARCS.Hautausmaa, None, None))
+    cemetery_schema.add((C_SCHEMA.Cemetery, SKOS.prefLabel, Literal('Hautausmaa', lang='fi')))
+    cemetery_schema.add((C_SCHEMA.Cemetery, SKOS.prefLabel, Literal('Cemetery', lang='en')))
+    cemetery_schema.add((C_SCHEMA.Cemetery, RDFS.subClassOf, CRM.E27_Site))
+    cemetery_schema.add((C_SCHEMA.Cemetery, RDFS.subClassOf, CRM.E53_Place))
+
+    # From CIDOC CRM documentation:
+    # In the case of an E26 Physical Feature the default reference space is the
+    # one in which the object that bears the feature or at least the surrounding matter of the feature is at rest.
+    # In this case there is a 1:1 relation of E26 Feature and E53 Place. For simplicity of implementation
+    # multiple inheritance (E26 Feature IsA E53 Place) may be a practical approach.
+
+    cemetery_schema.add((C_SCHEMA.municipality_2016, RDFS.subPropertyOf, CRM.P89_falls_within))
+    cemetery_schema.add((C_SCHEMA.municipality_2016, SKOS.prefLabel, Literal('Hautausmaan kunta 2016', lang='fi')))
+    cemetery_schema.add((C_SCHEMA.municipality_2016, SKOS.prefLabel, Literal('Municipality of cemetery in 2016', lang='en')))
+
+    cemetery_schema.add((C_SCHEMA.municipality_90, RDFS.subPropertyOf, CRM.P89_falls_within))
+    cemetery_schema.add((C_SCHEMA.municipality_90, SKOS.prefLabel, Literal('Hautausmaan kunta 1990-luvulla', lang='fi')))
+    cemetery_schema.add((C_SCHEMA.municipality_90, SKOS.prefLabel, Literal('Municipality of cemetery in 1990\'s', lang='en')))
+
+    cemetery_schema.add((C_SCHEMA.municipality_wartime, RDFS.subPropertyOf, CRM.P89_falls_within))
+    cemetery_schema.add((C_SCHEMA.municipality_wartime, SKOS.prefLabel, Literal('Hautausmaan kunta toisen maailman sodan aikana', lang='fi')))
+    cemetery_schema.add((C_SCHEMA.municipality_wartime, SKOS.prefLabel, Literal('Municipality of cemetery during the second world war', lang='en')))
+
     ##################
     # SERIALIZE GRAPHS
 
@@ -591,7 +649,6 @@ if __name__ == "__main__":
         surma.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
         surma.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
         surma.bind("narc-kieli", "http://ldf.fi/narc-menehtyneet1939-45/aeidinkieli/")
-        surma.bind("narc-hautausmaa", "http://ldf.fi/narc-menehtyneet1939-45/hautausmaat/")
         surma.bind("narc-kansalaisuus", "http://ldf.fi/narc-menehtyneet1939-45/kansalaisuus/")
         surma.bind("narc-kansallisuus", "http://ldf.fi/narc-menehtyneet1939-45/kansallisuus/")
         surma.bind("narc-menehtymisluokka", "http://ldf.fi/narc-menehtyneet1939-45/menehtymisluokka/")
@@ -611,7 +668,6 @@ if __name__ == "__main__":
         surma_onto.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
         surma_onto.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
         surma_onto.bind("narc-kieli", "http://ldf.fi/narc-menehtyneet1939-45/aeidinkieli/")
-        surma_onto.bind("narc-hautausmaa", "http://ldf.fi/narc-menehtyneet1939-45/hautausmaat/")
         surma_onto.bind("narc-kansalaisuus", "http://ldf.fi/narc-menehtyneet1939-45/kansalaisuus/")
         surma_onto.bind("narc-kansallisuus", "http://ldf.fi/narc-menehtyneet1939-45/kansallisuus/")
         surma_onto.bind("narc-menehtymisluokka", "http://ldf.fi/narc-menehtyneet1939-45/menehtymisluokka/")
@@ -628,6 +684,14 @@ if __name__ == "__main__":
 
         surma.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma.ttl")
         surma_onto.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "surma_onto.ttl")
+
+        cemeteries.bind("wc", 'http://ldf.fi/warsa/places/cemeteries/')
+        cemeteries.bind("wcs", 'http://ldf.fi/schema/warsa/places/cemeteries/')
+
+        cemetery_schema.bind("wcs", 'http://ldf.fi/schema/warsa/places/cemeteries/')
+
+        cemeteries.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "cemeteries.ttl")
+        cemetery_schema.serialize(format="turtle", destination=OUTPUT_FILE_DIRECTORY + "cemetery_schema.ttl")
 
         print('Saving pickles...')
         joblib.dump(surma, OUTPUT_FILE_DIRECTORY + 'surma.pkl')
