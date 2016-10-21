@@ -94,6 +94,7 @@ SKIP_PERSONS = True
 
 surma = rdflib.Graph()
 surma_onto = rdflib.Graph()
+old_ranks = rdflib.Graph()
 
 logging.basicConfig(filename='Sotasurma.log',
                     filemode='a',
@@ -313,7 +314,7 @@ def link_to_military_ranks(ranks):
     """
     p = NARCS.sotilasarvo
     for s, o in list(surma[:p:]):
-        rank_label = next(surma_onto[o:SKOS.prefLabel:], '')
+        rank_label = next(old_ranks[o:SKOS.prefLabel:], '')
         rank_label = Literal(str(rank_label).capitalize())  # Strip lang attribute and capitalize
         if not rank_label:
             # This happens when military ranks are already linked
@@ -463,12 +464,15 @@ if __name__ == "__main__":
                       'kunnat.ttl', 'menehtymisluokka.ttl', 'narc-schema.ttl', 'siviilisaaty.ttl',
                       'sukupuoli.ttl']:
                 surma_onto.parse(input_dir + f, format='turtle')
+                log.debug('Parsed schema file %s' % f)
 
             print('Parsed {len} data triples.'.format(len=len(surma)))
             print('Parsed {len} ontology triples.'.format(len=len(surma_onto)))
             print('Writing graphs to pickle objects...')
             joblib.dump(surma, INPUT_FILE_DIRECTORY + 'surma.pkl')
             joblib.dump(surma_onto, INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
+
+    old_ranks.parse(INPUT_FILE_DIRECTORY + 'ranks.ttl', format='turtle')
 
     #####################################
     # FIX KNOWN ISSUES IN DATA AND SCHEMA
@@ -533,7 +537,7 @@ if __name__ == "__main__":
         print('Linking to municipalities...')
 
         for p in list(surma[:RDF.type:NARCS.DeathRecord]):
-            # Removing hautauskunta from death records
+            # Removing redundant hautauskunta from death records
             surma.remove((p, NARCS.hautauskunta, None))
 
         link_to_municipalities()
@@ -594,23 +598,32 @@ if __name__ == "__main__":
     for s in list(surma_onto[:RDF.type:NARCS.Hautausmaa]):
         for (p, o) in list(surma_onto[s::]):
             new_p = None
+            new_o = None
             if p == NARCS.hautausmaakunta:
                 new_p = C_SCHEMA.temporary_municipality
                 # if 'http://ldf.fi/pnr/' in str(o):
                 # elif 'http://ldf.fi/narc-menehtyneet1939-45/kunnat/' in str(o):
                 #     new_p = C_SCHEMA.municipality_wartime
 
-            new_s = URIRef(CEMETERIES[str(s).split('/')[-1]])
-            cemeteries.add((new_s, new_p or p, o))
+            if p == RDF.type:
+                new_o = C_SCHEMA.Cemetery
+
+            new_s = CEMETERIES[str(s).split('/')[-1]]
+            cemeteries.add((new_s, new_p or p, new_o or o))
             surma_onto.remove((s, p, o))
 
-    # Modify predicate in schema
+            for (cem_s, cem_p) in surma.subject_predicates(s):
+                surma.remove((cem_s, cem_p, s))
+                surma.add((cem_s, cem_p, new_s))
+
+    # Remove predicates from schema
 
     surma_onto.remove((NARCS.hautausmaakunta, None, None))
+    surma_onto.remove((NARCS.hautauskunta, None, None))
 
     # Move cemetery class to own graph, add schema stuff
 
-    surma.remove((NARCS.Hautausmaa, None, None))
+    surma_onto.remove((NARCS.Hautausmaa, None, None))
     cemetery_schema.add((C_SCHEMA.Cemetery, SKOS.prefLabel, Literal('Hautausmaa', lang='fi')))
     cemetery_schema.add((C_SCHEMA.Cemetery, SKOS.prefLabel, Literal('Cemetery', lang='en')))
     cemetery_schema.add((C_SCHEMA.Cemetery, RDFS.subClassOf, CRM.E27_Site))
