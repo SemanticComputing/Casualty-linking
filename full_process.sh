@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# MANUAL WORK (IPython): päivitä surma_ranks.ttl
+python update_ranks.py
 
 python process.py
 
