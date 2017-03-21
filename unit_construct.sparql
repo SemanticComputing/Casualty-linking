@@ -1,0 +1,10 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
+CONSTRUCT {
+  ?casualty <http://ldf.fi/schema/narc-menehtyneet1939-45/osasto> ?unit .
+}
+{
+  ?casualty crm:P70_documents/^crm:P143_joined/crm:P144_joined_with ?unit .
+  ?casualty a <http://ldf.fi/schema/narc-menehtyneet1939-45/DeathRecord> .
+}
