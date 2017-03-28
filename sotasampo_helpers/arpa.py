@@ -35,8 +35,8 @@ class Validator:
         lastname = str(self.graph.value(s, self.source_lastname_prop)).replace('/', ' ').lower()
 
         filtered = []
-        _fuzzy_lastname_match_limit = 50
-        _fuzzy_firstname_match_limit = 60
+        _FUZZY_LASTNAME_MATCH_LIMIT = 50
+        _FUZZY_FIRSTNAME_MATCH_LIMIT = 60
 
         for person in results:
             score = 0
@@ -66,11 +66,11 @@ class Validator:
 
             fuzzy_lastname_match = fuzz.token_set_ratio(lastname, res_lastname, force_ascii=False)
 
-            if fuzzy_lastname_match >= _fuzzy_lastname_match_limit:
+            if fuzzy_lastname_match >= _FUZZY_LASTNAME_MATCH_LIMIT:
                 log.debug('Fuzzy last name match for {f1} and {f2}: {fuzzy}'
                           .format(f1=lastname, f2=res_lastname, fuzzy=fuzzy_lastname_match))
-                score += int((fuzzy_lastname_match - _fuzzy_lastname_match_limit) /
-                             (100 - _fuzzy_lastname_match_limit) * 100)
+                score += int((fuzzy_lastname_match - _FUZZY_LASTNAME_MATCH_LIMIT) /
+                             (100 - _FUZZY_LASTNAME_MATCH_LIMIT) * 100)
 
             if rank and res_ranks and rank != 'tuntematon':
                 if rank in res_ranks:
@@ -129,11 +129,11 @@ class Validator:
                                         fuzz.token_sort_ratio(s_first1, s_first2, force_ascii=False),
                                         fuzz.token_set_ratio(s_first1, s_first2, force_ascii=False))
 
-            if fuzzy_firstname_match >= _fuzzy_firstname_match_limit:
+            if fuzzy_firstname_match >= _FUZZY_FIRSTNAME_MATCH_LIMIT:
                 log.debug('Fuzzy first name match for {f1} and {f2}: {fuzzy}'
                           .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
-                score += int((fuzzy_firstname_match - _fuzzy_firstname_match_limit) /
-                             (100 - _fuzzy_firstname_match_limit) * 100)
+                score += int((fuzzy_firstname_match - _FUZZY_FIRSTNAME_MATCH_LIMIT) /
+                             (100 - _FUZZY_FIRSTNAME_MATCH_LIMIT) * 100)
             else:
                 log.debug('No fuzzy first name match for {f1} and {f2}: {fuzzy}'
                           .format(f1=firstnames, f2=res_firstnames, fuzzy=fuzzy_firstname_match))
@@ -279,9 +279,6 @@ def link_to_warsa_persons(graph, graph_schema, target_prop, source_prop, arpa, s
     :preprocessor: text preprocessor
     :validator: link validator
     """
-    # TODO: sotilasarvolabel --> rank_label, pisteytys pitää säätää uusiksi (tarkasta)
-    # TODO: henkilöllä voi olla useita sotilasarvoja, vertailu kaikkiin (tarkasta toimiiko)
-
     # TODO: ARPAn sijaan voisi kysellä suoraan SPARQL-kyselyllä kandidaatit
 
     # if preprocessor is None:
