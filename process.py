@@ -484,7 +484,10 @@ if __name__ == "__main__":
             joblib.dump(surma, INPUT_FILE_DIRECTORY + 'surma.pkl')
             joblib.dump(surma_onto, INPUT_FILE_DIRECTORY + 'surma_onto.pkl')
 
-    old_ranks.parse(INPUT_FILE_DIRECTORY + 'ranks.ttl', format='turtle')
+    old_ranks.parse(INPUT_FILE_DIRECTORY + 'old_ranks.ttl', format='turtle')
+    ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/ranks')
+    if len(list(ranks)) == 0:
+        log.error('Unable to read military ranks from SPARQL endpoint')
 
     #####################################
     # FIX KNOWN ISSUES IN DATA AND SCHEMA
@@ -510,7 +513,7 @@ if __name__ == "__main__":
     surma_onto.add((UNIT_LINK_URI, RDFS.label, Literal('Military unit', lang='en')))
     surma_onto.add((UNIT_LINK_URI, RDFS.domain, NARCS.DeathRecord))
     # surma_onto.add((unit_link_uri, RDFS.domain, ns_crm.E31_Document))
-    surma_onto.add((UNIT_LINK_URI, RDFS.range, URIRef('http://ldf.fi/warsa/actors/actor_types/MilitaryUnit')))
+    surma_onto.add((UNIT_LINK_URI, RDFS.range, URIRef('http://ldf.fi/schema/warsa/MilitaryUnit')))
     surma_onto.add((UNIT_LINK_URI, SKOS.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
     surma_onto.add((UNIT_LINK_URI, SKOS.prefLabel, Literal('Military unit', lang='en')))
 
@@ -533,7 +536,7 @@ if __name__ == "__main__":
     surma_onto.add((NARCS.hautausmaa, RDFS.range, NARCS.Hautausmaa))
 
     surma_onto.remove((NARCS.sotilasarvo, RDFS.range, None))
-    surma_onto.add((NARCS.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/warsa/actors/ranks/Rank')))
+    surma_onto.add((NARCS.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/schema/warsa/Rank')))
 
     # TODO: Add military rank group ontology description
     # TODO: Add english ontology descriptions?
@@ -556,19 +559,12 @@ if __name__ == "__main__":
 
     if not SKIP_RANKS:
         print('Linking to military ranks...')
-        ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/ranks')
-        if len(list(ranks)) == 0:
-            log.error('Unable to read military ranks from SPARQL endpoint')
         link_to_military_ranks(ranks)
 
         surma_onto.remove((NARCS.sotilasarvo, RDFS.range, None))
-        surma_onto.add((NARCS.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/warsa/actors/ranks/Rank')))
+        surma_onto.add((NARCS.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/schema/warsa/Rank')))
 
     print('Handling persons...')
-
-    # Note: Requires updated military ranks
-    if not ranks:
-        ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/actors/actor_types')
 
     handle_persons(ranks)
 
@@ -585,7 +581,7 @@ if __name__ == "__main__":
     surma_onto.add((unit_link_uri, RDFS.label, Literal('Tunnettu joukko-osasto', lang='fi')))
     surma_onto.add((unit_link_uri, RDFS.label, Literal('Military unit', lang='en')))
     surma_onto.add((unit_link_uri, RDFS.domain, NARCS.DeathRecord))
-    surma_onto.add((unit_link_uri, RDFS.range, URIRef('http://ldf.fi/warsa/actors/actor_types/MilitaryUnit')))
+    surma_onto.add((unit_link_uri, RDFS.range, URIRef('http://ldf.fi/schema/warsa/MilitaryUnit')))
 
     for (sub, obj) in surma_onto[:RDFS.label:]:
         surma_onto.add((sub, SKOS.prefLabel, obj))
@@ -612,7 +608,7 @@ if __name__ == "__main__":
             new_p = None
             new_o = None
             if p == NARCS.hautausmaakunta:
-                new_p = C_SCHEMA.temporary_municipality
+                new_p = C_SCHEMA.former_municipality
                 # if 'http://ldf.fi/pnr/' in str(o):
                 # elif 'http://ldf.fi/narc-menehtyneet1939-45/kunnat/' in str(o):
                 #     new_p = C_SCHEMA.municipality_wartime

@@ -20,7 +20,7 @@ WHERE
 	BIND(REPLACE(?ngram, "[-/]", " ") AS ?ngram2)
     BIND(REPLACE(?ngram2,"([a-zåäöéèüáóA-ZÅÄÖÈÉĚȨÜÁÀÃÓÒÕ]+)", IF(?ngram = ?ngram2, "$1~", "$1~1")) AS ?qstring)
   
-    GRAPH <http://ldf.fi/warsa/actors> { ?id text:query ?qstring . }
+    GRAPH <http://ldf.fi/warsa/persons> { ?id text:query ?qstring . }
 	OPTIONAL { ?id dc:source ?source . }
   	FILTER(IF(BOUND(?source), ?source != <http://ldf.fi/warsa/sources/source9>, 1=1))
     ?id foaf:familyName ?sukunimi .
