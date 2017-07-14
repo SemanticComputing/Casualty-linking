@@ -9,7 +9,7 @@ from time import sleep
 
 from rdflib import *
 from SPARQLWrapper import SPARQLWrapper, JSON
-from arpa_linker.arpa import Arpa, ArpaMimic, process_graph, arpafy
+from arpa_linker.arpa import Arpa, ArpaMimic, process_graph, arpafy, combine_values
 from warsa_linkers.units import get_query_template, preprocessor, Validator
 
 ns_skos = Namespace('http://www.w3.org/2004/02/skos/core#')
@@ -112,36 +112,41 @@ def link_units(graph: Graph, endpoint: str):
     sparql = SPARQLWrapper(endpoint)
     query_template = """
                     PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
-                    SELECT * WHERE {{ ?sub crm:P70i_is_documented_in <{person_uri}> . }}
+                    SELECT * WHERE {{ ?sub <http://ldf.fi/schema/warsa/actors/covernumber> "{cover_number}" . }}
                     """
     temp_graph = Graph()
 
     ngram_arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_actor_units')
 
-    for person in graph[:RDF.type:ns_crm.E31_Document]:
-        sparql.setQuery(query_template.format(person_uri=person))
-        sparql.setReturnFormat(JSON)
-        results = _query_sparql(sparql)
+    for person in graph[:RDF.type:ns_schema.DeathRecord]:
+        cover = graph.value(person, ns_schema.joukko_osastokoodi)
+        if cover:
+            sparql.setQuery(query_template.format(cover_number=cover))
+            sparql.setReturnFormat(JSON)
+            results = _query_sparql(sparql)
 
-        warsa_unit = None
-        for result in results["results"]["bindings"]:
-            warsa_unit = result["sub"]["value"]
-            log.info('Found unit {unit} for {pers} by cover number.'.format(pers=person, unit=warsa_unit))
-            graph.add((person, ns_schema.osasto, URIRef(warsa_unit)))
+            for result in results["results"]["bindings"]:
+                warsa_unit = result["sub"]["value"]
+                log.info('Found unit {unit} for {pers} by cover number.'.format(pers=person, unit=warsa_unit))
+                graph.add((person, ns_schema.osasto, URIRef(warsa_unit)))
 
-        if not warsa_unit:
+        else:
             # Add related_period for linking with warsa-linkers
             death_time = str(graph.value(person, ns_schema.kuolinaika))
             if death_time < '1941-06-25':
                 temp_graph.add((person, URIRef('http://ldf.fi/schema/warsa/events/related_period'), URIRef('http://ldf.fi/warsa/conflicts/WinterWar')))
 
-            ngrams = ngram_arpa.get_candidates(str(graph.value(person, ns_schema.joukko_osasto)))
-            for ngram in ngrams:
-                temp_graph.add((person, ns_schema.candidate, ngram))
+            unit = preprocessor(str(graph.value(person, ns_schema.joukko_osasto)))
+            ngrams = ngram_arpa.get_candidates(unit)
+            # for ngram in ngrams['results']:
+            combined = combine_values(ngrams['results'])
+            temp_graph.add((person, ns_schema.candidate, Literal(combined)))
 
+    # print(get_query_template())
     arpa = ArpaMimic(get_query_template(), endpoint)
-    new_graph = process_graph(temp_graph, arpa, preprocessor=preprocessor, validator_class=Validator, log_level='INFO', new_graph=True)
-    return new_graph + graph
+    new_graph = process_graph(temp_graph, ns_schema.osasto, arpa,
+                              validator=Validator(temp_graph), new_graph=True, source_prop=ns_schema.candidate)
+    return new_graph['graph'] + graph
 
 
 def load_input_file(filename):
