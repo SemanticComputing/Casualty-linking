@@ -8,7 +8,7 @@ PREFIX etype: <http://ldf.fi/warsa/events/event_types/>
 PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
 PREFIX owl: <http://www.w3.org/2002/07/owl#>
 PREFIX cas: <http://ldf.fi/schema/narc-menehtyneet1939-45/>
-PREFIX dc: <http://purl.org/dc/elements/1.1/>
+PREFIX dc: <http://purl.org/dc/terms//>
 
 SELECT DISTINCT ?id ?ngram (COALESCE(?nlabel, ?plabel) AS ?label) ?rank_label ?etunimet ?sukunimi ?birth_start ?birth_end ?death_start ?death_end
 WHERE
