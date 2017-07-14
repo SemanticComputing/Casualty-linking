@@ -279,8 +279,6 @@ def link_to_warsa_persons(graph, graph_schema, target_prop, source_prop, arpa, s
     :preprocessor: text preprocessor
     :validator: link validator
     """
-    # TODO: ARPAn sijaan voisi kysellä suoraan SPARQL-kyselyllä kandidaatit
-
     # if preprocessor is None:
     #     preprocessor = _combine_rank_and_names
     #

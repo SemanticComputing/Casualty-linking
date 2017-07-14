@@ -9,6 +9,8 @@ from time import sleep
 
 from rdflib import *
 from SPARQLWrapper import SPARQLWrapper, JSON
+from arpa_linker.arpa import Arpa, ArpaMimic, process_graph, arpafy
+from warsa_linkers.units import get_query_template, preprocessor, Validator
 
 ns_skos = Namespace('http://www.w3.org/2004/02/skos/core#')
 ns_dct = Namespace('http://purl.org/dc/terms/')
@@ -27,7 +29,7 @@ ns_menehtymisluokka = Namespace('http://ldf.fi/narc-menehtyneet1939-45/menehtymi
 
 argparser = argparse.ArgumentParser(description="Stand-alone tasks for casualties dataset", fromfile_prefix_chars='@')
 
-argparser.add_argument("task", help="Which task to run", choices=["documents_links", "test"])
+argparser.add_argument("task", help="Which task to run", choices=["documents_links", "link_units", "test"])
 argparser.add_argument("input", help="Input RDF data file")
 argparser.add_argument("output", help="Output RDF data file")
 
@@ -69,6 +71,7 @@ def _query_sparql(sparql_obj):
     log.debug('Got results {res} for query {q}'.format(res=results, q=sparql_obj.queryString))
     return results
 
+
 def documents_links(data_graph, endpoint):
     """
     Create crm:P70_documents links between death records and person instances.
@@ -100,6 +103,47 @@ def documents_links(data_graph, endpoint):
             log.warning('{person} didn\'t match any person instance.'.format(person=person))
 
 
+def link_units(graph: Graph, endpoint: str):
+    """
+    :param graph: Data graph object
+    :param endpoint: SPARQL endpoint
+    :return: Graph with links
+    """
+    sparql = SPARQLWrapper(endpoint)
+    query_template = """
+                    PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
+                    SELECT * WHERE {{ ?sub crm:P70i_is_documented_in <{person_uri}> . }}
+                    """
+    temp_graph = Graph()
+
+    ngram_arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_actor_units')
+
+    for person in graph[:RDF.type:ns_crm.E31_Document]:
+        sparql.setQuery(query_template.format(person_uri=person))
+        sparql.setReturnFormat(JSON)
+        results = _query_sparql(sparql)
+
+        warsa_unit = None
+        for result in results["results"]["bindings"]:
+            warsa_unit = result["sub"]["value"]
+            log.info('Found unit {unit} for {pers} by cover number.'.format(pers=person, unit=warsa_unit))
+            graph.add((person, ns_schema.osasto, URIRef(warsa_unit)))
+
+        if not warsa_unit:
+            # Add related_period for linking with warsa-linkers
+            death_time = str(graph.value(person, ns_schema.kuolinaika))
+            if death_time < '1941-06-25':
+                temp_graph.add((person, URIRef('http://ldf.fi/schema/warsa/events/related_period'), URIRef('http://ldf.fi/warsa/conflicts/WinterWar')))
+
+            ngrams = ngram_arpa.get_candidates(str(graph.value(person, ns_schema.joukko_osasto)))
+            for ngram in ngrams:
+                temp_graph.add((person, ns_schema.candidate, ngram))
+
+    arpa = ArpaMimic(get_query_template(), endpoint)
+    new_graph = process_graph(temp_graph, arpa, preprocessor=preprocessor, validator_class=Validator, log_level='INFO', new_graph=True)
+    return new_graph + graph
+
+
 def load_input_file(filename):
     """
     >>> load_input_file(StringIO('<http://example.com/res> a <http://example.com/class> .'))  #doctest: +ELLIPSIS
@@ -107,21 +151,31 @@ def load_input_file(filename):
     """
     return Graph().parse(filename, format=args.format)
 
-if args.task == 'documents_links':
-    log.info('Loading input file...')
-    death_records = load_input_file(args.input)
-    log.info('Creating links...')
-    documents_links(death_records, args.endpoint)
-    log.info('Serializing output file...')
-    death_records.serialize(format=args.format, destination=args.output)
 
-elif args.task == 'test':
-    print('Running doctests')
-    import doctest
+if __name__ == '__main__':
+    if args.task == 'documents_links':
+        log.info('Loading input file...')
+        death_records = load_input_file(args.input)
+        log.info('Creating links...')
+        documents_links(death_records, args.endpoint)
+        log.info('Serializing output file...')
+        death_records.serialize(format=args.format, destination=args.output)
 
-    res = doctest.testmod()
-    if not res[0]:
-        print('Doctests OK!')
-    exit()
+    elif args.task == 'link_units':
+        log.info('Loading input file...')
+        death_records = load_input_file(args.input)
+        log.info('Creating links...')
+        death_records = link_units(death_records, args.endpoint)
+        log.info('Serializing output file...')
+        death_records.serialize(format=args.format, destination=args.output)
 
-log.info('All done.')
+    elif args.task == 'test':
+        print('Running doctests')
+        import doctest
+
+        res = doctest.testmod()
+        if not res[0]:
+            print('Doctests OK!')
+        exit()
+
+    log.info('All done.')

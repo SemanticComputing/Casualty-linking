@@ -17,7 +17,7 @@ WHERE
         <VALUES>
     }
     
-	BIND(REPLACE(?ngram, "[-/]", " ") AS ?ngram2)
+	BIND(REPLACE(?ngram, "[-/().]", " ") AS ?ngram2)
     BIND(REPLACE(?ngram2,"([a-zåäöéèüáóA-ZÅÄÖÈÉĚȨÜÁÀÃÓÒÕ]+)", IF(?ngram = ?ngram2, "$1~", "$1~1")) AS ?qstring)
   
     GRAPH <http://ldf.fi/warsa/persons> { ?id text:query ?qstring . }

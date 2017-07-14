@@ -13,6 +13,8 @@ cat data/new/surma.ttl data/new/person_linked.ttl > data/new/surma_with_links.tt
 
 python tasks.py documents_links data/new/surma_with_links.ttl data/new/surma_wo_units.ttl --endpoint http://localhost:3030/warsa/sparql
 
-echo 'query=' | cat - SPARQL/unit_construct.sparql | sed 's/&/%26/g' | curl -d @- http://localhost:3030/warsa/sparql > data/new/surma_units.ttl
+python tasks.py link_units data/new/surma_wo_units.ttl data/new/surma_units.ttl --endpoint http://localhost:3030/warsa/sparql
+
+#echo 'query=' | cat - SPARQL/unit_construct.sparql | sed 's/&/%26/g' | curl -d @- http://localhost:3030/warsa/sparql > data/new/surma_units.ttl
 
 cat data/new/surma_wo_units.ttl data/new/surma_units.ttl > data/new/casualties_data.ttl

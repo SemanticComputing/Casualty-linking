@@ -7,3 +7,4 @@ rdflib>=4.2.1
 fuzzywuzzy>=0.10.0
 git+https://github.com/SemanticComputing/rdf_dm.git#egg=rdf_dm-master
 git+https://github.com/SemanticComputing/python-arpa-linker.git#egg=arpa_linker-master
+git+https://github.com/SemanticComputing/warsa-linkers.git#egg=warsa_linkers-master
