@@ -9,7 +9,7 @@ from time import sleep
 
 from rdflib import *
 from SPARQLWrapper import SPARQLWrapper, JSON
-from arpa_linker.arpa import Arpa, ArpaMimic, process_graph, arpafy, combine_values
+from arpa_linker.arpa import Arpa, ArpaMimic, process_graph, arpafy, combine_values, log_to_file
 from warsa_linkers.units import get_query_template, preprocessor, Validator
 
 ns_skos = Namespace('http://www.w3.org/2004/02/skos/core#')
@@ -47,6 +47,7 @@ logging.basicConfig(filename='tasks.log', filemode='a', level=getattr(logging, a
 log = logging.getLogger(__name__)
 log.info('Starting to run tasks with arguments: {args}'.format(args=args))
 
+# log_to_file('tasks.log', 'DEBUG')
 
 def _query_sparql(sparql_obj):
     """
@@ -116,7 +117,7 @@ def link_units(graph: Graph, endpoint: str):
                     """
     temp_graph = Graph()
 
-    ngram_arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_actor_units')
+    ngram_arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_actor_units', retries=10, wait_between_tries=6)
 
     for person in graph[:RDF.type:ns_schema.DeathRecord]:
         cover = graph.value(person, ns_schema.joukko_osastokoodi)
@@ -142,8 +143,9 @@ def link_units(graph: Graph, endpoint: str):
             combined = combine_values(ngrams['results'])
             temp_graph.add((person, ns_schema.candidate, Literal(combined)))
 
+    log.info('Linking the found candidates')
     # print(get_query_template())
-    arpa = ArpaMimic(get_query_template(), endpoint)
+    arpa = ArpaMimic(get_query_template(), endpoint, retries=10, wait_between_tries=6)
     new_graph = process_graph(temp_graph, ns_schema.osasto, arpa,
                               validator=Validator(temp_graph), new_graph=True, source_prop=ns_schema.candidate)
     return new_graph['graph'] + graph
