@@ -10,7 +10,7 @@ from time import sleep
 from rdflib import *
 from SPARQLWrapper import SPARQLWrapper, JSON
 from arpa_linker.arpa import Arpa, ArpaMimic, process_graph, arpafy, combine_values, log_to_file
-from warsa_linkers.units import get_query_template, preprocessor, Validator
+from warsa_linkers.units import preprocessor, Validator
 
 ns_skos = Namespace('http://www.w3.org/2004/02/skos/core#')
 ns_dct = Namespace('http://purl.org/dc/terms/')
@@ -110,6 +110,11 @@ def link_units(graph: Graph, endpoint: str):
     :param endpoint: SPARQL endpoint
     :return: Graph with links
     """
+
+    def get_query_template():
+        with open('SPARQL/units.sparql') as f:
+            return f.read()
+
     sparql = SPARQLWrapper(endpoint)
     query_template = """
                     PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
@@ -121,6 +126,8 @@ def link_units(graph: Graph, endpoint: str):
 
     for person in graph[:RDF.type:ns_schema.DeathRecord]:
         cover = graph.value(person, ns_schema.joukko_osastokoodi)
+
+        # LINK DEATH RECORDS BASED ON COVER NUMBER IF IT EXISTS
         if cover:
             sparql.setQuery(query_template.format(cover_number=cover))
             sparql.setReturnFormat(JSON)
@@ -131,22 +138,22 @@ def link_units(graph: Graph, endpoint: str):
                 log.info('Found unit {unit} for {pers} by cover number.'.format(pers=person, unit=warsa_unit))
                 graph.add((person, ns_schema.osasto, URIRef(warsa_unit)))
 
+        # NO COVER NUMBER, ADD RELATED_PERIOD FOR LINKING WITH WARSA-LINKERS
         else:
-            # Add related_period for linking with warsa-linkers
             death_time = str(graph.value(person, ns_schema.kuolinaika))
             if death_time < '1941-06-25':
                 temp_graph.add((person, URIRef('http://ldf.fi/schema/warsa/events/related_period'), URIRef('http://ldf.fi/warsa/conflicts/WinterWar')))
 
             unit = preprocessor(str(graph.value(person, ns_schema.joukko_osasto)))
             ngrams = ngram_arpa.get_candidates(unit)
-            # for ngram in ngrams['results']:
             combined = combine_values(ngrams['results'])
             temp_graph.add((person, ns_schema.candidate, Literal(combined)))
 
+    # LINK DEATH RECORDS WITHOUT COVER NUMBER
+
     log.info('Linking the found candidates')
-    # print(get_query_template())
     arpa = ArpaMimic(get_query_template(), endpoint, retries=10, wait_between_tries=6)
-    new_graph = process_graph(temp_graph, ns_schema.osasto, arpa,
+    new_graph = process_graph(temp_graph, ns_schema.osasto, arpa, progress=True,
                               validator=Validator(temp_graph), new_graph=True, source_prop=ns_schema.candidate)
     return new_graph['graph'] + graph
 
