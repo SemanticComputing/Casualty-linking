@@ -7,6 +7,7 @@ import logging
 from io import StringIO
 from time import sleep
 
+from fuzzywuzzy import fuzz
 from rdflib import *
 from SPARQLWrapper import SPARQLWrapper, JSON
 from arpa_linker.arpa import Arpa, ArpaMimic, process_graph, arpafy, combine_values, log_to_file
@@ -25,7 +26,6 @@ ns_kansallisuus = Namespace('http://ldf.fi/narc-menehtyneet1939-45/kansallisuus/
 ns_kunnat = Namespace('http://ldf.fi/narc-menehtyneet1939-45/kunnat/')
 ns_sotilasarvo = Namespace('http://ldf.fi/narc-menehtyneet1939-45/sotilasarvo/')
 ns_menehtymisluokka = Namespace('http://ldf.fi/narc-menehtyneet1939-45/menehtymisluokka/')
-
 
 argparser = argparse.ArgumentParser(description="Stand-alone tasks for casualties dataset", fromfile_prefix_chars='@')
 
@@ -46,6 +46,7 @@ logging.basicConfig(filename='tasks.log', filemode='a', level=getattr(logging, a
 
 log = logging.getLogger(__name__)
 log.info('Starting to run tasks with arguments: {args}'.format(args=args))
+
 
 # log_to_file('tasks.log', 'DEBUG')
 
@@ -115,34 +116,62 @@ def link_units(graph: Graph, endpoint: str):
         with open('SPARQL/units.sparql') as f:
             return f.read()
 
+    COVER_NUMBER_SCORE_LIMIT = 85
+
     sparql = SPARQLWrapper(endpoint)
     query_template = """
-                    PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
-                    SELECT * WHERE {{ ?sub <http://ldf.fi/schema/warsa/actors/covernumber> "{cover_number}" . }}
+                    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+                    SELECT ?sub (GROUP_CONCAT(?label; separator=" || ") as ?labels) WHERE  
+                    {{ 
+                        ?sub <http://ldf.fi/schema/warsa/actors/covernumber> "{cover_number}" .
+                        ?sub skos:prefLabel|skos:altLabel ?label .
+                    }} GROUP BY ?sub
                     """
     temp_graph = Graph()
 
-    ngram_arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_actor_units', retries=10, wait_between_tries=6)
+    ngram_arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_casualties_actor_units', retries=10, wait_between_tries=6)
 
     for person in graph[:RDF.type:ns_schema.DeathRecord]:
         cover = graph.value(person, ns_schema.joukko_osastokoodi)
 
+        best_score = -1
         # LINK DEATH RECORDS BASED ON COVER NUMBER IF IT EXISTS
         if cover:
             sparql.setQuery(query_template.format(cover_number=cover))
             sparql.setReturnFormat(JSON)
             results = _query_sparql(sparql)
+            person_unit = str(graph.value(person, ns_schema.joukko_osasto))
+            best_unit = None
+            best_labels = None
 
             for result in results["results"]["bindings"]:
+                if 'sub' not in result:
+                    # This can happen because of GROUP_CONCAT
+                    log.warning('Unknown cover number {cover}.'.format(cover=cover))
+                    continue
                 warsa_unit = result["sub"]["value"]
-                log.info('Found unit {unit} for {pers} by cover number.'.format(pers=person, unit=warsa_unit))
-                graph.add((person, ns_schema.osasto, URIRef(warsa_unit)))
+                unit_labels = result["labels"]["value"].split(' || ')
+                score = max(fuzz.ratio(unit, person_unit) for unit in unit_labels)
+                if score > best_score:
+                    best_score = score
+                    best_labels = unit_labels
+                    best_unit = warsa_unit
+
+            if best_score >= COVER_NUMBER_SCORE_LIMIT and best_unit:
+                log.info('Found unit {unit} for {pers} by cover number with score {score}.'.
+                         format(pers=person, unit=best_unit, score=best_score))
+                graph.add((person, ns_schema.osasto, URIRef(best_unit)))
+
+            else:
+                log.warning('Skipping suspected erroneus unit for {unit} with labels {lbls}.'.
+                            format(unit=person_unit, lbls=best_labels))
 
         # NO COVER NUMBER, ADD RELATED_PERIOD FOR LINKING WITH WARSA-LINKERS
-        else:
+        if not cover or best_score < COVER_NUMBER_SCORE_LIMIT:
             death_time = str(graph.value(person, ns_schema.kuolinaika))
             if death_time < '1941-06-25':
-                temp_graph.add((person, URIRef('http://ldf.fi/schema/warsa/events/related_period'), URIRef('http://ldf.fi/warsa/conflicts/WinterWar')))
+                temp_graph.add((person, URIRef('http://ldf.fi/schema/warsa/events/related_period'),
+                                URIRef('http://ldf.fi/warsa/conflicts/WinterWar')))
 
             unit = preprocessor(str(graph.value(person, ns_schema.joukko_osasto)))
             ngrams = ngram_arpa.get_candidates(unit)
