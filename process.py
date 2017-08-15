@@ -392,19 +392,21 @@ def handle_persons(ranks):
             else:
                 new_date = None
 
-            if new_date or str(date)[1:] == 'XXX-XX-XX':
-                log.info('Removing references to invalid date: {date}'.format(date=str(date)))
-
             fixed = False
             if str(date)[1:] != 'XXX-XX-XX':
                 for date_prop in date_props:
                     if new_date:
+                        log.info('Fixing invalid date: {date}  to {date2}'.format(date=str(date), date2=new_date))
                         for triple in surma.triples((None, date_prop, date)):
                             log.info('Adding a reference to fixed date: {date}'.format(date=str(new_date)))
                             surma.add((triple[0], date_prop, Literal(new_date, datatype=XSD.date)))
 
                         surma.remove((None, date_prop, date))
                         fixed = True
+            else:
+                log.info('Removing references to invalid date: {date}'.format(date=str(date)))
+                for date_prop in date_props:
+                    surma.remove((None, date_prop, date))
 
             if not fixed:
                 log.info('Not able to fix invalid date: {date}'.format(date=str(date)))
