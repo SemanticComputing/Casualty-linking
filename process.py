@@ -6,9 +6,7 @@ Code for processing, validating and fixing some errors in the original RDF versi
 
 Validates, improves and automatically links to other WarSampo datasets.
 
-Input CSV data used is not publicly available.
-
-Copyright (c) 2016 Mikko Koho
+Copyright (c) 2017 Mikko Koho
 """
 
 import argparse
@@ -21,11 +19,8 @@ from urllib.error import HTTPError
 from arpa_linker.arpa import Arpa
 import iso8601
 import joblib
-import pandas as pd
 from rdflib import *
 import rdflib
-from SPARQLWrapper import SPARQLWrapper, JSON
-from sotasampo_helpers import arpa
 import rdf_dm as r
 from sotasampo_helpers.arpa import link_to_pnr
 
@@ -69,28 +64,23 @@ parser = argparse.ArgumentParser(description='Casualties of war')
 parser.add_argument('-reload', action='store_true', help='Reload RDF graphs, instead of using pickle object')
 parser.add_argument('-generated', action='store_true', help='Use previously generated new data files as input')
 parser.add_argument('-generated_pkl', action='store_true', help='Use previously generated new data pickles')
-parser.add_argument('-skip_cemeteries', action='store_true', help='Skip cemetery fixing')
 parser.add_argument('-skip_validation', action='store_true', help='Skip validation')
-# parser.add_argument('-skip_units', action='store_true', help='Skip linking to Warsa military units')
 parser.add_argument('-skip_ranks', action='store_true', help='Skip linking to Warsa military ranks')
 parser.add_argument('-skip_municipalities', action='store_true', help='Skip linking to municipalities')
-# parser.add_argument('-skip_persons', action='store_true', help='Skip linking to Warsa persons')
-# parser.add_argument('-skip_occupations', action='store_true', help='Skip creation of occupation ontology')
 parser.add_argument('-d', action='store_true', help='Dry run, don\'t serialize created graphs')
+parser.add_argument("--loglevel", default='INFO',
+                    choices=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+                    help="Logging level, default is INFO.")
+
 args = parser.parse_args()
 
 reload = args.reload
 USE_GENERATED_FILES = args.generated
 USE_GENERATED_PKL = args.generated_pkl
 DRYRUN = args.d
-SKIP_CEMETERIES = args.skip_cemeteries
 SKIP_VALIDATION = args.skip_validation
-SKIP_UNITS = True
-# SKIP_UNITS = args.skip_units
 SKIP_MUNICIPALITIES = args.skip_municipalities
 SKIP_RANKS = args.skip_ranks
-SKIP_PERSONS = True
-# SKIP_PERSONS = args.skip_persons
 
 surma = rdflib.Graph()
 surma_onto = rdflib.Graph()
@@ -98,7 +88,7 @@ old_ranks = rdflib.Graph()
 
 logging.basicConfig(filename='Sotasurma.log',
                     filemode='a',
-                    level=logging.DEBUG,
+                    level=getattr(logging, args.loglevel.upper()),
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 log = logging.getLogger(__name__)
@@ -122,7 +112,7 @@ def fix_by_direct_uri_mappings():
 
 def fix_cemetery_links():
     """
-    Fix errors in cemetery links and add missing cemetery instances.
+    Fix errors in cemetery links.
     """
     p = NARCS.hautausmaa
 
@@ -131,50 +121,11 @@ def fix_cemetery_links():
 
         new_o = URIRef(re.sub(r'(/hautausmaat/)(\d+)', r'\1h\2', str(o)))
         if not list(surma_onto[new_o::]):
+            # Burial place is not in the cemeteries list, so just skip it as it is unknown
             new_o = None
 
-        cemetery_id = str(o)[50:]  # Should be like '0243_3'
-        k_id, h_id = cemetery_id[:4], cemetery_id[5:].replace('_', '')
-
-        k_name = ''
-        h_name = ''
-        try:
-            h_name = hmaat[hmaat['kunta_id'] == k_id][hmaat['hmaa_id'] ==
-                                                      (int(h_id) if h_id.isnumeric() else 0)]['hmaa_name'].iloc[0]
-        except IndexError:
-            pass
-
-        try:
-            k_name = kunta[kunta['kunta_id'] == k_id]['kunta_name'].iloc[0]
-            h_name = h_name or '{kunta} {id}'.format(kunta=k_name, id=h_id)
-        except IndexError:
-            pass
-
-        if not new_o:
-            try:
-                new_o = HAUTAUSMAAT['h{cem_id}'.format(cem_id=cemetery_id)]
-            except ValueError:
-                log.error('Invalid cemetery id: {id}'.format(id=cemetery_id))
-                continue
-
-            assert h_name, s    # Should have a name to use as prefLabel
-            assert k_name, s    # Should have a name for municipality
-
-            kunta_node = next(surma_onto[:SKOS.prefLabel:Literal(k_name, lang='fi')])
-
-            surma_onto.add((new_o, RDF.type, NARCS.Hautausmaa))
-            surma_onto.add((new_o, SKOS.prefLabel, Literal(h_name)))
-            surma_onto.add((new_o, NARCS.hautausmaakunta, kunta_node))
-
-            log.info('New cemetery %s : %s' % (new_o, h_name))
-
-        else:
-            h_name_onto = str(next(surma_onto[new_o:SKOS.prefLabel:]))
-            if h_name:
-                assert h_name == h_name_onto or h_name == h_name_onto.split()[0], '%s  !=  %s' % (h_name, h_name_onto)
-
+        surma.remove((s, p, o))
         if new_o:
-            surma.remove((s, p, o))
             surma.add((s, p, new_o))
 
 
@@ -229,7 +180,7 @@ def link_to_municipalities():
                 retry = 0
                 while not warsa_matches:
                     try:
-                        warsa_matches = [URIRef(uri) for uri in pnr_arpa.get_uri_matches(lbl)]  # Link to PNR
+                        warsa_matches = pnr_arpa.get_uri_matches(lbl)['results']  # Link to PNR
                         break
                     except (HTTPError, ValueError):
                         if retry < 50:
@@ -348,7 +299,7 @@ def handle_persons(ranks):
             new_name = re.sub('%', '/', new_name)
             new_lname = Literal(re.sub(r'(\w\w +)(E(?:NT)?\.)\s?(\w+)', r'\1(ent. \3)', str(new_name)))
             if new_lname and new_lname != lname:
-                log.info('Unifying lastname {ln} to {nln}'.format(ln=lname, nln=new_lname))
+                log.debug('Unifying lastname {ln} to {nln}'.format(ln=lname, nln=new_lname))
                 surma.add((person, lbl_pred, new_lname))
                 surma.remove((person, lbl_pred, lname))
 
@@ -361,16 +312,6 @@ def handle_persons(ranks):
                 surma.remove((sub, lbl_pred, obj))
                 surma.add((sub, lbl_pred, Literal(new_name)))
                 log.debug('Changed name {orig} to {new}'.format(orig=name, new=new_name))
-
-    # Link to WARSA actor persons
-    if not SKIP_PERSONS:
-        log.debug(arpa.link_to_warsa_persons(surma, ranks, CRM.P70_documents, NARCS.sotilasarvo,
-                                             NARCS.etunimet, NARCS.sukunimi,
-                                             NARCS.syntymaeaika, NARCS.kuolinaika,
-                                             endpoint='http://demo.seco.tkk.fi/arpa/menehtyneet_persons'))
-
-        for s, o in surma[:CRM.P70_documents:]:
-            log.info('ARPA found that {s} is the death record of person {o}'.format(s=s, o=o))
 
     dateset = set()
     date_props = [NARCS.haavoittumisaika, NARCS.katoamisaika, NARCS.kuolinaika, NARCS.syntymaeaika]
@@ -396,15 +337,15 @@ def handle_persons(ranks):
             if str(date)[1:] != 'XXX-XX-XX':
                 for date_prop in date_props:
                     if new_date:
-                        log.info('Fixing invalid date: {date}  to {date2}'.format(date=str(date), date2=new_date))
+                        log.debug('Fixing invalid date: {date}  to {date2}'.format(date=str(date), date2=new_date))
                         for triple in surma.triples((None, date_prop, date)):
-                            log.info('Adding a reference to fixed date: {date}'.format(date=str(new_date)))
+                            log.debug('Adding a reference to fixed date: {date}'.format(date=str(new_date)))
                             surma.add((triple[0], date_prop, Literal(new_date, datatype=XSD.date)))
 
                         surma.remove((None, date_prop, date))
                         fixed = True
             else:
-                log.info('Removing references to invalid date: {date}'.format(date=str(date)))
+                log.info('Removing all references to invalid date: {date}'.format(date=str(date)))
                 for date_prop in date_props:
                     surma.remove((None, date_prop, date))
 
@@ -418,26 +359,6 @@ def handle_persons(ranks):
 if __name__ == "__main__":
 
     ranks = None
-
-    if not SKIP_CEMETERIES:
-        ##################
-        # READ IN CSV DATA
-
-        print('Reading CSV data for cemeteries...')
-
-        hmaat = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_HMAAT.CSV', encoding='latin_1', header=None,
-                            index_col=False, names=['kunta_id', 'hmaa_id', 'hmaa_name'], sep=',', quotechar='"',
-                            na_values=['  '])
-        """:type : pd.DataFrame"""  # for PyCharm type hinting
-
-        kunta = pd.read_csv(INPUT_FILE_DIRECTORY + 'csv/MEN_KUNTA.CSV', encoding='latin_1', header=None,
-                            index_col=False, names=['kunta_id', 'kunta_name'], sep=',', quotechar='"', na_values=['  '])
-        """:type : pd.DataFrame"""  # for PyCharm type hinting
-
-        # Strip whitespace from cemetery names
-        # hmaat.hmaa_name = hmaat.hmaa_name.map(lambda x: x.strip())
-        hmaat = hmaat.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-        kunta = kunta.applymap(lambda x: x.strip() if isinstance(x, str) else x)
 
     ##################
     # READ IN RDF DATA
@@ -489,7 +410,8 @@ if __name__ == "__main__":
     old_ranks.parse(INPUT_FILE_DIRECTORY + 'old_ranks.ttl', format='turtle')
     ranks = r.read_graph_from_sparql("http://ldf.fi/warsa/sparql", 'http://ldf.fi/warsa/ranks')
     if len(list(ranks)) == 0:
-        log.error('Unable to read military ranks from SPARQL endpoint')
+        print('Unable to read military ranks from SPARQL endpoint')
+        quit()
 
     #####################################
     # FIX KNOWN ISSUES IN DATA AND SCHEMA
@@ -500,7 +422,6 @@ if __name__ == "__main__":
     # FOAF Person instances to DeathRecord instances
     for (sub, pred) in surma[::FOAF.Person]:
         surma.add((sub, pred, NARCS.DeathRecord))
-        # surma.add((sub, pred, ns_crm.E31_Document))
         surma.remove((sub, pred, FOAF.Person))
 
     for (sub, pred) in surma_onto[::FOAF.Person]:
@@ -514,7 +435,6 @@ if __name__ == "__main__":
     surma_onto.add((UNIT_LINK_URI, RDFS.label, Literal('Tunnettu joukko-osasto', lang='fi')))
     surma_onto.add((UNIT_LINK_URI, RDFS.label, Literal('Military unit', lang='en')))
     surma_onto.add((UNIT_LINK_URI, RDFS.domain, NARCS.DeathRecord))
-    # surma_onto.add((unit_link_uri, RDFS.domain, ns_crm.E31_Document))
     surma_onto.add((UNIT_LINK_URI, RDFS.range, URIRef('http://ldf.fi/schema/warsa/MilitaryUnit')))
     surma_onto.add((UNIT_LINK_URI, SKOS.prefLabel, Literal('Tunnettu joukko-osasto', lang='fi')))
     surma_onto.add((UNIT_LINK_URI, SKOS.prefLabel, Literal('Military unit', lang='en')))
@@ -522,8 +442,6 @@ if __name__ == "__main__":
     surma_onto.add((NARCS.DeathRecord, RDFS.subClassOf, CRM.E31_Document))
     surma_onto.add((NARCS.DeathRecord, SKOS.prefLabel, Literal('Death Record', lang='en')))
     surma_onto.add((NARCS.DeathRecord, SKOS.prefLabel, Literal('Kuolinasiakirja', lang='fi')))
-
-    # TODO: Add graveyard ontology description
 
     surma_onto.add((NARCS.hautausmaakunta, RDF.type, OWL.ObjectProperty))
     surma_onto.add((NARCS.hautausmaakunta, RDFS.label, Literal('Hautausmaan kunta', lang='fi')))
@@ -540,22 +458,14 @@ if __name__ == "__main__":
     surma_onto.remove((NARCS.sotilasarvo, RDFS.range, None))
     surma_onto.add((NARCS.sotilasarvo, RDFS.range, URIRef('http://ldf.fi/schema/warsa/Rank')))
 
-    # TODO: Add military rank group ontology description
-    # TODO: Add english ontology descriptions?
-
     ############################################
     # LINK TO OTHER SOTASAMPO DATASETS AND STUFF
 
-    if not SKIP_CEMETERIES:
-        print('Fixing cemeteries...')
-        fix_cemetery_links()
+    print('Fixing cemeteries...')
+    fix_cemetery_links()
 
     if not SKIP_MUNICIPALITIES:
         print('Linking to municipalities...')
-
-        for p in list(surma[:RDF.type:NARCS.DeathRecord]):
-            # Removing redundant hautauskunta from death records
-            surma.remove((p, NARCS.hautauskunta, None))
 
         link_to_municipalities()
 
@@ -572,12 +482,6 @@ if __name__ == "__main__":
 
     print('Handling military units...')
     unit_link_uri = NARCS.osasto
-
-    if not SKIP_UNITS:
-        log.debug(arpa.link_to_military_units(surma, unit_link_uri, NARCS.joukko_osasto))
-
-    # surma_onto.remove((ns_schema.osasto, None, None))
-    # surma.remove((None, ns_schema.osasto, None))
 
     surma_onto.add((unit_link_uri, RDF.type, OWL.ObjectProperty))
     surma_onto.add((unit_link_uri, RDFS.label, Literal('Tunnettu joukko-osasto', lang='fi')))
@@ -618,13 +522,16 @@ if __name__ == "__main__":
             if p == RDF.type:
                 new_o = C_SCHEMA.Cemetery
 
-            new_s = CEMETERIES[str(s).split('/')[-1]]
-            cemeteries.add((new_s, new_p or p, new_o or o))
             surma_onto.remove((s, p, o))
 
-            for (cem_s, cem_p) in surma.subject_predicates(s):
-                surma.remove((cem_s, cem_p, s))
-                surma.add((cem_s, cem_p, new_s))
+            references = list(surma.subject_predicates(s))
+            if references:
+                new_s = CEMETERIES[str(s).split('/')[-1]]
+                cemeteries.add((new_s, new_p or p, new_o or o))
+
+                for (cem_s, cem_p) in references:
+                    surma.remove((cem_s, cem_p, s))
+                    surma.add((cem_s, cem_p, new_s))
 
     # Remove predicates from schema
 
@@ -682,8 +589,6 @@ if __name__ == "__main__":
         surma.bind("warsa-kunta", "http://ldf.fi/warsa/places/municipalities/")
         surma.bind("warsa-arvo", "http://ldf.fi/warsa/actors/ranks/")
         surma.bind("warsa-toimija", "http://ldf.fi/warsa/actors/")
-
-        # TODO: Move schema stuff to schema namespace? (e.g. skos:ConceptSchemes)
 
         surma_onto.bind("crm", "http://www.cidoc-crm.org/cidoc-crm/")
         surma_onto.bind("skos", "http://www.w3.org/2004/02/skos/core#")
