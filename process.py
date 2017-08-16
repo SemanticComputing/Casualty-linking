@@ -519,6 +519,8 @@ if __name__ == "__main__":
     cemeteries = Graph()
 
     for s in list(surma_onto[:RDF.type:NARCS.Hautausmaa]):
+        references = list(surma.subject_predicates(s))
+
         for (p, o) in list(surma_onto[s::]):
             new_p = None
             new_o = None
@@ -533,7 +535,6 @@ if __name__ == "__main__":
 
             surma_onto.remove((s, p, o))
 
-            references = list(surma.subject_predicates(s))
             if references:
                 new_s = CEMETERIES[str(s).split('/')[-1]]
                 cemeteries.add((new_s, new_p or p, new_o or o))
