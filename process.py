@@ -136,6 +136,8 @@ def link_to_municipalities():
     munics = r.helpers.read_graph_from_sparql("http://ldf.fi/warsa/sparql",
                                               graph_name='http://ldf.fi/warsa/places/municipalities')
 
+    log.info('Using Warsa municipalities with {n} triples'.format(n=len(munics)))
+
     pnr_arpa = Arpa('http://demo.seco.tkk.fi/arpa/pnr_municipality')
 
     # Find
@@ -157,7 +159,8 @@ def link_to_municipalities():
 
         warsa_matches = []
 
-        for lbl in str(label).strip().split('/'):
+        labels = str(label).strip().split('/')
+        for lbl in labels:
             if lbl == 'Pyhäjärvi Ol':
                 warsa_matches = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_75')]
             elif lbl == 'Pyhäjärvi Ul.':
@@ -170,13 +173,16 @@ def link_to_municipalities():
                 warsa_matches = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_391')]
             elif lbl == 'Uusikirkko Vl':
                 warsa_matches = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_609')]
+            elif lbl == 'Oulun mlk':
+                warsa_matches = [URIRef('http://ldf.fi/warsa/places/municipalities/m_place_65')]
 
             if not warsa_matches:
                 warsa_matches = list(munics[:SKOS.prefLabel:Literal(lbl)])
             if not warsa_matches:
                 warsa_matches = list(munics[:SKOS.prefLabel:Literal(lbl.replace(' kunta', ' mlk'))])
 
-            if not warsa_matches:
+        if not warsa_matches:
+            for lbl in labels:
                 retry = 0
                 while not warsa_matches:
                     try:
@@ -247,6 +253,9 @@ def validate():
         if not str(o).startswith('http://ldf.fi/warsa/'):
             log.warning('Unknown URI references: {uri}  (referenced {num} times)'
                         .format(uri=str(o), num=str(len(list(surma[::o])) + len(list(surma_onto[::o])))))
+        else:
+            log.debug('Unknown URI references: {uri}  (referenced {num} times)'
+                      .format(uri=str(o), num=str(len(list(surma[::o])) + len(list(surma_onto[::o])))))
 
     unlinked_subjects = [uri for uri in r.get_unlinked_uris(full_rdf)
                          if not (str(uri).startswith('http://ldf.fi/narc-menehtyneet1939-45/p')

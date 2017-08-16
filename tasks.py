@@ -104,6 +104,8 @@ def documents_links(data_graph, endpoint):
         if not warsa_person:
             log.warning('{person} didn\'t match any person instance.'.format(person=person))
 
+    return data_graph
+
 
 def link_units(graph: Graph, endpoint: str):
     """
@@ -195,12 +197,14 @@ def load_input_file(filename):
     return Graph().parse(filename, format=args.format)
 
 
+# TODO: Serialize only new information to allow base information to change without having to do linking again
+
 if __name__ == '__main__':
     if args.task == 'documents_links':
         log.info('Loading input file...')
         death_records = load_input_file(args.input)
         log.info('Creating links...')
-        documents_links(death_records, args.endpoint)
+        death_records = documents_links(death_records, args.endpoint)
         log.info('Serializing output file...')
         death_records.serialize(format=args.format, destination=args.output)
 
