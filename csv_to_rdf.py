@@ -4,12 +4,10 @@
 import argparse
 import datetime
 import logging
-
 import pandas as pd
+
 from rdflib import URIRef, Graph, Literal, Namespace
-
 from mapping import CASUALTY_MAPPING
-
 from namespaces import RDF, XSD, DC, SKOS, DATA_NS, SCHEMA_NS, WARSA_NS, bind_namespaces
 
 
@@ -76,6 +74,7 @@ class RDFMapper:
 
         if row_rdf:
             row_rdf.add((entity_uri, RDF.type, self.instance_class))
+            row_rdf = self.finalize_resource(entity_uri, row_rdf)
         else:
             # Don't create class instance if there is no data about it
             logging.debug('No data found for {uri}'.format(uri=entity_uri))
@@ -85,6 +84,19 @@ class RDFMapper:
             self.errors.append(error)
 
         return row_rdf
+
+    def finalize_resource(self, uri, resource):
+        mun = resource.value(uri, SCHEMA_NS.hautauskunta)
+        gy = resource.value(uri, SCHEMA_NS.hautausmaa)
+        gy_uri = '{base}/hautausmaat/h{mun}'.format(base=SCHEMA_NS, mun=mun)
+        mun_uri = '{base}/kunnat/k{mun}'.format(base=SCHEMA_NS, mun=mun)
+        if gy:
+            gy_uri = gy_uri + '_{gy}'.format(gy=gy)
+
+        resource.add((uri, SCHEMA_NS.hautausmaa, URIRef(gy_uri)))
+        resource.add((uri, SCHEMA_NS.hautauskunta, URIRef(mun_uri)))
+
+        return resource
 
     def read_csv(self, csv_input):
         """

@@ -188,13 +188,13 @@ PRISONER_MAPPING = {
         },
     'HKUNTA':
         {
-            'uri': SCHEMA_NS.hautauskunta,
+            'uri': SCHEMA_NS.hautauskunta_id,
             'name_fi': 'Hautauskunta',
             'name_en': 'Burial municipality',
         },
     'HMAA':
         {
-            'uri': SCHEMA_NS.hautausmaa,
+            'uri': SCHEMA_NS.hautausmaa_nro,
             'name_fi': 'Hautausmaa',
             'name_en': 'Burial graveyard',
         },
