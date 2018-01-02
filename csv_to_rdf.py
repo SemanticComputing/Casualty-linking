@@ -8,7 +8,7 @@ import pandas as pd
 
 from rdflib import URIRef, Graph, Literal, Namespace
 from mapping import CASUALTY_MAPPING
-from namespaces import RDF, XSD, DC, SKOS, DATA_NS, SCHEMA_NS, WARSA_NS, bind_namespaces
+from namespaces import RDF, XSD, DC, SKOS, NARCS, SCHEMA_NS, WARSA_NS, bind_namespaces, CEMETERY_NS, KUNNAT
 
 
 class RDFMapper:
@@ -25,7 +25,7 @@ class RDFMapper:
         # self.errors = pd.DataFrame(columns=['nro', 'sarake', 'virhe', 'arvo'])
         self.errors = []
 
-        logging.basicConfig(filename='prisoners.log',
+        logging.basicConfig(filename='casualties.log',
                             filemode='a',
                             level=getattr(logging, loglevel),
                             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -65,7 +65,12 @@ class RDFMapper:
                 row_errors.append([person_id, name, column_name, conv_error, original_value])
 
             if value:
-                rdf_value = Literal(value, datatype=XSD.date) if type(value) == datetime.date else Literal(value)
+                if type(value) == datetime.date:
+                    rdf_value = Literal(value, datatype=XSD.date)
+                elif type(value) == URIRef:
+                    rdf_value = value
+                else:
+                    rdf_value = Literal(value)
 
                 if mapping.get('value_uri_base'):
                     rdf_value = URIRef(mapping['value_uri_base'] + value)
@@ -85,18 +90,24 @@ class RDFMapper:
 
         return row_rdf
 
-    def finalize_resource(self, uri, resource):
-        mun = resource.value(uri, SCHEMA_NS.hautauskunta)
-        gy = resource.value(uri, SCHEMA_NS.hautausmaa)
-        gy_uri = '{base}/hautausmaat/h{mun}'.format(base=SCHEMA_NS, mun=mun)
-        mun_uri = '{base}/kunnat/k{mun}'.format(base=SCHEMA_NS, mun=mun)
+    def finalize_resource(self, uri, graph: Graph):
+        mun = graph.value(uri, NARCS.hautauskunta_id)
+        if not mun:
+            return graph
+
+        gy = graph.value(uri, NARCS.hautausmaa_nro)
+        gy_uri = '{base}h{mun}'.format(base=CEMETERY_NS, mun=mun)
+        mun_uri = '{base}k{mun}'.format(base=KUNNAT, mun=mun)
         if gy:
             gy_uri = gy_uri + '_{gy}'.format(gy=gy)
 
-        resource.add((uri, SCHEMA_NS.hautausmaa, URIRef(gy_uri)))
-        resource.add((uri, SCHEMA_NS.hautauskunta, URIRef(mun_uri)))
+        graph.add((uri, NARCS.hautausmaa, URIRef(gy_uri)))
+        graph.add((uri, NARCS.hautauskunta, URIRef(mun_uri)))
 
-        return resource
+        graph.remove((uri, NARCS.hautauskunta_id, mun))
+        graph.remove((uri, NARCS.hautausmaa_nro, gy))
+
+        return graph
 
     def read_csv(self, csv_input):
         """
@@ -104,12 +115,31 @@ class RDFMapper:
 
         :param csv_input: CSV input (filename or buffer)
         """
+        def strip_upper(value):
+            return value.strip().upper() if value else None
+
+        def stripper(value):
+            return value.strip() if value else None
+
         csv_data = pd.read_csv(csv_input, encoding='UTF-8', index_col=False, sep=',', quotechar='"',
                                # parse_dates=[1], infer_datetime_format=True, dayfirst=True,
                                na_values=[' '],
                                converters={
-                                   'AMMATTI': lambda x: x.lower(),
-                                   0: lambda x: int(x) if x and x.isnumeric() else -1
+                                   'AMMATTI': lambda x: x.lower().strip(),
+                                   'ASKUNTA': stripper,
+                                   'KIRJKUNTA': stripper,
+                                   'HAAVKUNTA': stripper,
+                                   'KATOKUNTA': stripper,
+                                   'SKUNTA': stripper,
+                                   'HKUNTA': stripper,
+                                   'HMAA': stripper,
+                                   'HPAIKKA': stripper,
+                                   'KANSALLISUUS': strip_upper,
+                                   'KANSALAISUUS': strip_upper,
+                                   'LASTENLKM': stripper,
+                                   'JOSKOODI': stripper,
+                                   'JOSNIMI': stripper,
+                                   # 0: lambda x: int(x) if x and x.isnumeric() else -1
                                })
 
         self.table = csv_data.fillna('').applymap(lambda x: x.strip() if type(x) == str else x)
@@ -140,7 +170,7 @@ class RDFMapper:
         """
         for index in self.table.index:
             person_id = self.table.ix[index][0]
-            person_uri = DATA_NS['p_' + str(person_id)]
+            person_uri = NARCS['p' + str(person_id)]
             row_rdf = self.map_row_to_rdf(person_uri, self.table.ix[index][1:], person_id=person_id)
             if row_rdf:
                 self.data += row_rdf

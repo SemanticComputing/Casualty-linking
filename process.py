@@ -428,15 +428,6 @@ if __name__ == "__main__":
     print('Applying direct URI mapping fixes...')
     fix_by_direct_uri_mappings()
 
-    # FOAF Person instances to DeathRecord instances
-    for (sub, pred) in surma[::FOAF.Person]:
-        surma.add((sub, pred, NARCS.DeathRecord))
-        surma.remove((sub, pred, FOAF.Person))
-
-    for (sub, pred) in surma_onto[::FOAF.Person]:
-        surma_onto.add((sub, pred, NARCS.DeathRecord))
-        surma_onto.remove((sub, pred, FOAF.Person))
-
     # Additional fixes to schema
     UNIT_LINK_URI = NARCS.osasto
 

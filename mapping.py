@@ -6,25 +6,100 @@ Mapping of CSV columns to RDF properties
 from datetime import date, datetime
 from functools import partial
 
-from converters import convert_dates, strip_dash, convert_swedish
-from namespaces import SCHEMA_NS, BIOC
+from rdflib import Namespace
+
+from converters import convert_dates, strip_dash, convert_from_dict, urify
+from namespaces import NARCS, BIOC, MOTHER_TONGUE_NS, KANSALLISUUS, KANSALAISUUS, MARITAL_NS, GENDER_NS, \
+    PERISHING_CLASSES_NS, KUNNAT
 
 from validators import validate_dates, validate_mother_tongue
 
 # CSV column mapping. Person name and person index number are taken separately.
 
-PRISONER_MAPPING = {
-    'ID':
-        {
-            'uri': SCHEMA_NS.local_id,
-            'name_fi': 'Kansallisarkiston tunniste',
-            'name_en': 'National Archives ID',
-            'description_fi': 'Kansallisarkiston tunniste',
-            'description_en': 'National Archives ID',
-        },
+MUN_PREFIX = Namespace(str(KUNNAT) + "k")
+
+
+CITIZENSHIPS = {
+    'ITA': KANSALAISUUS.Italia,
+    'NO': KANSALAISUUS.Norja,
+    'NL': KANSALAISUUS.Neuvostoliitto,
+    'RU': KANSALAISUUS.Ruotsi,
+    'SA': KANSALAISUUS.Saksa,
+    'SU': KANSALLISUUS.Suomi,
+    'FI': KANSALAISUUS.Suomi,
+    'TA': KANSALAISUUS.Tanska,
+    'HUN': KANSALAISUUS.Unkari,
+    'IN': KANSALAISUUS.Inkeri,
+    'VI': KANSALAISUUS.Viro,
+    None: KANSALAISUUS.Tuntematon,
+}
+
+LANGUAGES = {
+    'it': MOTHER_TONGUE_NS.Italia,
+    'no': MOTHER_TONGUE_NS.Norja,
+    'ru': MOTHER_TONGUE_NS.Ruotsi,
+    'sa': MOTHER_TONGUE_NS.Saksa,
+    'sm': MOTHER_TONGUE_NS.Saame,
+    'su': MOTHER_TONGUE_NS.Suomi,
+    'ta': MOTHER_TONGUE_NS.Tanska,
+    'tu': MOTHER_TONGUE_NS.Turkki,
+    've': MOTHER_TONGUE_NS.Venaejae,
+    'vi': MOTHER_TONGUE_NS.Viro,
+    None: MOTHER_TONGUE_NS.Tuntematon,
+}
+
+MARITAL_STATUSES = {
+    'N': MARITAL_NS.Naimisissa,
+    'Y': MARITAL_NS.Naimaton,
+    'E': MARITAL_NS.Eronnut,
+    'L': MARITAL_NS.Leski,
+    None: MARITAL_NS.Tuntematon,
+}
+
+GENDERS = {
+    'M': GENDER_NS.Mies,
+    'N': GENDER_NS.Nainen,
+    None: GENDER_NS.Tuntematon,
+}
+
+NATIONALITIES = {
+    'ITA': KANSALLISUUS.Italia,
+    'NO': KANSALLISUUS.Norja,
+    'NL': KANSALLISUUS.Neuvostoliitto,
+    'RU': KANSALLISUUS.Ruotsi,
+    'SA': KANSALLISUUS.Saksa,
+    'SU': KANSALLISUUS.Suomi,
+    'FI': KANSALLISUUS.Suomi,
+    'TA': KANSALLISUUS.Tanska,
+    'HUN': KANSALLISUUS.Unkari,
+    'IN': KANSALLISUUS.Inkeri,
+    'VI': KANSALLISUUS.Viro,
+    None: KANSALLISUUS.Tuntematon,
+}
+
+PERISHING_CLASSES = {
+    'A': PERISHING_CLASSES_NS.A,
+    'B': PERISHING_CLASSES_NS.B,
+    'C': PERISHING_CLASSES_NS.C,
+    'D': PERISHING_CLASSES_NS.D,
+    'F': PERISHING_CLASSES_NS.F,
+    'S': PERISHING_CLASSES_NS.S,
+    None: PERISHING_CLASSES_NS.Tuntematon,
+}
+
+
+CASUALTY_MAPPING = {
+    # 'ID':
+    #     {
+    #         'uri': NARCS.local_id,
+    #         'name_fi': 'Kansallisarkiston tunniste',
+    #         'name_en': 'National Archives ID',
+    #         'description_fi': 'Kansallisarkiston tunniste',
+    #         'description_en': 'National Archives ID',
+    #     },
     'SNIMI':
         {
-            'uri': SCHEMA_NS.sukunimi,
+            'uri': NARCS.sukunimi,
             'name_fi': 'Sukunimi',
             'name_en': 'Person last name',
             'description_fi': 'Henkilön sukunimi',
@@ -32,7 +107,7 @@ PRISONER_MAPPING = {
         },
     'ENIMET':
         {
-            'uri': SCHEMA_NS.etunimet,
+            'uri': NARCS.etunimet,
             'name_fi': 'Etunimet',
             'name_en': 'First names',
             'description_fi': 'Henkilön etunimet',
@@ -40,69 +115,76 @@ PRISONER_MAPPING = {
         },
     'SSAATY':
         {
-            'uri': SCHEMA_NS.siviilisaesaety,
+            'uri': NARCS.siviilisaesaety,
             'name_fi': 'Siviilisääty',
             'name_en': 'Marital status',
             'description_fi': 'Siviilisääty',
             'description_en': 'Marital status',
+            'converter': partial(convert_from_dict, MARITAL_STATUSES)
         },
     'SPUOLI':
         {
-            'uri': SCHEMA_NS.sukupuoli,
+            'uri': NARCS.sukupuoli,
             'name_fi': 'Sukupuoli',
             'name_en': 'Gender',
+            'converter': partial(convert_from_dict, GENDERS)
         },
     'KANSALAISUUS':
         {
-            'uri': SCHEMA_NS.kansalaisuus,
+            'uri': NARCS.kansalaisuus,
             'name_fi': 'Kansalaisuus',
             'name_en': 'Citizenship',
+            'converter': partial(convert_from_dict, CITIZENSHIPS)
         },
     'KANSALLISUUS':
         {
-            'uri': SCHEMA_NS.kansallisuus,
+            'uri': NARCS.kansallisuus,
             'name_fi': 'Kansallisuus',
             'name_en': 'Nationality',
+            'converter': partial(convert_from_dict, NATIONALITIES)
         },
     'AIDINKIELI':
         {
-            'uri': SCHEMA_NS.aeidinkieli,
+            'uri': NARCS.aeidinkieli,
             'name_fi': 'Äidinkieli',
             'name_en': 'Mother tongue',
+            'converter': partial(convert_from_dict, LANGUAGES)
         },
     'LASTENLKM':
         {
-            'uri': SCHEMA_NS.lasten_lukumaeaerae,
+            'uri': NARCS.lasten_lukumaeaerae,
             'name_fi': 'Lasten lukumäärä',
             'name_en': 'Amount of children',
+            'converter': lambda x: int(x) if x else None
         },
     'AMMATTI':
         {
-            'uri': BIOC.has_occupation,
+            # 'uri': BIOC.has_occupation,
+            'uri': NARCS.ammatti,
             'name_fi': 'Ammatti',
             'name_en': 'Occupation',
         },
     'SOTARVO':
         {
-            'uri': SCHEMA_NS.sotilasarvo,
+            'uri': NARCS.sotilasarvo,
             'name_fi': 'Sotilasarvo',
             'name_en': 'Military rank',
         },
     'JOSKOODI':
         {
-            'uri': SCHEMA_NS.joukko_osastokoodi,
+            'uri': NARCS.joukko_osastokoodi,
             'name_fi': 'Joukko-osastokoodi',
             'name_en': 'Military unit key',
         },
     'JOSNIMI':
         {
-            'uri': SCHEMA_NS.joukko_osasto,
+            'uri': NARCS.joukko_osasto,
             'name_fi': 'Joukko-osasto',
             'name_en': 'Military unit',
         },
     'SAIKA':
         {
-            'uri': SCHEMA_NS.syntymaeaika,
+            'uri': NARCS.syntymaeaika,
             'converter': convert_dates,
             'validator': partial(validate_dates, after=date(1860, 1, 1), before=date(1935, 1, 1)),
             'name_fi': 'Syntymäaika',
@@ -110,25 +192,28 @@ PRISONER_MAPPING = {
         },
     'SKUNTA':
         {
-            'uri': SCHEMA_NS.synnyinkunta,
+            'uri': NARCS.synnyinkunta,
             'name_fi': 'Synnyinkunta',
             'name_en': 'Municipality of birth',
+            'converter': partial(urify, MUN_PREFIX),
         },
     'KIRJKUNTA':
         {
-            'uri': SCHEMA_NS.kotikunta,
+            'uri': NARCS.kotikunta,
             'name_fi': 'Kotikunta',
             'name_en': 'Place of domicile',
+            'converter': partial(urify, MUN_PREFIX),
         },
     'ASKUNTA':
         {
-            'uri': SCHEMA_NS.asuinkunta,
+            'uri': NARCS.asuinkunta,
             'name_fi': 'Asuinkunta',
             'name_en': 'Principal abode',
+            'converter': partial(urify, MUN_PREFIX),
         },
     'HAAVAIKA':
         {
-            'uri': SCHEMA_NS.haavoittumisaika,
+            'uri': NARCS.haavoittumisaika,
             'converter': convert_dates,
             'validator': validate_dates,
             'name_fi': 'Haavoittumisaika',
@@ -136,19 +221,20 @@ PRISONER_MAPPING = {
         },
     'HAAVKUNTA':
         {
-            'uri': SCHEMA_NS.haavoittumiskunta,
+            'uri': NARCS.haavoittumiskunta,
             'name_fi': 'Haavoittumiskunta',
             'name_en': 'Wounding municipality',
+            'converter': partial(urify, MUN_PREFIX),
         },
     'HAAVPAIKKA':
         {
-            'uri': SCHEMA_NS.haavoittumispaikka,
+            'uri': NARCS.haavoittumispaikka,
             'name_fi': 'Haavoittumispaikka',
             'name_en': 'Wounding place',
         },
     'KATOAIKA':
         {
-            'uri': SCHEMA_NS.time_gone_missing,
+            'uri': NARCS.time_gone_missing,
             'converter': convert_dates,
             'validator': validate_dates,
             'name_en': 'Date of going missing',
@@ -156,19 +242,20 @@ PRISONER_MAPPING = {
         },
     'KATOKUNTA':
         {
-            'uri': SCHEMA_NS.katoamiskunta,
+            'uri': NARCS.katoamiskunta,
             'name_fi': 'Katoamiskunta',
             'name_en': 'Municipality of going missing',
+            'converter': partial(urify, MUN_PREFIX),
         },
     'KATOPAIKKA':
         {
-            'uri': SCHEMA_NS.katoamispaikka,
+            'uri': NARCS.katoamispaikka,
             'name_fi': 'Katoamispaikka',
             'name_en': 'Place of going missing',
         },
     'KUOLINAIKA':
         {
-            'uri': SCHEMA_NS.death_date,
+            'uri': NARCS.death_date,
             'converter': convert_dates,
             'validator': partial(validate_dates, after=date(1939, 11, 30), before=date.today()),
             'name_fi': 'Kuolinpäivä',
@@ -176,37 +263,38 @@ PRISONER_MAPPING = {
         },
     'KUOLINPAIKKA':
         {
-            'uri': SCHEMA_NS.kuolinpaikka,
+            'uri': NARCS.kuolinpaikka,
             'name_fi': 'Kuolinpaikka',
             'name_en': 'Place of death',
         },
     'MENEHTLUOKKA':
         {
-            'uri': SCHEMA_NS.menehtymisluokka,
+            'uri': NARCS.menehtymisluokka,
             'name_fi': 'Menehtymisluokka',
             'name_en': 'Perishing class',
+            'converter': partial(convert_from_dict, PERISHING_CLASSES)
         },
     'HKUNTA':
         {
-            'uri': SCHEMA_NS.hautauskunta_id,
+            'uri': NARCS.hautauskunta_id,
             'name_fi': 'Hautauskunta',
             'name_en': 'Burial municipality',
         },
     'HMAA':
         {
-            'uri': SCHEMA_NS.hautausmaa_nro,
+            'uri': NARCS.hautausmaa_nro,
             'name_fi': 'Hautausmaa',
             'name_en': 'Burial graveyard',
         },
     'HPAIKKA':
         {
-            'uri': SCHEMA_NS.hautapaikka,
+            'uri': NARCS.hautapaikka,
             'name_fi': 'Hautapaikka',
             'name_en': 'Burial place',
         },
     'VAPAA_PAIKKATIETO':
         {
-            'uri': SCHEMA_NS.additional_information,
+            'uri': NARCS.additional_information,
             'name_fi': 'Lisätieto',
             'name_en': 'Additional information',
         },
