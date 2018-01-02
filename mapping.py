@@ -55,19 +55,19 @@ PRISONER_MAPPING = {
     'KANSALAISUUS':
         {
             'uri': SCHEMA_NS.kansalaisuus,
-            'name_fi': 'Kansalaisuus'
+            'name_fi': 'Kansalaisuus',
             'name_en': 'Citizenship',
         },
-    'KANSALAISUUS':
+    'KANSALLISUUS':
         {
             'uri': SCHEMA_NS.kansallisuus,
-            'name_fi': 'Kansallisuus'
+            'name_fi': 'Kansallisuus',
             'name_en': 'Nationality',
         },
     'AIDINKIELI':
         {
             'uri': SCHEMA_NS.aeidinkieli,
-            'name_fi': 'Äidinkieli'
+            'name_fi': 'Äidinkieli',
             'name_en': 'Mother tongue',
         },
     'LASTENLKM':
