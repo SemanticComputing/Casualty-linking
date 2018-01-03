@@ -101,7 +101,9 @@ class RDFMapper:
         if gy:
             gy_uri = gy_uri + '_{gy}'.format(gy=gy)
 
-        graph.add((uri, NARCS.hautausmaa, URIRef(gy_uri)))
+        if gy not in ['?', 'x']:
+            graph.add((uri, NARCS.hautausmaa, URIRef(gy_uri)))
+
         graph.add((uri, NARCS.hautauskunta, URIRef(mun_uri)))
 
         graph.remove((uri, NARCS.hautauskunta_id, mun))
@@ -121,6 +123,9 @@ class RDFMapper:
         def stripper(value):
             return value.strip() if value else None
 
+        def x_stripper(value):
+            return value.strip() if value and value.strip() != 'x' else None
+
         csv_data = pd.read_csv(csv_input, encoding='UTF-8', index_col=False, sep=',', quotechar='"',
                                # parse_dates=[1], infer_datetime_format=True, dayfirst=True,
                                na_values=[' '],
@@ -131,7 +136,7 @@ class RDFMapper:
                                    'HAAVKUNTA': stripper,
                                    'KATOKUNTA': stripper,
                                    'SKUNTA': stripper,
-                                   'HKUNTA': stripper,
+                                   'HKUNTA': x_stripper,
                                    'HMAA': stripper,
                                    'HPAIKKA': stripper,
                                    'KANSALLISUUS': strip_upper,

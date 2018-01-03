@@ -16,7 +16,7 @@ SCHEMA_NS = Namespace('http://ldf.fi/schema/warsa/casualties/')
 WARSA_NS = Namespace('http://ldf.fi/schema/warsa/')
 EVENTS_NS = Namespace('http://ldf.fi/warsa/events/')
 
-CEMETERY_NS = Namespace('http://ldf.fi/narc-menehtyneet1939-45/hautausmaat/')
+CEMETERY_NS = Namespace('http://ldf.fi/warsa/places/cemeteries/')
 MOTHER_TONGUE_NS = Namespace('http://ldf.fi/narc-menehtyneet1939-45/aeidinkieli/')
 MARITAL_NS = Namespace('http://ldf.fi/narc-menehtyneet1939-45/siviilisaeaety/')
 GENDER_NS = Namespace('http://ldf.fi/narc-menehtyneet1939-45/sukupuoli/')

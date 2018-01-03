@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 mkdir -p output
-mkdir -p data/new
 
 command -v rapper >/dev/null 2>&1 || { echo >&2 "rapper is not available, aborting"; exit 1; }
 
