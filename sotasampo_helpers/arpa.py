@@ -434,6 +434,25 @@ def link_to_pnr(graph, target_prop, source_prop, arpa, *args, preprocess=True, *
         'Ylämaa': 'Lappeenranta',
         'Yläne': 'Pöytyä',
         'Äetsä': 'Sastamala',
+        'Ähtävä': 'Pedersören kunta',
+        'Koivulahti': 'Mustasaari',
+        # 'Sulva': 'Mustasaari', # Two new municipalities
+        # 'Sulva': 'Vaasa',
+        'Alaveteli': 'Kruunupyy',
+        'Houtskari': 'Parainen',
+        'Jepua': 'Uusikaarlepyy',
+        'Kemiö': 'Kemiönsaari',
+        'Maksamaa': 'Vöyri',
+        'Nauvo': 'Parainen',
+        'Oravainen': 'Vöyri',
+        'Pernaja': 'Loviisa',
+        'Pirttikylä': 'Närpiö',
+        'Raippaluoto': 'Mustasaari',
+        'Siipyy': 'Kristiinankaupunki',
+        'Tammisaari': 'Raasepori',
+        'Teerijärvi': 'Kruunupyy',
+        'Ylimarkku': 'Närpiö',
+        'Tiukka': 'Kristiinankaupunki',
     }
 
     def _get_municipality_label(val, uri, *args2):
