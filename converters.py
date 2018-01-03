@@ -26,18 +26,32 @@ def convert_dates(raw_date: str):
     """
     if not raw_date:
         return raw_date
-    try:
-        date = datetime.datetime.strptime(str(raw_date).strip(), '%d/%m/%Y').date()
-    except ValueError:
-        try:
-            date = datetime.datetime.strptime(str(raw_date).strip(), '%d.%m.%Y').date()
-        except ValueError:
-            if raw_date[:2] != 'xx':
-                log.warning('Invalid value for date conversion: %s' % raw_date)
-            else:
-                log.debug('Invalid value for date conversion: %s' % raw_date)
 
-            date = raw_date
+    if not set(raw_date.replace('.', '').lower()) - {'x'}:
+        log.info('Removing reference to unknown date: %s' % raw_date)
+        return
+
+    # Corrections based on manual inspection of erroneous dates
+    datestr = str(raw_date).strip().replace('O', '0').replace(',', '.')
+    datestr = datestr.replace('26.02.0194', '26.02.1944')
+    datestr = datestr.replace('03.07.0194', '03.07.1944')
+    datestr = datestr.replace('13.09.0194', '13.09.1943')
+    datestr = datestr.replace('18.09.0041', '18.09.1941')
+    datestr = datestr.replace('16.12.0199', '16.12.1939')
+
+    try:
+        date = datetime.datetime.strptime(datestr, '%d.%m.%Y').date()
+
+        if str(date.year).rjust(4, '0')[:2] in ['09', '10']:
+            date = datetime.date(int('19' + str(date.year)[2:]), date.month, date.day)
+
+    except ValueError:
+        if datestr[:2].lower() != 'xx':
+            log.warning('Invalid value for date conversion: %s' % datestr)
+        else:
+            log.debug('Invalid value for date conversion: %s' % datestr)
+
+        date = datestr
 
     return date
 

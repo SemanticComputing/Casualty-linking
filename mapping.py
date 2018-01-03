@@ -10,7 +10,7 @@ from rdflib import Namespace
 
 from converters import convert_dates, strip_dash, convert_from_dict, urify
 from namespaces import NARCS, BIOC, MOTHER_TONGUE_NS, KANSALLISUUS, KANSALAISUUS, MARITAL_NS, GENDER_NS, \
-    PERISHING_CLASSES_NS, KUNNAT
+    PERISHING_CLASSES_NS, KUNNAT, WARSA_NS
 
 from validators import validate_dates, validate_mother_tongue
 
@@ -192,23 +192,24 @@ CASUALTY_MAPPING = {
         },
     'SKUNTA':
         {
-            'uri': NARCS.synnyinkunta,
+            'uri': WARSA_NS.birth_place,
             'name_fi': 'Synnyinkunta',
             'name_en': 'Municipality of birth',
             'converter': partial(urify, MUN_PREFIX),
         },
     'KIRJKUNTA':
         {
-            'uri': NARCS.kotikunta,
+            'uri': WARSA_NS.home_place,
             'name_fi': 'Kotikunta',
-            'name_en': 'Place of domicile',
+            'name_en': 'Home municipality',
+            'description_fi': 'Henkilön kirjoillaolokunta',
             'converter': partial(urify, MUN_PREFIX),
         },
     'ASKUNTA':
         {
-            'uri': NARCS.asuinkunta,
+            'uri': WARSA_NS.residence_place,
             'name_fi': 'Asuinkunta',
-            'name_en': 'Principal abode',
+            'name_en': 'Municipality of residence',
             'converter': partial(urify, MUN_PREFIX),
         },
     'HAAVAIKA':
@@ -221,7 +222,7 @@ CASUALTY_MAPPING = {
         },
     'HAAVKUNTA':
         {
-            'uri': NARCS.haavoittumiskunta,
+            'uri': WARSA_NS.wounding_municipality,
             'name_fi': 'Haavoittumiskunta',
             'name_en': 'Wounding municipality',
             'converter': partial(urify, MUN_PREFIX),
@@ -242,7 +243,7 @@ CASUALTY_MAPPING = {
         },
     'KATOKUNTA':
         {
-            'uri': NARCS.katoamiskunta,
+            'uri': WARSA_NS.municipality_gone_missing,
             'name_fi': 'Katoamiskunta',
             'name_en': 'Municipality of going missing',
             'converter': partial(urify, MUN_PREFIX),
@@ -260,6 +261,12 @@ CASUALTY_MAPPING = {
             'validator': partial(validate_dates, after=date(1939, 11, 30), before=date.today()),
             'name_fi': 'Kuolinpäivä',
             'name_en': 'Date of death',
+        },
+    'KUOLINKUNTA':
+        {
+            'uri': WARSA_NS.municipality_of_death,
+            'name_en': 'Municipality of death',
+            'name_fi': 'Kuolinkunta'
         },
     'KUOLINPAIKKA':
         {

@@ -101,10 +101,10 @@ class RDFMapper:
         if gy:
             gy_uri = gy_uri + '_{gy}'.format(gy=gy)
 
-        if gy not in ['?', 'x']:
-            graph.add((uri, NARCS.hautausmaa, URIRef(gy_uri)))
+        if str(gy) not in ['?', 'x']:
+            graph.add((uri, WARSA_NS.buried_in, URIRef(gy_uri)))
 
-        graph.add((uri, NARCS.hautauskunta, URIRef(mun_uri)))
+        graph.add((uri, NARCS.burial_municipality, URIRef(mun_uri)))
 
         graph.remove((uri, NARCS.hautauskunta_id, mun))
         graph.remove((uri, NARCS.hautausmaa_nro, gy))
