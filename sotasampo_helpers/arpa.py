@@ -228,7 +228,7 @@ def link_to_military_units(graph, graph_schema, target_prop, source_prop, arpa, 
                          preprocessor=preprocessor, progress=True, **kwargs)
 
 
-def link_to_pnr(graph, graph_schema, target_prop, source_prop, arpa, *args, preprocess=True, **kwargs):
+def link_to_pnr(graph, target_prop, source_prop, arpa, *args, preprocess=True, **kwargs):
     """
     Link municipalities to Paikannimirekisteri.
     :returns dict containing some statistics and a list of errors
@@ -238,11 +238,56 @@ def link_to_pnr(graph, graph_schema, target_prop, source_prop, arpa, *args, prep
     :param source_prop: source property as URIRef
     """
 
-    def _get_municipality_label(uri, *args2):
+    current_municipalities = {
+        'Askainen': 'Masku',
+        'Alastaro': 'Loimaa',
+        'Aitolahti': 'Tampere',
+        'Bergö': 'Maalahti',
+        'Haagan kauppala': 'Helsinki',
+        'Hyvinkään mlk': 'Hyvinkää',
+        'Kerimäki': 'Savonlinna',
+        'Kimito Kemiö': 'Kemiönsaari',
+        'Kiukainen': 'Eura',
+        'Kovero': 'Joensuu',
+        'Kuru': 'Ylöjärvi',
+        'Kortesjärvi': 'Kauhava',
+        'Kvevlax Koivulahti': 'Mustasaari',
+        'Lammi': 'Hämeenlinna',
+        'Lappfjärd': 'Kristiinankaupunki',
+        'Loimaan kunta': 'Loimaa',
+        'Mellilä': 'Loimaa',
+        'Munsala': 'Uusikaarlepyy',
+        'Mustio': 'Raasepori',
+        'Muurla': 'Salo',
+        'Nummi': 'Lohja',
+        'Paavola': 'Siikajoki',
+        'Pielisensuu': 'Joensuu',
+        'Purmo': 'Pedersören kunta',
+        'Ruukki': 'Siikajoki',
+        'Sippola': 'Kouvola',
+        'Säynätsalo': 'Jyväskylä',
+        'Teisko': 'Tampere',
+        'Terjärv Teerijärvi': 'Kruunupyy',
+        'Turtola': 'Pello',
+        'Ullava': 'Kokkola',
+        'Vammala': 'Sastamala',
+        'Vahto': 'Rusko',
+        'Viljakkala': 'Ylöjärvi',
+        'Vilppula': 'Mänttä-Vilppula',
+        'Vehmersalmi': 'Kuopio',
+        'Virtasalmi': 'Pieksämäki',
+        'Ylihärmä': 'Kauhava',
+        'Ylistaro': 'Seinäjoki',
+        'Öja': 'Kokkola',
+    }
+
+    def _get_municipality_label(val, uri, *args2):
         """
         :param uri: municipality URI
         """
-        return str(graph_schema.value(uri, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel'))).replace('/', ' ')
+        lbl = str(graph.value(uri, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel'))).replace('/', ' ')
+        lbl = current_municipalities.get(lbl, lbl)
+        return lbl
 
     if preprocess:
         preprocessor = _get_municipality_label
@@ -250,7 +295,7 @@ def link_to_pnr(graph, graph_schema, target_prop, source_prop, arpa, *args, prep
         preprocessor = None
 
     # Query the ARPA service and add the matches
-    return process_graph(graph, target_prop, arpa, source_prop=source_prop,
+    return process_graph(graph, target_prop, arpa, new_graph=True, source_prop=source_prop,
                          preprocessor=preprocessor, progress=True, **kwargs)
 
 
