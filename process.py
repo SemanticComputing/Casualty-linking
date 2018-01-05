@@ -248,7 +248,7 @@ def main(args):
 
     print('Linking to municipalities...')
 
-    link_to_municipalities(surma, municipalities)
+    surma = link_to_municipalities(surma, municipalities)
 
     print('Handling persons...')
 

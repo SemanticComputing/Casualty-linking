@@ -8,7 +8,7 @@ import pandas as pd
 
 from rdflib import URIRef, Graph, Literal, Namespace
 from mapping import CASUALTY_MAPPING
-from namespaces import RDF, XSD, DC, SKOS, NARCS, SCHEMA_NS, WARSA_NS, bind_namespaces, CEMETERY_NS, KUNNAT
+from namespaces import RDF, XSD, DC, SKOS, NARC, NARCS, SCHEMA_NS, WARSA_NS, bind_namespaces, CEMETERY_NS, KUNNAT
 
 
 class RDFMapper:
@@ -175,7 +175,7 @@ class RDFMapper:
         """
         for index in self.table.index:
             person_id = self.table.ix[index][0]
-            person_uri = NARCS['p' + str(person_id)]
+            person_uri = NARC['p' + str(person_id)]
             row_rdf = self.map_row_to_rdf(person_uri, self.table.ix[index][1:], person_id=person_id)
             if row_rdf:
                 self.data += row_rdf

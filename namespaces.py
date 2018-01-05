@@ -28,6 +28,8 @@ KUNNAT = Namespace('http://ldf.fi/narc-menehtyneet1939-45/kunnat/')
 SOTILASARVO = Namespace('http://ldf.fi/narc-menehtyneet1939-45/sotilasarvo/')
 MENEHTYMISLUOKKA = Namespace('http://ldf.fi/narc-menehtyneet1939-45/menehtymisluokka/')
 NARCS = Namespace('http://ldf.fi/schema/narc-menehtyneet1939-45/')
+NARC = Namespace('http://ldf.fi/narc-menehtyneet1939-45/')
+
 
 def bind_namespaces(graph: Graph):
     graph.bind("c", "http://ldf.fi/warsa/casualties/")

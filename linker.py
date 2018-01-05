@@ -75,7 +75,7 @@ def link_ranks(graph, endpoint):
     # TODO: Move to Warsa-linkers
 
     def preprocess(literal, prisoner, subgraph):
-        value = re.sub(r'[/\-]', ' ', str(literal)).strip()
+        value = str(literal).strip()
         return rank_mapping[value] if value in rank_mapping else value
 
     rank_mapping = {
@@ -144,7 +144,7 @@ def link_ranks(graph, endpoint):
 
     arpa = ArpaMimic(query, url=endpoint, retries=3, wait_between_tries=3)
 
-    return link(graph, arpa, NARCS.sotilasarvo, Graph(), SCHEMA_NS.warsa_rank, preprocess=preprocess)
+    return link(graph, arpa, NARCS.sotilasarvo, Graph(), NARCS.warsa_rank, preprocess=preprocess)
 
 
 class PersonValidator:

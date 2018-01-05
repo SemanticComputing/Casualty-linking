@@ -14,6 +14,257 @@ from fuzzywuzzy import fuzz
 log = logging.getLogger('arpa_linker.arpa')
 
 
+CURRENT_MUNICIPALITIES = {
+    'Ahlainen': 'Pori',
+    'Aitolahti': 'Tampere',
+    'Alahärmä': 'Kauhava',
+    'Alastaro': 'Loimaa',
+    'Alatornio': 'Tornio',
+    'Angelniemi': 'Salo',
+    'Anjala': 'Kouvola',
+    'Anjalankoski': 'Kouvola',
+    'Anttola': 'Mikkeli',
+    'Artjärvi': 'Orimattila',
+    'Askainen': 'Masku',
+    'Bergö': 'Malax',
+    'Björköby': 'Korsholm',
+    'Bromarv': 'Raseborg',
+    'Degerby': 'Inkoo',
+    'Dragsfjärd': 'Kemiönsaari',
+    'Elimäki': 'Kouvola',
+    'Eno': 'Joensuu',
+    'Eräjärvi': 'Orivesi',
+    'Haapasaari': 'Helsinki',
+    'Halikko': 'Salo',
+    'Hauho': 'Hämeenlinna',
+    'Haukipudas': 'Oulu',
+    'Haukivuori': 'Mikkeli',
+    'Hiittinen': 'Kimitoön',
+    'Himanka': 'Kalajoki',
+    'Hinnerjoki': 'Eura',
+    'Honkilahti': 'Eura',
+    'Huopalahti': 'Helsinki',
+    'Iniö': 'Pargas',
+    'Jaala': 'Kouvola',
+    'Joutseno': 'Lappeenranta',
+    'Jurva': 'Kurikka',
+    'Jämsänkoski': 'Jämsä',
+    'Jäppilä': 'Pieksämäki',
+    'Kaarlela': 'Kokkola',
+    'Kakskerta': 'Turku',
+    'Kalanti': 'Uusikaupunki',
+    'Kalvola': 'Hämeenlinna',
+    'Kangaslampi': 'Varkaus',
+    'Karhula': 'Kotka',
+    'Karinainen': 'Pöytyä',
+    'Karjala': 'Mynämäki',
+    'Karjalohja': 'Lohja',
+    'Karkku': 'Sastamala',
+    'Karttula': 'Kuopio',
+    # 'Karuna': 'Kemiönsaari', # Two new municipalities
+    # 'Karuna': 'Sauvo',
+    'Karunki': 'Tornio',
+    'Kauvatsa': 'Kokemäki',
+    'Keikyä': 'Sastamala',
+    'Kerimäki': 'Savonlinna',
+    'Kestilä': 'Siikalatva',
+    'Kesälahti': 'Kitee',
+    'Kiihtelysvaara': 'Joensuu',
+    'Kiikala': 'Salo',
+    'Kiikka': 'Sastamala',
+    'Kiikoinen': 'Sastamala',
+    'Kiiminki': 'Oulu',
+    'Kisko': 'Salo',
+    'Kiukainen': 'Eura',
+    'Kodisjoki': 'Rauma',
+    'Konginkangas': 'Äänekoski',
+    'Korpilahti': 'Jyväskylä',
+    'Korppoo': 'Pargas',
+    'Kortesjärvi': 'Kauhava',
+    'Kuhmalahti': 'Kangasala',
+    'Kuivaniemi': 'Ii',
+    'Kullaa': 'Ulvila',
+    'Kulosaari': 'Helsinki',
+    'Kuorevesi': 'Jämsä',
+    'Kuru': 'Ylöjärvi',
+    'Kuusankoski': 'Kouvola',
+    'Kuusjoki': 'Salo',
+    'Kuusjärvi': 'Outokumpu',
+    'Kylmäkoski': 'Akaa',
+    'Kymi': 'Kotka',
+    'Kälviä': 'Kokkola',
+    'Lammi': 'Hämeenlinna',
+    'Lappee': 'Lappeenranta',
+    'Lappi': 'Rauma',
+    'Lauritsala': 'Lappeenranta',
+    'Lehtimäki': 'Alajärvi',
+    'Leivonmäki': 'Joutsa',
+    'Lemu': 'Masku',
+    'Liljendal': 'Loviisa',
+    'Lohtaja': 'Kokkola',
+    'Lokalahti': 'Uusikaupunki',
+    'Luopioinen': 'Pälkäne',
+    # 'Längelmäki': 'Jämsä', # Two new municipalities
+    # 'Längelmäki': 'Orivesi',
+    'Maaria': 'Turku',
+    'Mellilä': 'Loimaa',
+    'Merimasku': 'Naantali',
+    'Messukylä': 'Tampere',
+    'Metsämaa': 'Loimaa',
+    'Mietoinen': 'Mynämäki',
+    'Mouhijärvi': 'Sastamala',
+    'Munsala': 'Nykarleby',
+    'Muurla': 'Salo',
+    'Muuruvesi': 'Kuopio',
+    'Mänttä': 'Mänttä-Vilppula',
+    'Nilsiä': 'Kuopio',
+    'Noormarkku': 'Pori',
+    'Nuijamaa': 'Lappeenranta',
+    'Nummi': 'Lohja',
+    'Nummi-Pusula': 'Lohja',
+    'Nurmo': 'Seinäjoki',
+    'Oulujoki': 'Oulu',
+    'Oulunkylä': 'Helsinki',
+    'Oulunsalo': 'Oulu',
+    'Paattinen': 'Turku',
+    'Paavola': 'Siikajoki',
+    'Pattijoki': 'Raahe',
+    'Perniö': 'Salo',
+    'Pertteli': 'Salo',
+    'Peräseinäjoki': 'Seinäjoki',
+    'Petsamo': 'Tampere',
+    'Pielisjärvi': 'Lieksa',
+    'Pihlajavesi': 'Keuruu',
+    'Piikkiö': 'Kaarina',
+    'Piippola': 'Siikalatva',
+    'Pohja': 'Raseborg',
+    'Pulkkila': 'Siikalatva',
+    'Punkaharju': 'Savonlinna',
+    'Purmo': 'Pedersöre',
+    'Pusula': 'Lohja',
+    'Pyhäselkä': 'Joensuu',
+    'Pylkönmäki': 'Saarijärvi',
+    'Rantsila': 'Siikalatva',
+    'Rautio': 'Kalajoki',
+    'Renko': 'Hämeenlinna',
+    'Revonlahti': 'Siikajoki',
+    'Ristiina': 'Mikkeli',
+    'Ruotsinpyhtää': 'Loviisa',
+    'Ruukki': 'Siikajoki',
+    'Rymättylä': 'Naantali',
+    'Saari': 'Parikkala',
+    'Sahalahti': 'Kangasala',
+    'Salmi': 'Kuortane',
+    'Saloinen': 'Raahe',
+    'Sammatti': 'Lohja',
+    'Savonranta': 'Savonlinna',
+    'Simpele': 'Rautjärvi',
+    'Sippola': 'Kouvola',
+    'Snappertuna': 'Raseborg',
+    'Somerniemi': 'Somero',
+    'Sumiainen': 'Äänekoski',
+    'Suodenniemi': 'Sastamala',
+    'Suojärvi': 'Janakkala',
+    'Suolahti': 'Äänekoski',
+    'Suomenniemi': 'Mikkeli',
+    'Suomusjärvi': 'Salo',
+    'Suoniemi': 'Nokia',
+    'Särkisalo': 'Salo',
+    'Säräisniemi': 'Vaala',
+    'Säynätsalo': 'Jyväskylä',
+    'Sääksmäki': 'Valkeakoski',
+    'Sääminki': 'Savonlinna',
+    'Teisko': 'Tampere',
+    'Temmes': 'Tyrnävä',
+    'Toijala': 'Akaa',
+    'Tottijärvi': 'Nokia',
+    'Turtola': 'Pello',
+    'Tuulos': 'Hämeenlinna',
+    'Tuupovaara': 'Joensuu',
+    'Tyrvää': 'Sastamala',
+    'Töysä': 'Alavus',
+    'Ullava': 'Kokkola',
+    'Uskela': 'Salo',
+    'Uukuniemi': 'Parikkala',
+    'Vahto': 'Rusko',
+    'Valkeala': 'Kouvola',
+    'Vammala': 'Sastamala',
+    'Vampula': 'Huittinen',
+    'Vanaja': 'Hämeenlinna',
+    'Varpaisjärvi': 'Lapinlahti',
+    'Vehkalahti': 'Hamina',
+    'Vehmersalmi': 'Kuopio',
+    'Velkua': 'Naantali',
+    'Vihanti': 'Raahe',
+    'Viiala': 'Akaa',
+    'Vilppula': 'Mänttä-Vilppula',
+    'Virtasalmi': 'Pieksämäki',
+    'Vuolijoki': 'Kajaani',
+    'Vähäkyrö': 'Vaasa',
+    'Värtsilä': 'Tohmajärvi',
+    'Västanfjärd': 'Kimitoön',
+    'Yli-Ii': 'Oulu',
+    'Ylihärmä': 'Kauhava',
+    'Ylikiiminki': 'Oulu',
+    'Ylistaro': 'Seinäjoki',
+    'Ylämaa': 'Lappeenranta',
+    'Yläne': 'Pöytyä',
+    'Äetsä': 'Sastamala',
+    'Ähtävä': 'Pedersören kunta',
+    'Esse Ähtävä': 'Pedersören kunta',
+    'Koivulahti': 'Mustasaari',
+    'Kvevlax Koivulahti': 'Mustasaari',
+    # 'Sulva': 'Mustasaari', # Two new municipalities
+    # 'Sulva': 'Vaasa',
+    'Alaveteli': 'Kruunupyy',
+    'Nedervetil Alaveteli': 'Kruunupyy',
+    'Houtskari': 'Parainen',
+    'Houtskär Houtskari': 'Parainen',
+    'Jepua': 'Uusikaarlepyy',
+    'Jeppo Jepua': 'Uusikaarlepyy',
+    'Kemiö': 'Kemiönsaari',
+    'Kimito Kemiö': 'Kemiönsaari',
+    'Maksamaa': 'Vöyri',
+    'Maxmo Maksamaa': 'Vöyri',
+    'Nauvo': 'Parainen',
+    'Nagu Nauvo': 'Parainen',
+    'Oravainen': 'Vöyri',
+    'Oravais Oravainen': 'Vöyri',
+    'Pernaja': 'Loviisa',
+    'Pernå Pernaja': 'Loviisa',
+    'Pirttikylä': 'Närpiö',
+    'Pörtom Pirttikylä': 'Närpiö',
+    'Raippaluoto': 'Mustasaari',
+    'Replot Raippaluoto': 'Mustasaari',
+    'Siipyy': 'Kristiinankaupunki',
+    'Sideby Siipyy': 'Kristiinankaupunki',
+    'Tammisaari': 'Raasepori',
+    'Tammisaari Ekenäs': 'Raasepori',
+    'Teerijärvi': 'Kruunupyy',
+    'Terjärv Teerijärvi': 'Kruunupyy',
+    'Ylimarkku': 'Närpiö',
+    'Övermark Ylimarkku': 'Närpiö',
+    'Tiukka': 'Kristiinankaupunki',
+    'Tjöck Tiukka': 'Kristiinankaupunki',
+    'Petolahti': 'Maalahti',
+    'Petalax Petolahti': 'Maalahti',
+    'Karjaa': 'Raasepori',
+    'Karjaa Karis': 'Raasepori',
+    'Karjaan mlk': 'Raasepori',
+    'Karjaan mlk Karis lk': 'Raasepori',
+    'Hyvinkään mlk': 'Hyvinkää',
+    'Haagan kauppala': 'Helsinki',
+    # 'Kuopion mlk': 'Kuopio', # Two new municipalities
+    # 'Kuopion mlk': 'Siilinjärvi',
+    'Tammisaaren mlk': 'Raasepori',
+    'Karjaan mlk': 'Raasepori',
+    'Koski Hl.': 'Hollola',
+    'Uusikirkko Tl': 'Uusikaupunki',
+    'Tenhola': 'Raasepori',
+    'Tenhola Tenala': 'Raasepori',
+}
+
+
 class Validator:
     def __init__(self, graph, graph_schema, birthdate_prop, deathdate_prop, source_rank_prop,
                  source_firstname_prop, source_lastname_prop):
@@ -72,55 +323,71 @@ class Validator:
                 score += int((fuzzy_lastname_match - _FUZZY_LASTNAME_MATCH_LIMIT) /
                              (100 - _FUZZY_LASTNAME_MATCH_LIMIT) * 100)
 
+            log.debug('Rank: {} => {}'.format(rank, res_ranks))
             if rank and res_ranks and rank != 'tuntematon':
                 if rank in res_ranks:
+                    log.debug('Rank match ({})'.format(rank))
                     score += 25
                     if rank not in ['sotamies', 'korpraali']:
+                        log.debug('Rank high ({})'.format(rank))
                         # More than half of the casualties have rank private and about 15% are corporals.
                         # Give points to ranks higher than these.
                         score += 25
                 else:
+                    log.debug('Rank unmatched ({})'.format(rank))
                     score -= 25
 
             birthdate = str(self.graph.value(s, self.birthdate_prop))
             deathdate = str(self.graph.value(s, self.deathdate_prop))
 
+            log.debug('Birth: {} => {}'.format(birthdate, res_birthdates))
             if res_birthdates[0] and birthdate:
                 if res_birthdates[0] <= birthdate:
                     if res_birthdates[0] == birthdate:
+                        log.debug('Birth earlier match ({})'.format(birthdate))
                         score += 50
                 else:
+                    log.debug('Birth earlier unmatched ({})'.format(birthdate))
                     score -= 25
 
             if res_birthdates[1] and birthdate:
                 if birthdate <= res_birthdates[1]:
                     if res_birthdates[1] == birthdate:
+                        log.debug('Birth later match ({})'.format(birthdate))
                         score += 50
                 else:
+                    log.debug('Birth later unmatched ({})'.format(birthdate))
                     score -= 25
 
             # If both are single dates, allow one different character before penalizing
             if res_birthdates[0] and res_birthdates[0] == res_birthdates[1] and \
-               fuzz.partial_ratio(res_birthdates[0], birthdate) <= 80:
+                    fuzz.partial_ratio(res_birthdates[0], birthdate) <= 80:
+                log.debug('Birth single unmatched ({})'.format(birthdate))
                 score -= 25
 
+            log.debug('Death: {} => {}'.format(deathdate, res_deathdates))
             if res_deathdates[0] and deathdate:
                 if res_deathdates[0] <= deathdate:
                     if res_deathdates[0] == deathdate:
+                        log.debug('Death earlier match ({})'.format(deathdate))
                         score += 50
                 else:
+                    log.debug('Death earlier unmatched ({})'.format(deathdate))
                     score -= 25
 
             if res_deathdates[1] and deathdate:
                 if deathdate <= res_deathdates[1]:
                     if deathdate == res_deathdates[1]:
+                        log.debug('Death later match ({})'.format(deathdate))
                         score += 50
                 else:
+                    log.debug('Death later unmatched ({})'.format(deathdate))
                     score -= 25
 
             # If both are single dates, allow one different character before penalizing
             if res_deathdates[0] and res_deathdates[0] == res_deathdates[1] and \
-               fuzz.partial_ratio(res_deathdates[0], deathdate) <= 80:
+                    fuzz.partial_ratio(res_deathdates[0], deathdate) <= 80:
+                log.debug('Death single unmatched ({})'.format(deathdate))
                 score -= 25
 
             s_first1 = ' '.join(firstnames)
@@ -148,8 +415,8 @@ class Validator:
                          .format(rank=rank, fn=s_first1, ln=lastname, uri=s, res_rank=res_ranks, res_fn=s_first2,
                                  res_ln=res_lastname, res_uri=res_id, score=score))
             else:
-                log.info('Skipping potential match because of too low score [{score}]: {p1}  <<-->>  {p2}'.
-                         format(p1=s, p2=res_id, score=score))
+                log.info('Skipping potential match because of too low score [{score}]: {p1} ({fname} {lname})  <<-->>  {p2} ({res_name})'.
+                         format(p1=s, p2=res_id, score=score, fname=firstnames, lname=lastname, res_name=person.get('label')))
 
         if len(filtered) == 1:
             return filtered
@@ -238,262 +505,12 @@ def link_to_pnr(graph, target_prop, source_prop, arpa, *args, preprocess=True, *
     :param source_prop: source property as URIRef
     """
 
-    current_municipalities = {
-        'Ahlainen': 'Pori',
-        'Aitolahti': 'Tampere',
-        'Alahärmä': 'Kauhava',
-        'Alastaro': 'Loimaa',
-        'Alatornio': 'Tornio',
-        'Angelniemi': 'Salo',
-        'Anjala': 'Kouvola',
-        'Anjalankoski': 'Kouvola',
-        'Anttola': 'Mikkeli',
-        'Artjärvi': 'Orimattila',
-        'Askainen': 'Masku',
-        'Bergö': 'Malax',
-        'Björköby': 'Korsholm',
-        'Bromarv': 'Raseborg',
-        'Degerby': 'Inkoo',
-        'Dragsfjärd': 'Kemiönsaari',
-        'Elimäki': 'Kouvola',
-        'Eno': 'Joensuu',
-        'Eräjärvi': 'Orivesi',
-        'Haapasaari': 'Helsinki',
-        'Halikko': 'Salo',
-        'Hauho': 'Hämeenlinna',
-        'Haukipudas': 'Oulu',
-        'Haukivuori': 'Mikkeli',
-        'Hiittinen': 'Kimitoön',
-        'Himanka': 'Kalajoki',
-        'Hinnerjoki': 'Eura',
-        'Honkilahti': 'Eura',
-        'Huopalahti': 'Helsinki',
-        'Iniö': 'Pargas',
-        'Jaala': 'Kouvola',
-        'Joutseno': 'Lappeenranta',
-        'Jurva': 'Kurikka',
-        'Jämsänkoski': 'Jämsä',
-        'Jäppilä': 'Pieksämäki',
-        'Kaarlela': 'Kokkola',
-        'Kakskerta': 'Turku',
-        'Kalanti': 'Uusikaupunki',
-        'Kalvola': 'Hämeenlinna',
-        'Kangaslampi': 'Varkaus',
-        'Karhula': 'Kotka',
-        'Karinainen': 'Pöytyä',
-        'Karjala': 'Mynämäki',
-        'Karjalohja': 'Lohja',
-        'Karkku': 'Sastamala',
-        'Karttula': 'Kuopio',
-        # 'Karuna': 'Kemiönsaari', # Two new municipalities
-        # 'Karuna': 'Sauvo',
-        'Karunki': 'Tornio',
-        'Kauvatsa': 'Kokemäki',
-        'Keikyä': 'Sastamala',
-        'Kerimäki': 'Savonlinna',
-        'Kestilä': 'Siikalatva',
-        'Kesälahti': 'Kitee',
-        'Kiihtelysvaara': 'Joensuu',
-        'Kiikala': 'Salo',
-        'Kiikka': 'Sastamala',
-        'Kiikoinen': 'Sastamala',
-        'Kiiminki': 'Oulu',
-        'Kisko': 'Salo',
-        'Kiukainen': 'Eura',
-        'Kodisjoki': 'Rauma',
-        'Konginkangas': 'Äänekoski',
-        'Korpilahti': 'Jyväskylä',
-        'Korppoo': 'Pargas',
-        'Kortesjärvi': 'Kauhava',
-        'Kuhmalahti': 'Kangasala',
-        'Kuivaniemi': 'Ii',
-        'Kullaa': 'Ulvila',
-        'Kulosaari': 'Helsinki',
-        'Kuorevesi': 'Jämsä',
-        'Kuru': 'Ylöjärvi',
-        'Kuusankoski': 'Kouvola',
-        'Kuusjoki': 'Salo',
-        'Kuusjärvi': 'Outokumpu',
-        'Kylmäkoski': 'Akaa',
-        'Kymi': 'Kotka',
-        'Kälviä': 'Kokkola',
-        'Lammi': 'Hämeenlinna',
-        'Lappee': 'Lappeenranta',
-        'Lappi': 'Rauma',
-        'Lauritsala': 'Lappeenranta',
-        'Lehtimäki': 'Alajärvi',
-        'Leivonmäki': 'Joutsa',
-        'Lemu': 'Masku',
-        'Liljendal': 'Loviisa',
-        'Lohtaja': 'Kokkola',
-        'Lokalahti': 'Uusikaupunki',
-        'Luopioinen': 'Pälkäne',
-        # 'Längelmäki': 'Jämsä', # Two new municipalities
-        # 'Längelmäki': 'Orivesi',
-        'Maaria': 'Turku',
-        'Mellilä': 'Loimaa',
-        'Merimasku': 'Naantali',
-        'Messukylä': 'Tampere',
-        'Metsämaa': 'Loimaa',
-        'Mietoinen': 'Mynämäki',
-        'Mouhijärvi': 'Sastamala',
-        'Munsala': 'Nykarleby',
-        'Muurla': 'Salo',
-        'Muuruvesi': 'Kuopio',
-        'Mänttä': 'Mänttä-Vilppula',
-        'Nilsiä': 'Kuopio',
-        'Noormarkku': 'Pori',
-        'Nuijamaa': 'Lappeenranta',
-        'Nummi': 'Lohja',
-        'Nummi-Pusula': 'Lohja',
-        'Nurmo': 'Seinäjoki',
-        'Oulujoki': 'Oulu',
-        'Oulunkylä': 'Helsinki',
-        'Oulunsalo': 'Oulu',
-        'Paattinen': 'Turku',
-        'Paavola': 'Siikajoki',
-        'Pattijoki': 'Raahe',
-        'Perniö': 'Salo',
-        'Pertteli': 'Salo',
-        'Peräseinäjoki': 'Seinäjoki',
-        'Petsamo': 'Tampere',
-        'Pielisjärvi': 'Lieksa',
-        'Pihlajavesi': 'Keuruu',
-        'Piikkiö': 'Kaarina',
-        'Piippola': 'Siikalatva',
-        'Pohja': 'Raseborg',
-        'Pulkkila': 'Siikalatva',
-        'Punkaharju': 'Savonlinna',
-        'Purmo': 'Pedersöre',
-        'Pusula': 'Lohja',
-        'Pyhäselkä': 'Joensuu',
-        'Pylkönmäki': 'Saarijärvi',
-        'Rantsila': 'Siikalatva',
-        'Rautio': 'Kalajoki',
-        'Renko': 'Hämeenlinna',
-        'Revonlahti': 'Siikajoki',
-        'Ristiina': 'Mikkeli',
-        'Ruotsinpyhtää': 'Loviisa',
-        'Ruukki': 'Siikajoki',
-        'Rymättylä': 'Naantali',
-        'Saari': 'Parikkala',
-        'Sahalahti': 'Kangasala',
-        'Salmi': 'Kuortane',
-        'Saloinen': 'Raahe',
-        'Sammatti': 'Lohja',
-        'Savonranta': 'Savonlinna',
-        'Simpele': 'Rautjärvi',
-        'Sippola': 'Kouvola',
-        'Snappertuna': 'Raseborg',
-        'Somerniemi': 'Somero',
-        'Sumiainen': 'Äänekoski',
-        'Suodenniemi': 'Sastamala',
-        'Suojärvi': 'Janakkala',
-        'Suolahti': 'Äänekoski',
-        'Suomenniemi': 'Mikkeli',
-        'Suomusjärvi': 'Salo',
-        'Suoniemi': 'Nokia',
-        'Särkisalo': 'Salo',
-        'Säräisniemi': 'Vaala',
-        'Säynätsalo': 'Jyväskylä',
-        'Sääksmäki': 'Valkeakoski',
-        'Sääminki': 'Savonlinna',
-        'Teisko': 'Tampere',
-        'Temmes': 'Tyrnävä',
-        'Toijala': 'Akaa',
-        'Tottijärvi': 'Nokia',
-        'Turtola': 'Pello',
-        'Tuulos': 'Hämeenlinna',
-        'Tuupovaara': 'Joensuu',
-        'Tyrvää': 'Sastamala',
-        'Töysä': 'Alavus',
-        'Ullava': 'Kokkola',
-        'Uskela': 'Salo',
-        'Uukuniemi': 'Parikkala',
-        'Vahto': 'Rusko',
-        'Valkeala': 'Kouvola',
-        'Vammala': 'Sastamala',
-        'Vampula': 'Huittinen',
-        'Vanaja': 'Hämeenlinna',
-        'Varpaisjärvi': 'Lapinlahti',
-        'Vehkalahti': 'Hamina',
-        'Vehmersalmi': 'Kuopio',
-        'Velkua': 'Naantali',
-        'Vihanti': 'Raahe',
-        'Viiala': 'Akaa',
-        'Vilppula': 'Mänttä-Vilppula',
-        'Virtasalmi': 'Pieksämäki',
-        'Vuolijoki': 'Kajaani',
-        'Vähäkyrö': 'Vaasa',
-        'Värtsilä': 'Tohmajärvi',
-        'Västanfjärd': 'Kimitoön',
-        'Yli-Ii': 'Oulu',
-        'Ylihärmä': 'Kauhava',
-        'Ylikiiminki': 'Oulu',
-        'Ylistaro': 'Seinäjoki',
-        'Ylämaa': 'Lappeenranta',
-        'Yläne': 'Pöytyä',
-        'Äetsä': 'Sastamala',
-        'Ähtävä': 'Pedersören kunta',
-        'Esse Ähtävä': 'Pedersören kunta',
-        'Koivulahti': 'Mustasaari',
-        'Kvevlax Koivulahti': 'Mustasaari',
-        # 'Sulva': 'Mustasaari', # Two new municipalities
-        # 'Sulva': 'Vaasa',
-        'Alaveteli': 'Kruunupyy',
-        'Nedervetil Alaveteli': 'Kruunupyy',
-        'Houtskari': 'Parainen',
-        'Houtskär Houtskari': 'Parainen',
-        'Jepua': 'Uusikaarlepyy',
-        'Jeppo Jepua': 'Uusikaarlepyy',
-        'Kemiö': 'Kemiönsaari',
-        'Kimito Kemiö': 'Kemiönsaari',
-        'Maksamaa': 'Vöyri',
-        'Maxmo Maksamaa': 'Vöyri',
-        'Nauvo': 'Parainen',
-        'Nagu Nauvo': 'Parainen',
-        'Oravainen': 'Vöyri',
-        'Oravais Oravainen': 'Vöyri',
-        'Pernaja': 'Loviisa',
-        'Pernå Pernaja': 'Loviisa',
-        'Pirttikylä': 'Närpiö',
-        'Pörtom Pirttikylä': 'Närpiö',
-        'Raippaluoto': 'Mustasaari',
-        'Replot Raippaluoto': 'Mustasaari',
-        'Siipyy': 'Kristiinankaupunki',
-        'Sideby Siipyy': 'Kristiinankaupunki',
-        'Tammisaari': 'Raasepori',
-        'Tammisaari Ekenäs': 'Raasepori',
-        'Teerijärvi': 'Kruunupyy',
-        'Terjärv Teerijärvi': 'Kruunupyy',
-        'Ylimarkku': 'Närpiö',
-        'Övermark Ylimarkku': 'Närpiö',
-        'Tiukka': 'Kristiinankaupunki',
-        'Tjöck Tiukka': 'Kristiinankaupunki',
-        'Petolahti': 'Maalahti',
-        'Petalax Petolahti': 'Maalahti',
-        'Karjaa': 'Raasepori',
-        'Karjaa Karis': 'Raasepori',
-        'Karjaan mlk': 'Raasepori',
-        'Karjaan mlk Karis lk': 'Raasepori',
-        'Hyvinkään mlk': 'Hyvinkää',
-        'Haagan kauppala': 'Helsinki',
-        # 'Kuopion mlk': 'Kuopio', # Two new municipalities
-        # 'Kuopion mlk': 'Siilinjärvi',
-        'Tammisaaren mlk': 'Raasepori',
-        'Karjaan mlk': 'Raasepori',
-        'Koski Hl.': 'Hollola',
-        'Uusikirkko Tl': 'Uusikaupunki',
-        'Tenhola': 'Raasepori',
-        'Tenhola Tenala': 'Raasepori',
-    }
-
     def _get_municipality_label(val, uri, *args2):
         """
         :param uri: municipality URI
         """
         lbl = str(graph.value(uri, URIRef('http://www.w3.org/2004/02/skos/core#prefLabel'))).replace('/', ' ')
-        lbl = current_municipalities.get(lbl, lbl)
+        lbl = CURRENT_MUNICIPALITIES.get(lbl, lbl)
         return lbl
 
     if preprocess:
@@ -563,7 +580,7 @@ def process_stage(link_function, stage, arpa_args, query_template_file=None, ran
         data = Graph()
         data.parse(arpa_args.pop('input'), format=input_format)
 
-        ns_schema = Namespace('http://ldf.fi/schema/narc-menehtyneet1939-45/')
+        NARCS = Namespace('http://ldf.fi/schema/narc-menehtyneet1939-45/')
 
         arpa_url = arpa_args.pop('arpa', None)
 
@@ -589,8 +606,8 @@ def process_stage(link_function, stage, arpa_args, query_template_file=None, ran
                              ignore=arpa_args.pop('ignore'))
 
         result = link_function(data, schema, arpa_args.pop('tprop'), arpa_args.pop('prop'), arpa,
-                               ns_schema.sukunimi, ns_schema.etunimet, ns_schema.sotilasarvo, ns_schema.syntymaeaika,
-                               ns_schema.kuolinaika, preprocess=preprocess, **arpa_args)
+                               NARCS.sukunimi, NARCS.etunimet, NARCS.warsa_rank, NARCS.syntymaeaika,
+                               NARCS.death_date, preprocess=preprocess, **arpa_args)
 
         result['graph'].serialize(output, format=output_format)
 
