@@ -20,6 +20,8 @@ ns_crm = Namespace('http://www.cidoc-crm.org/cidoc-crm/')
 ns_foaf = Namespace('http://xmlns.com/foaf/0.1/')
 ns_owl = Namespace('http://www.w3.org/2002/07/owl#')
 
+ws_schema = Namespace('http://ldf.fi/schema/warsa/')
+
 ns_hautausmaat = Namespace('http://ldf.fi/narc-menehtyneet1939-45/hautausmaat/')
 ns_kansalaisuus = Namespace('http://ldf.fi/narc-menehtyneet1939-45/kansalaisuus/')
 ns_kansallisuus = Namespace('http://ldf.fi/narc-menehtyneet1939-45/kansallisuus/')
@@ -79,7 +81,7 @@ def documents_links(data_graph, endpoint):
     Create crm:P70_documents links between death records and person instances.
     """
     sparql = SPARQLWrapper(endpoint)
-    persons = list(data_graph[:RDF.type:ns_schema.DeathRecord])
+    persons = list(data_graph[:RDF.type:ws_schema.DeathRecord])
     log.debug('Finding links for {len} death records'.format(len=len(persons)))
 
     for person in persons:
@@ -133,7 +135,7 @@ def link_units(graph: Graph, endpoint: str):
 
     ngram_arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_casualties_actor_units', retries=10, wait_between_tries=6)
 
-    for person in graph[:RDF.type:ns_schema.DeathRecord]:
+    for person in graph[:RDF.type:ws_schema.DeathRecord]:
         cover = graph.value(person, ns_schema.joukko_osastokoodi)
 
         best_score = -1
@@ -165,8 +167,8 @@ def link_units(graph: Graph, endpoint: str):
                 graph.add((person, ns_schema.osasto, URIRef(best_unit)))
 
             else:
-                log.warning('Skipping suspected erroneus unit for {unit} with labels {lbls}.'.
-                            format(unit=person_unit, lbls=best_labels))
+                log.warning('Skipping suspected erroneus unit for {unit} with labels {lbls} and score {score}.'.
+                            format(unit=person_unit, lbls=best_labels, score=best_score))
 
         # NO COVER NUMBER, ADD RELATED_PERIOD FOR LINKING WITH WARSA-LINKERS
         if not cover or best_score < COVER_NUMBER_SCORE_LIMIT:
