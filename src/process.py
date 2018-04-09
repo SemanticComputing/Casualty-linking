@@ -225,7 +225,7 @@ def main(args):
     # READ IN RDF DATA
 
     # Read RDF graph from TTL files
-    print('Processing Sotasurma RDF files...')
+    print('Processing Death Records...')
 
     surma.parse(args.input, format='turtle')
     municipalities.parse(args.munics, format='turtle')
