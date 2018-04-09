@@ -1,0 +1,7 @@
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+CONSTRUCT { ?s skos:prefLabel ?o }
+FROM <http://ldf.fi/warsa/ranks>
+{
+  ?s skos:prefLabel ?o .
+  FILTER(LANG(?o) = "fi")
+}

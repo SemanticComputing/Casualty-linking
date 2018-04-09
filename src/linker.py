@@ -14,7 +14,7 @@ from rdflib import Graph, URIRef, Literal, BNode
 from rdflib.util import guess_format
 
 from arpa_linker.arpa import ArpaMimic, process_graph
-from namespaces import SCHEMA_NS, SKOS, FOAF, CIDOC, BIOC, NARCS
+from namespaces import SCHEMA_NS, SKOS, FOAF, CIDOC, BIOC, SCHEMA_NS
 
 
 # TODO: Write some tests using responses
@@ -144,7 +144,7 @@ def link_ranks(graph, endpoint):
 
     arpa = ArpaMimic(query, url=endpoint, retries=3, wait_between_tries=3)
 
-    return link(graph, arpa, NARCS.sotilasarvo, Graph(), NARCS.warsa_rank, preprocess=preprocess)
+    return link(graph, arpa, SCHEMA_NS.sotilasarvo, Graph(), SCHEMA_NS.warsa_rank, preprocess=preprocess)
 
 
 class PersonValidator:
@@ -419,7 +419,7 @@ if __name__ == '__main__':
     argparser.add_argument("output", help="Output file location")
     argparser.add_argument("--loglevel", default='INFO', help="Logging level, default is INFO.",
                            choices=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
-    argparser.add_argument("--endpoint", default='http://localhost:3030/warsa/sparql', help="SPARQL Endpoint")
+    argparser.add_argument("--endpoint", default='http://ldf.fi/warsa/sparql', help="SPARQL Endpoint")
 
     args = argparser.parse_args()
 

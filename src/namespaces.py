@@ -14,21 +14,19 @@ BIOC = Namespace('http://ldf.fi/schema/bioc/')
 DATA_NS = Namespace('http://ldf.fi/warsa/casualties/')
 SCHEMA_NS = Namespace('http://ldf.fi/schema/warsa/casualties/')
 WARSA_NS = Namespace('http://ldf.fi/schema/warsa/')
-EVENTS_NS = Namespace('http://ldf.fi/warsa/events/')
 
 CEMETERY_NS = Namespace('http://ldf.fi/warsa/places/cemeteries/')
-MOTHER_TONGUE_NS = Namespace('http://ldf.fi/narc-menehtyneet1939-45/aeidinkieli/')
-MARITAL_NS = Namespace('http://ldf.fi/narc-menehtyneet1939-45/siviilisaeaety/')
-GENDER_NS = Namespace('http://ldf.fi/narc-menehtyneet1939-45/sukupuoli/')
+MOTHER_TONGUE_NS = Namespace('http://ldf.fi/warsa/mother_tongues/')
+MARITAL_NS = Namespace('http://ldf.fi/warsa/marital_statuses/')
+GENDER_NS = Namespace('http://ldf.fi/warsa/genders/')
 PERISHING_CLASSES_NS = Namespace('http://ldf.fi/narc-menehtyneet1939-45/menehtymisluokka/')
 
-KANSALAISUUS = Namespace('http://ldf.fi/narc-menehtyneet1939-45/kansalaisuus/')
-KANSALLISUUS = Namespace('http://ldf.fi/narc-menehtyneet1939-45/kansallisuus/')
-KUNNAT = Namespace('http://ldf.fi/narc-menehtyneet1939-45/kunnat/')
-SOTILASARVO = Namespace('http://ldf.fi/narc-menehtyneet1939-45/sotilasarvo/')
-MENEHTYMISLUOKKA = Namespace('http://ldf.fi/narc-menehtyneet1939-45/menehtymisluokka/')
-NARCS = Namespace('http://ldf.fi/schema/narc-menehtyneet1939-45/')
-NARC = Namespace('http://ldf.fi/narc-menehtyneet1939-45/')
+KANSALAISUUS = Namespace('http://ldf.fi/warsa/citizenships/')
+KANSALLISUUS = Namespace('http://ldf.fi/warsa/nationalities/')
+KUNNAT = Namespace('http://ldf.fi/warsa/casualties/municipalities/')
+# SOTILASARVO = Namespace('http://ldf.fi/schema/warsa/casualties/')
+# MENEHTYMISLUOKKA = Namespace('http://ldf.fi/warsa/perishing_classes/')
+NARC = Namespace('http://ldf.fi/warsa/casualties/')
 
 
 def bind_namespaces(graph: Graph):
@@ -39,4 +37,4 @@ def bind_namespaces(graph: Graph):
     graph.bind("bioc", 'http://ldf.fi/schema/bioc/')
     graph.bind("dct", 'http://purl.org/dc/terms/')
 
-    graph.bind("narcs", NARCS)
+    graph.bind("narcs", SCHEMA_NS)

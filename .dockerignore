@@ -1,0 +1,8 @@
+**
+!requirements.txt
+!src/*.py
+!src/sotasampo_helpers/*.py
+!*.sh
+!SPARQL
+!s-put
+!s-delete

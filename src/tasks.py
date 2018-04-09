@@ -29,28 +29,9 @@ ns_kunnat = Namespace('http://ldf.fi/narc-menehtyneet1939-45/kunnat/')
 ns_sotilasarvo = Namespace('http://ldf.fi/narc-menehtyneet1939-45/sotilasarvo/')
 ns_menehtymisluokka = Namespace('http://ldf.fi/narc-menehtyneet1939-45/menehtymisluokka/')
 
-argparser = argparse.ArgumentParser(description="Stand-alone tasks for casualties dataset", fromfile_prefix_chars='@')
-
-argparser.add_argument("task", help="Which task to run", choices=["documents_links", "link_units", "test"])
-argparser.add_argument("input", help="Input RDF data file")
-argparser.add_argument("output", help="Output RDF data file")
-
-argparser.add_argument("--endpoint", default='http://ldf.fi/warsa/sparql', type=str, help="SPARQL endpoint")
-argparser.add_argument("--format", default='turtle', type=str, help="Format of RDF files [default: turtle]")
-argparser.add_argument("--loglevel", default='INFO',
-                       choices=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-                       help="Logging level, default is INFO.")
-
-args = argparser.parse_args()
-
-logging.basicConfig(filename='tasks.log', filemode='a', level=getattr(logging, args.loglevel.upper()),
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
+logging.basicConfig(filename='tasks.log', filemode='a', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
-log.info('Starting to run tasks with arguments: {args}'.format(args=args))
 
-
-# log_to_file('tasks.log', 'DEBUG')
 
 def _query_sparql(sparql_obj):
     """
@@ -109,10 +90,11 @@ def documents_links(data_graph, endpoint):
     return data_graph
 
 
-def link_units(graph: Graph, endpoint: str):
+def link_units(graph: Graph, endpoint: str, arpa_url: str):
     """
     :param graph: Data graph object
     :param endpoint: SPARQL endpoint
+    :param arpa_url: Arpa URL
     :return: Graph with links
     """
 
@@ -133,7 +115,7 @@ def link_units(graph: Graph, endpoint: str):
                     """
     temp_graph = Graph()
 
-    ngram_arpa = Arpa('http://demo.seco.tkk.fi/arpa/warsa_casualties_actor_units', retries=10, wait_between_tries=6)
+    ngram_arpa = Arpa(arpa_url, retries=10, wait_between_tries=6)
 
     for person in graph[:RDF.type:ws_schema.DeathRecord]:
         cover = graph.value(person, ns_schema.joukko_osastokoodi)
@@ -202,6 +184,29 @@ def load_input_file(filename):
 # TODO: Serialize only new information to allow base information to change without having to do linking again
 
 if __name__ == '__main__':
+    argparser = argparse.ArgumentParser(description="Stand-alone tasks for casualties dataset",
+                                        fromfile_prefix_chars='@')
+
+    argparser.add_argument("task", help="Which task to run", choices=["documents_links", "link_units", "test"])
+    argparser.add_argument("input", help="Input RDF data file")
+    argparser.add_argument("output", help="Output RDF data file")
+
+    argparser.add_argument("--endpoint", default='http://ldf.fi/warsa/sparql', type=str, help="SPARQL endpoint")
+    argparser.add_argument("--arpa_unit", default='http://demo.seco.tkk.fi/arpa/warsa_casualties_actor_units', type=str,
+                           help="ARPA instance URL for unit linking")
+    argparser.add_argument("--format", default='turtle', type=str, help="Format of RDF files [default: turtle]")
+    argparser.add_argument("--loglevel", default='INFO',
+                           choices=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+                           help="Logging level, default is INFO.")
+
+    args = argparser.parse_args()
+
+    logging.basicConfig(filename='tasks.log', filemode='a', level=getattr(logging, args.loglevel.upper()),
+                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    log = logging.getLogger(__name__)
+    log.info('Starting to run tasks with arguments: {args}'.format(args=args))
+
     if args.task == 'documents_links':
         log.info('Loading input file...')
         death_records = load_input_file(args.input)
@@ -214,7 +219,7 @@ if __name__ == '__main__':
         log.info('Loading input file...')
         death_records = load_input_file(args.input)
         log.info('Creating links...')
-        death_records = link_units(death_records, args.endpoint)
+        death_records = link_units(death_records, args.endpoint, args.arpa_unit)
         log.info('Serializing output file...')
         death_records.serialize(format=args.format, destination=args.output)
 

@@ -15,8 +15,6 @@ RUN apk del .build-deps
 
 COPY . /app/
 
-RUN chmod +x s-put s-delete *.sh && mv s-put s-delete /usr/local/bin/
-
 ARG warsa_endpoint_url
 ARG arpa_url
 

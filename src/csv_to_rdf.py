@@ -8,7 +8,7 @@ import pandas as pd
 
 from rdflib import URIRef, Graph, Literal, Namespace
 from mapping import CASUALTY_MAPPING
-from namespaces import RDF, XSD, DC, SKOS, NARC, NARCS, SCHEMA_NS, WARSA_NS, bind_namespaces, CEMETERY_NS, KUNNAT
+from namespaces import RDF, XSD, DC, SKOS, NARC, SCHEMA_NS, SCHEMA_NS, WARSA_NS, bind_namespaces, CEMETERY_NS, KUNNAT
 
 
 class RDFMapper:
@@ -79,7 +79,7 @@ class RDFMapper:
 
         if row_rdf:
             row_rdf.add((entity_uri, RDF.type, self.instance_class))
-            row_rdf = self.finalize_resource(entity_uri, row_rdf)
+            row_rdf = self.convert_graveyards(entity_uri, row_rdf)
         else:
             # Don't create class instance if there is no data about it
             logging.debug('No data found for {uri}'.format(uri=entity_uri))
@@ -90,12 +90,15 @@ class RDFMapper:
 
         return row_rdf
 
-    def finalize_resource(self, uri, graph: Graph):
-        mun = graph.value(uri, NARCS.hautauskunta_id)
+    def convert_graveyards(self, uri, graph: Graph):
+        """
+        Convert graveyard information into URIs.
+        """
+        mun = graph.value(uri, SCHEMA_NS.hautauskunta_id)
         if not mun:
             return graph
 
-        gy = graph.value(uri, NARCS.hautausmaa_nro)
+        gy = graph.value(uri, SCHEMA_NS.hautausmaa_nro)
         gy_uri = '{base}h{mun}'.format(base=CEMETERY_NS, mun=mun)
         mun_uri = '{base}k{mun}'.format(base=KUNNAT, mun=mun)
         if gy:
@@ -104,10 +107,10 @@ class RDFMapper:
         if str(gy) not in ['?', 'x']:
             graph.add((uri, WARSA_NS.buried_in, URIRef(gy_uri)))
 
-        graph.add((uri, NARCS.burial_municipality, URIRef(mun_uri)))
+        graph.add((uri, SCHEMA_NS.burial_municipality, URIRef(mun_uri)))
 
-        graph.remove((uri, NARCS.hautauskunta_id, mun))
-        graph.remove((uri, NARCS.hautausmaa_nro, gy))
+        graph.remove((uri, SCHEMA_NS.hautauskunta_id, mun))
+        graph.remove((uri, SCHEMA_NS.hautausmaa_nro, gy))
 
         return graph
 

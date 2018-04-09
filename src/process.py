@@ -65,25 +65,21 @@ def fix_by_direct_uri_mappings(graph: Graph):
             graph.remove((s, p, map_from))
             graph.add((s, p, map_to))
 
-        # for s, p in list(surma_onto[::map_from]):
-        #     surma_onto.remove((s, p, map_from))
-        #     surma_onto.add((s, p, map_to))
-
         log.info('Applied mapping %s  -->  %s' % (map_from, map_to))
 
     return graph
 
 
-def link_to_municipalities(surma: Graph, schema: Graph):
+def link_to_municipalities(surma: Graph, schema: Graph, warsa_endpoint: str, arpa_endpoint: str):
     """
     Link to Warsa municipalities.
     """
-    munics = r.helpers.read_graph_from_sparql("http://ldf.fi/warsa/sparql",
+    munics = r.helpers.read_graph_from_sparql(warsa_endpoint,
                                               graph_name='http://ldf.fi/warsa/places/municipalities')
 
     log.info('Using Warsa municipalities with {n} triples'.format(n=len(munics)))
 
-    pnr_arpa = Arpa('http://demo.seco.tkk.fi/arpa/pnr_municipality')
+    pnr_arpa = Arpa(arpa_endpoint)
     pnr_links = link_to_pnr(schema, NARCS.pnr_link, None, pnr_arpa)
 
     for kunta in list(schema[:RDF.type:NARCS.Kunta]):
@@ -248,7 +244,7 @@ def main(args):
 
     print('Linking to municipalities...')
 
-    surma = link_to_municipalities(surma, municipalities)
+    surma = link_to_municipalities(surma, municipalities, args.endpoint, args.arpa_pnr)
 
     print('Handling persons...')
 
@@ -286,6 +282,9 @@ if __name__ == "__main__":
     parser.add_argument("input", help="Input turtle file")
     parser.add_argument("munics", help="Municipalities turtle file")
     parser.add_argument("output", help="Output turtle file")
+    parser.add_argument("--endpoint", default='http://ldf.fi/warsa/sparql', type=str, help="WarSampo SPARQL endpoint")
+    parser.add_argument("--arpa_pnr", default='http://demo.seco.tkk.fi/arpa/pnr_municipality', type=str,
+                           help="ARPA instance URL PNR linking")
     parser.add_argument("--loglevel", default='INFO',
                         choices=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
                         help="Logging level, default is INFO.")
