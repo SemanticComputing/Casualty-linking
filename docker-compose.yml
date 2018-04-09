@@ -1,0 +1,22 @@
+version: '3.5'
+services:
+    fuseki:
+        image: warsa-mod
+    las:
+        image: jiemakel/las-ws:1.1
+    arpa:
+        image: jiemakel/arpa:1.0
+        environment:
+            - ANALYZE_ADDRESS=http://las:9000/las/analyze
+        volumes:
+            - ./arpa_services:/opt/docker/services
+    tasks:
+        build:
+            context: .
+            args:
+                warsa_endpoint_url: http://fuseki:3030/warsa
+                arpa_url: http://arpa:9000
+        volumes:
+            - ./data/:/app/data
+            - ./output/:/app/output
+            - ./input_rdf/:/app/input_rdf

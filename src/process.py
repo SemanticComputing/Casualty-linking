@@ -292,7 +292,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    logging.basicConfig(filename='casualties.log',
+    logging.basicConfig(filename='output/logs/casualties.log',
                         filemode='a',
                         level=getattr(logging, args.loglevel.upper()),
                         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
