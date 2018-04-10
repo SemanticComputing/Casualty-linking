@@ -172,7 +172,7 @@ CASUALTY_MAPPING = {
         },
     'JOSKOODI':
         {
-            'uri': WARSA_NS.unit_code,
+            'uri': SCHEMA_NS.unit_code,
             'name_fi': 'Joukko-osaston peiteluku',
             'name_en': 'Military unit identification code',
             'description_fi': 'Henkilön joukko-osaston peiteluku kuolinhetkellä',

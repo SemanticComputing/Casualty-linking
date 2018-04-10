@@ -49,6 +49,7 @@ def documents_links(data_graph, endpoint):
     sparql = SPARQLWrapper(endpoint)
     persons = list(data_graph[:RDF.type:WARSA_NS.DeathRecord])
     log.debug('Finding links for {len} death records'.format(len=len(persons)))
+    links = Graph()
 
     for person in persons:
         if len(list(data_graph[person:CRM.documents:])):
@@ -67,12 +68,12 @@ def documents_links(data_graph, endpoint):
         for result in results["results"]["bindings"]:
             warsa_person = result["sub"]["value"]
             log.info('{pers} matches person instance {warsa_pers}'.format(pers=person, warsa_pers=warsa_person))
-            data_graph.add((person, CRM.P70_documents, URIRef(warsa_person)))
+            links.add((person, CRM.P70_documents, URIRef(warsa_person)))
 
         if not warsa_person:
             log.warning('{person} didn\'t match any person instance.'.format(person=person))
 
-    return data_graph
+    return links
 
 
 def link_units(graph: Graph, endpoint: str, arpa_url: str):
@@ -90,7 +91,7 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
     COVER_NUMBER_SCORE_LIMIT = 85
 
     sparql = SPARQLWrapper(endpoint)
-    query_template = """
+    query_template_unit_code = """
                     PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
                     SELECT ?sub (GROUP_CONCAT(?label; separator=" || ") as ?labels) WHERE  
                     {{ 
@@ -99,6 +100,7 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
                     }} GROUP BY ?sub
                     """
     temp_graph = Graph()
+    unit_code_links = Graph()
 
     ngram_arpa = Arpa(arpa_url, retries=10, wait_between_tries=6)
 
@@ -108,7 +110,7 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
         best_score = -1
         # LINK DEATH RECORDS BASED ON COVER NUMBER IF IT EXISTS
         if cover:
-            sparql.setQuery(query_template.format(cover_number=cover))
+            sparql.setQuery(query_template_unit_code.format(cover_number=cover))
             sparql.setReturnFormat(JSON)
             results = _query_sparql(sparql)
             person_unit = str(graph.value(person, SCHEMA_NS.unit_literal))
@@ -131,7 +133,7 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
             if best_score >= COVER_NUMBER_SCORE_LIMIT and best_unit:
                 log.info('Found unit {unit} for {pers} by cover number with score {score}.'.
                          format(pers=person, unit=best_unit, score=best_score))
-                graph.add((person, SCHEMA_NS.unit_literal, URIRef(best_unit)))
+                unit_code_links.add((person, SCHEMA_NS.unit_literal, URIRef(best_unit)))
 
             else:
                 log.warning('Skipping suspected erroneus unit for {unit} with labels {lbls} and score {score}.'.
@@ -139,7 +141,7 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
 
         # NO COVER NUMBER, ADD RELATED_PERIOD FOR LINKING WITH WARSA-LINKERS
         if not cover or best_score < COVER_NUMBER_SCORE_LIMIT:
-            death_time = str(graph.value(person, SCHEMA_NS.date_of_death))
+            death_time = str(graph.value(person, WARSA_NS.date_of_death))
             if death_time < '1941-06-25':
                 temp_graph.add((person, URIRef('http://ldf.fi/schema/warsa/events/related_period'),
                                 URIRef('http://ldf.fi/warsa/conflicts/WinterWar')))
@@ -153,9 +155,9 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
 
     log.info('Linking the found candidates')
     arpa = ArpaMimic(get_query_template(), endpoint, retries=10, wait_between_tries=6)
-    new_graph = process_graph(temp_graph, SCHEMA_NS.unit_literal, arpa, progress=True,
-                              validator=Validator(temp_graph), new_graph=True, source_prop=SCHEMA_NS.candidate)
-    return new_graph['graph'] + graph
+    unit_links = process_graph(temp_graph, SCHEMA_NS.unit_literal, arpa, progress=True,
+                              validator=Validator(temp_graph), new_graph=True, source_prop=SCHEMA_NS.candidate)['graph']
+    return unit_links + unit_code_links
 
 
 def load_input_file(filename):
