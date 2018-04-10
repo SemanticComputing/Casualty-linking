@@ -10,7 +10,7 @@ export ARPA_URL=${ARPA_URL:-http://demo.seco.tkk.fi/arpa}
 ./convert.sh &&
 
 python src/process.py output/casualties_initial.ttl output/casualties_processed.ttl --arpa_pnr $ARPA_URL/pnr_municipality &&
-cat data/cas_additions.ttl >> output/casualties_processed.ttl &&
+cat input_rdf/cas_additions.ttl >> output/casualties_processed.ttl &&
 
 echo "Linking ranks" &&
 python src/linker.py ranks output/casualties_processed.ttl output/rank_links.ttl --endpoint $WARSA_ENDPOINT_URL/sparql --logfile output/logs/linker.log &&

@@ -1,0 +1,29 @@
+<http://ldf.fi/narc-menehtyneet1939-45/p16849>
+        <http://ldf.fi/schema/narc-menehtyneet1939-45/synnyinkunta>
+                <http://ldf.fi/warsa/places/municipalities/m_place_54> ;
+        <http://www.w3.org/2004/02/skos/core#note> "Synnyinkunta lisätty Mika Kyllösen (7.10.2016) palautteen perusteella: \"Isosetäni Juho Heikki Kyllönen uupuu Kuhmoniemen kaatuneet luettelosta. Hän oli syntynyt Kuhmoniemellä 18.01.1910 ja kaatui 11.6.1944 Kannaksen Kivennavalla. Joukko-osasto HTK !!\""@fi .
+
+<http://ldf.fi/narc-menehtyneet1939-45/p281543>
+        <http://ldf.fi/schema/narc-menehtyneet1939-45/hautausmaa>
+                <http://ldf.fi/warsa/places/cemeteries/h0847_2> ;
+        <http://www.w3.org/2004/02/skos/core#note> "Hautausmaa lisätty Manamansalon hautausmaan valokuvien perusteella."@fi .
+
+<http://ldf.fi/narc-menehtyneet1939-45/p281546>
+        <http://ldf.fi/schema/narc-menehtyneet1939-45/hautausmaa>
+                <http://ldf.fi/warsa/places/cemeteries/h0847_2> ;
+        <http://www.w3.org/2004/02/skos/core#note> "Hautausmaa lisätty Manamansalon hautausmaan valokuvien perusteella."@fi .
+
+<http://ldf.fi/narc-menehtyneet1939-45/p281575>
+        <http://ldf.fi/schema/narc-menehtyneet1939-45/hautausmaa>
+                <http://ldf.fi/warsa/places/cemeteries/h0847_2> ;
+        <http://www.w3.org/2004/02/skos/core#note> "Hautausmaa lisätty Manamansalon hautausmaan valokuvien perusteella."@fi .
+
+<http://ldf.fi/narc-menehtyneet1939-45/p281581>
+        <http://ldf.fi/schema/narc-menehtyneet1939-45/hautausmaa>
+                <http://ldf.fi/warsa/places/cemeteries/h0847_2> ;
+        <http://www.w3.org/2004/02/skos/core#note> "Hautausmaa lisätty Manamansalon hautausmaan valokuvien perusteella."@fi .
+
+<http://ldf.fi/narc-menehtyneet1939-45/p281582>
+        <http://ldf.fi/schema/narc-menehtyneet1939-45/hautausmaa>
+                <http://ldf.fi/warsa/places/cemeteries/h0847_2> ;
+        <http://www.w3.org/2004/02/skos/core#note> "Hautausmaa lisätty Manamansalon hautausmaan valokuvien perusteella."@fi .
