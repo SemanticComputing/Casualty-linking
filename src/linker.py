@@ -8,16 +8,17 @@ import re
 import time
 from datetime import datetime
 
+from SPARQLWrapper import SPARQLWrapper, JSON
 from jellyfish import jaro_winkler
 from fuzzywuzzy import fuzz
 from rdflib import Graph, URIRef, Literal, BNode, RDF
 from rdflib.util import guess_format
 
-from arpa_linker.arpa import ArpaMimic, process_graph, Arpa
+from arpa_linker.arpa import ArpaMimic, process_graph, Arpa, combine_values
 from namespaces import SKOS, CRM, BIOC, SCHEMA_NS, WARSA_NS
 import rdf_dm as r
 from sotasampo_helpers.arpa import link_to_pnr
-
+from warsa_linkers.units import preprocessor, Validator
 
 # TODO: Write some tests using responses
 
@@ -467,10 +468,122 @@ def link_municipalities(municipalities: Graph, warsa_endpoint: str, arpa_endpoin
     return municipalities
 
 
+def _query_sparql(sparql_obj):
+    """
+    Query SPARQL with retry functionality
+
+    :type sparql_obj: SPARQLWrapper
+    :return: SPARQL query results
+    """
+    results = None
+    retry = 0
+    while not results:
+        try:
+            results = sparql_obj.query().convert()
+        except ValueError:
+            if retry < 50:
+                log.error('Malformed result for query {p_uri}, retrying in 10 seconds...'.format(
+                    p_uri=sparql_obj.queryString))
+                retry += 1
+                time.sleep(10)
+            else:
+                raise
+    log.debug('Got results {res} for query {q}'.format(res=results, q=sparql_obj.queryString))
+    return results
+
+
+def link_units(graph: Graph, endpoint: str, arpa_url: str):
+    """
+    :param graph: Data graph object
+    :param endpoint: SPARQL endpoint
+    :param arpa_url: Arpa URL
+    :return: Graph with links
+    """
+
+    def get_query_template():
+        with open('SPARQL/units.sparql') as f:
+            return f.read()
+
+    COVER_NUMBER_SCORE_LIMIT = 85
+
+    sparql = SPARQLWrapper(endpoint)
+    query_template_unit_code = """
+                    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+                    SELECT ?sub (GROUP_CONCAT(?label; separator=" || ") as ?labels) WHERE  
+                    {{ 
+                        ?sub <http://ldf.fi/schema/warsa/actors/covernumber> "{cover_number}" .
+                        ?sub skos:prefLabel|skos:altLabel ?label .
+                    }} GROUP BY ?sub
+                    """
+    temp_graph = Graph()
+    unit_code_links = Graph()
+
+    ngram_arpa = Arpa(arpa_url, retries=10, wait_between_tries=6)
+
+    for person in graph[:RDF.type:WARSA_NS.DeathRecord]:
+        cover = graph.value(person, SCHEMA_NS.unit_code)
+
+        best_score = -1
+        # LINK DEATH RECORDS BASED ON COVER NUMBER IF IT EXISTS
+        if cover:
+            sparql.setQuery(query_template_unit_code.format(cover_number=cover))
+            sparql.setReturnFormat(JSON)
+            results = _query_sparql(sparql)
+            person_unit = str(graph.value(person, SCHEMA_NS.unit_literal))
+            best_unit = None
+            best_labels = None
+
+            for result in results["results"]["bindings"]:
+                if 'sub' not in result:
+                    # This can happen because of GROUP_CONCAT
+                    log.warning('Unknown cover number {cover}.'.format(cover=cover))
+                    continue
+                warsa_unit = result["sub"]["value"]
+                unit_labels = result["labels"]["value"].split(' || ')
+                score = max(fuzz.ratio(unit, person_unit) for unit in unit_labels)
+                if score > best_score:
+                    best_score = score
+                    best_labels = unit_labels
+                    best_unit = warsa_unit
+
+            if best_score >= COVER_NUMBER_SCORE_LIMIT and best_unit:
+                log.info('Found unit {unit} for {pers} by cover number with score {score}.'.
+                         format(pers=person, unit=best_unit, score=best_score))
+                unit_code_links.add((person, SCHEMA_NS.unit_literal, URIRef(best_unit)))
+
+            else:
+                log.warning('Skipping suspected erroneus unit for {unit} with labels {lbls} and score {score}.'.
+                            format(unit=person_unit, lbls=best_labels, score=best_score))
+
+        # NO COVER NUMBER, ADD RELATED_PERIOD FOR LINKING WITH WARSA-LINKERS
+        if not cover or best_score < COVER_NUMBER_SCORE_LIMIT:
+            death_time = str(graph.value(person, WARSA_NS.date_of_death))
+            if death_time < '1941-06-25':
+                temp_graph.add((person, URIRef('http://ldf.fi/schema/warsa/events/related_period'),
+                                URIRef('http://ldf.fi/warsa/conflicts/WinterWar')))
+
+            unit = preprocessor(str(graph.value(person, SCHEMA_NS.unit_literal)))
+            ngrams = ngram_arpa.get_candidates(unit)
+            combined = combine_values(ngrams['results'])
+            temp_graph.add((person, SCHEMA_NS.candidate, Literal(combined)))
+
+    # LINK DEATH RECORDS WITHOUT COVER NUMBER
+
+    log.info('Linking the found candidates')
+    arpa = ArpaMimic(get_query_template(), endpoint, retries=10, wait_between_tries=6)
+    unit_links = process_graph(temp_graph, SCHEMA_NS.unit_literal, arpa,
+                               progress=True,
+                               validator=Validator(temp_graph),
+                               new_graph=True,
+                               source_prop=SCHEMA_NS.candidate)['graph']
+    return unit_links + unit_code_links
+
+
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(description="Casualty linking tasks", fromfile_prefix_chars='@')
 
-    argparser.add_argument("task", help="Linking task to perform", choices=["ranks", "persons", "municipalities"])
+    argparser.add_argument("task", help="Linking task to perform",
+                           choices=["ranks", "persons", "municipalities", "units"])
     argparser.add_argument("input", help="Input RDF file")
     argparser.add_argument("output", help="Output file location")
     argparser.add_argument("--loglevel", default='INFO', help="Logging level, default is INFO.",
@@ -502,5 +615,9 @@ if __name__ == '__main__':
     elif args.task == 'municipalities':
         log.info('Linking municipalities')
         link_municipalities(input_graph, args.endpoint, args.arpa).serialize(args.output, format=guess_format(args.output))
+
+    elif args.task == 'units':
+        log.info('Linking units')
+        link_units(input_graph, args.endpoint, args.arpa).serialize(args.output, format=guess_format(args.output))
 
 
