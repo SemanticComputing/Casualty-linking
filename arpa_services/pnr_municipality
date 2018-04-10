@@ -1,0 +1,23 @@
+{
+  "name" : "pnr_municipality",
+  "endpointURL" : "http://ldf.fi/pnr/sparql",
+  "lasLocale" : "fi",
+  "queryUsingOriginalForm" : true,
+  "queryUsingBaseform" : true,
+  "queryUsingInflections" : [ ],
+  "queryModifyingEveryPart" : true,
+  "queryModifyingOnlyLastPart" : true,
+  "positiveLASFilters" : {
+    "" : [ null ]
+  },
+  "negativeLASFilters" : {
+    "" : [ null ]
+  },
+  "strongNegativeLASFilters" : {
+    "" : [ null ]
+  },
+  "guess" : false,
+  "query" : "PREFIX text: <http://jena.apache.org/text#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nSELECT ?id ?label ?ngram {\n  VALUES ?ngram {\n    <VALUES>\n  }\n  BIND(CONCAT('\"',?ngram,'\"') AS ?qstring)\n  ?id text:query ?qstring .\n  VALUES ?type { <http://ldf.fi/pnr-schema#place_type_540> <http://ldf.fi/pnr-schema#place_type_550> }\n  ?id a ?type .\n  ?id skos:prefLabel ?label .\n  FILTER(LCASE(STR(?label))=LCASE(STR(?ngram)))\n}",
+  "depth" : 1,
+  "maxNGrams" : 3
+}

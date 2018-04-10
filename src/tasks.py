@@ -13,23 +13,8 @@ from SPARQLWrapper import SPARQLWrapper, JSON
 from arpa_linker.arpa import Arpa, ArpaMimic, process_graph, arpafy, combine_values, log_to_file
 from warsa_linkers.units import preprocessor, Validator
 
-ns_skos = Namespace('http://www.w3.org/2004/02/skos/core#')
-ns_dct = Namespace('http://purl.org/dc/terms/')
-ns_schema = Namespace('http://ldf.fi/schema/narc-menehtyneet1939-45/')
-ns_crm = Namespace('http://www.cidoc-crm.org/cidoc-crm/')
-ns_foaf = Namespace('http://xmlns.com/foaf/0.1/')
-ns_owl = Namespace('http://www.w3.org/2002/07/owl#')
+from namespaces import WARSA_NS, CRM, SCHEMA_NS
 
-ws_schema = Namespace('http://ldf.fi/schema/warsa/')
-
-ns_hautausmaat = Namespace('http://ldf.fi/narc-menehtyneet1939-45/hautausmaat/')
-ns_kansalaisuus = Namespace('http://ldf.fi/narc-menehtyneet1939-45/kansalaisuus/')
-ns_kansallisuus = Namespace('http://ldf.fi/narc-menehtyneet1939-45/kansallisuus/')
-ns_kunnat = Namespace('http://ldf.fi/narc-menehtyneet1939-45/kunnat/')
-ns_sotilasarvo = Namespace('http://ldf.fi/narc-menehtyneet1939-45/sotilasarvo/')
-ns_menehtymisluokka = Namespace('http://ldf.fi/narc-menehtyneet1939-45/menehtymisluokka/')
-
-logging.basicConfig(filename='tasks.log', filemode='a', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
 
@@ -62,11 +47,11 @@ def documents_links(data_graph, endpoint):
     Create crm:P70_documents links between death records and person instances.
     """
     sparql = SPARQLWrapper(endpoint)
-    persons = list(data_graph[:RDF.type:ws_schema.DeathRecord])
+    persons = list(data_graph[:RDF.type:WARSA_NS.DeathRecord])
     log.debug('Finding links for {len} death records'.format(len=len(persons)))
 
     for person in persons:
-        if len(list(data_graph[person:ns_crm.documents:])):
+        if len(list(data_graph[person:CRM.documents:])):
             log.debug('Skipping already linked death record {uri}'.format(uri=person))
             continue
 
@@ -82,7 +67,7 @@ def documents_links(data_graph, endpoint):
         for result in results["results"]["bindings"]:
             warsa_person = result["sub"]["value"]
             log.info('{pers} matches person instance {warsa_pers}'.format(pers=person, warsa_pers=warsa_person))
-            data_graph.add((person, ns_crm.P70_documents, URIRef(warsa_person)))
+            data_graph.add((person, CRM.P70_documents, URIRef(warsa_person)))
 
         if not warsa_person:
             log.warning('{person} didn\'t match any person instance.'.format(person=person))
@@ -117,8 +102,8 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
 
     ngram_arpa = Arpa(arpa_url, retries=10, wait_between_tries=6)
 
-    for person in graph[:RDF.type:ws_schema.DeathRecord]:
-        cover = graph.value(person, ns_schema.joukko_osastokoodi)
+    for person in graph[:RDF.type:WARSA_NS.DeathRecord]:
+        cover = graph.value(person, SCHEMA_NS.unit_code)
 
         best_score = -1
         # LINK DEATH RECORDS BASED ON COVER NUMBER IF IT EXISTS
@@ -126,7 +111,7 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
             sparql.setQuery(query_template.format(cover_number=cover))
             sparql.setReturnFormat(JSON)
             results = _query_sparql(sparql)
-            person_unit = str(graph.value(person, ns_schema.joukko_osasto))
+            person_unit = str(graph.value(person, SCHEMA_NS.unit_literal))
             best_unit = None
             best_labels = None
 
@@ -146,7 +131,7 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
             if best_score >= COVER_NUMBER_SCORE_LIMIT and best_unit:
                 log.info('Found unit {unit} for {pers} by cover number with score {score}.'.
                          format(pers=person, unit=best_unit, score=best_score))
-                graph.add((person, ns_schema.osasto, URIRef(best_unit)))
+                graph.add((person, SCHEMA_NS.unit_literal, URIRef(best_unit)))
 
             else:
                 log.warning('Skipping suspected erroneus unit for {unit} with labels {lbls} and score {score}.'.
@@ -154,22 +139,22 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
 
         # NO COVER NUMBER, ADD RELATED_PERIOD FOR LINKING WITH WARSA-LINKERS
         if not cover or best_score < COVER_NUMBER_SCORE_LIMIT:
-            death_time = str(graph.value(person, ns_schema.kuolinaika))
+            death_time = str(graph.value(person, SCHEMA_NS.date_of_death))
             if death_time < '1941-06-25':
                 temp_graph.add((person, URIRef('http://ldf.fi/schema/warsa/events/related_period'),
                                 URIRef('http://ldf.fi/warsa/conflicts/WinterWar')))
 
-            unit = preprocessor(str(graph.value(person, ns_schema.joukko_osasto)))
+            unit = preprocessor(str(graph.value(person, SCHEMA_NS.unit_literal)))
             ngrams = ngram_arpa.get_candidates(unit)
             combined = combine_values(ngrams['results'])
-            temp_graph.add((person, ns_schema.candidate, Literal(combined)))
+            temp_graph.add((person, SCHEMA_NS.candidate, Literal(combined)))
 
     # LINK DEATH RECORDS WITHOUT COVER NUMBER
 
     log.info('Linking the found candidates')
     arpa = ArpaMimic(get_query_template(), endpoint, retries=10, wait_between_tries=6)
-    new_graph = process_graph(temp_graph, ns_schema.osasto, arpa, progress=True,
-                              validator=Validator(temp_graph), new_graph=True, source_prop=ns_schema.candidate)
+    new_graph = process_graph(temp_graph, SCHEMA_NS.unit_literal, arpa, progress=True,
+                              validator=Validator(temp_graph), new_graph=True, source_prop=SCHEMA_NS.candidate)
     return new_graph['graph'] + graph
 
 
@@ -198,13 +183,13 @@ if __name__ == '__main__':
     argparser.add_argument("--loglevel", default='INFO',
                            choices=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
                            help="Logging level, default is INFO.")
+    argparser.add_argument("--logfile", default='tasks.log', help="Logfile")
 
     args = argparser.parse_args()
 
-    logging.basicConfig(filename='tasks.log', filemode='a', level=getattr(logging, args.loglevel.upper()),
+    logging.basicConfig(filename=args.logfile, filemode='a', level=getattr(logging, args.loglevel.upper()),
                         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    log = logging.getLogger(__name__)
     log.info('Starting to run tasks with arguments: {args}'.format(args=args))
 
     if args.task == 'documents_links':

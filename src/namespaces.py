@@ -5,7 +5,7 @@ Define common RDF namespaces
 """
 from rdflib import Namespace, RDF, RDFS, XSD, Graph
 
-CIDOC = Namespace('http://www.cidoc-crm.org/cidoc-crm/')
+CRM = Namespace('http://www.cidoc-crm.org/cidoc-crm/')
 DC = Namespace('http://purl.org/dc/terms/')
 FOAF = Namespace('http://xmlns.com/foaf/0.1/')
 SKOS = Namespace('http://www.w3.org/2004/02/skos/core#')
@@ -24,8 +24,7 @@ PERISHING_CLASSES_NS = Namespace('http://ldf.fi/narc-menehtyneet1939-45/menehtym
 KANSALAISUUS = Namespace('http://ldf.fi/warsa/citizenships/')
 KANSALLISUUS = Namespace('http://ldf.fi/warsa/nationalities/')
 KUNNAT = Namespace('http://ldf.fi/warsa/casualties/municipalities/')
-# SOTILASARVO = Namespace('http://ldf.fi/schema/warsa/casualties/')
-# MENEHTYMISLUOKKA = Namespace('http://ldf.fi/warsa/perishing_classes/')
+MENEHTYMISLUOKKA = Namespace('http://ldf.fi/warsa/perishing_classes/')
 NARC = Namespace('http://ldf.fi/warsa/casualties/')
 
 

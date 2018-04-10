@@ -10,11 +10,13 @@ from datetime import datetime
 
 from jellyfish import jaro_winkler
 from fuzzywuzzy import fuzz
-from rdflib import Graph, URIRef, Literal, BNode
+from rdflib import Graph, URIRef, Literal, BNode, RDF
 from rdflib.util import guess_format
 
-from arpa_linker.arpa import ArpaMimic, process_graph
-from namespaces import SCHEMA_NS, SKOS, FOAF, CIDOC, BIOC, SCHEMA_NS
+from arpa_linker.arpa import ArpaMimic, process_graph, Arpa
+from namespaces import SKOS, CRM, BIOC, SCHEMA_NS, WARSA_NS
+import rdf_dm as r
+from sotasampo_helpers.arpa import link_to_pnr
 
 
 # TODO: Write some tests using responses
@@ -68,7 +70,6 @@ def link_ranks(graph, endpoint):
 
     :param graph: Data in RDFLib Graph object
     :param endpoint: Endpoint to query military ranks from
-    :param prop: Property used to give military rank (used for both source and target)
     :return: RDFLib Graph with updated links
     """
 
@@ -144,7 +145,7 @@ def link_ranks(graph, endpoint):
 
     arpa = ArpaMimic(query, url=endpoint, retries=3, wait_between_tries=3)
 
-    return link(graph, arpa, SCHEMA_NS.sotilasarvo, Graph(), SCHEMA_NS.warsa_rank, preprocess=preprocess)
+    return link(graph, arpa, SCHEMA_NS.rank_literal, Graph(), SCHEMA_NS.rank, preprocess=preprocess)
 
 
 class PersonValidator:
@@ -400,30 +401,87 @@ def link_persons(graph, endpoint):
         with open('sparql/persons.sparql') as f:
             return f.read()
 
-    validator = PersonValidator(graph, SCHEMA_NS.birth_date, SCHEMA_NS.death_date,
-            SCHEMA_NS.warsa_rank, SCHEMA_NS.given_name, SCHEMA_NS.family_name,
-            SCHEMA_NS.place_captured_municipality, SCHEMA_NS.time_captured,
-            SCHEMA_NS.birth_place, SCHEMA_NS.warsa_unit, BIOC.has_occupation)
+    validator = PersonValidator(graph, SCHEMA_NS.date_of_birth, SCHEMA_NS.date_of_death,
+            SCHEMA_NS.rank, SCHEMA_NS.given_name, SCHEMA_NS.family_name,
+            SCHEMA_NS.municipality_of_going_mia, SCHEMA_NS.date_of_going_mia,
+            SCHEMA_NS.municipality_of_birth, SCHEMA_NS.unit, SCHEMA_NS.occupation_literal)
     arpa = ArpaMimic(get_query_template(), endpoint, retries=10, wait_between_tries=6)
-    new_graph = process_graph(graph, CIDOC.P70_documents, arpa, progress=True,
+    new_graph = process_graph(graph, CRM.P70_documents, arpa, progress=True,
                               validator=validator, new_graph=True, source_prop=SKOS.prefLabel)
     validator.score_graph.serialize('output/scores.ttl', format='turtle')
     return new_graph['graph']
 
 
+def link_municipalities(municipalities: Graph, warsa_endpoint: str, arpa_endpoint: str):
+    """
+    Link to Warsa municipalities.
+    """
+    MUN_MAPPING = {
+        'Kemi': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_20'),
+        'Pyhäjärvi Ol': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_75'),
+        'Pyhäjärvi Ul.': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_543'),
+        'Pyhäjärvi Vl': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_586'),
+        'Koski Tl.': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_291'),
+        'Koski Hl.': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_391'),
+        'Koski Vl.': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_609'),
+        'Oulun mlk': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_65'),
+    }
+    warsa_munics = r.helpers.read_graph_from_sparql(warsa_endpoint,
+                                                    graph_name='http://ldf.fi/warsa/places/municipalities')
+
+    log.info('Using Warsa municipalities with {n} triples'.format(n=len(warsa_munics)))
+
+    municipalities.remove((None, SCHEMA_NS.current_municipality, None))
+    municipalities.remove((None, SCHEMA_NS.wartime_municipality, None))
+
+    pnr_arpa = Arpa(arpa_endpoint)
+    municipalities = link_to_pnr(municipalities, SCHEMA_NS.current_municipality, None, pnr_arpa)['graph']
+
+    for casualty_munic in list(municipalities[:RDF.type:SCHEMA_NS.Municipality]):
+        label = next(municipalities[casualty_munic:SKOS.prefLabel:])
+
+        warsa_matches = []
+
+        labels = str(label).strip().split('/')
+        for lbl in labels:
+            if MUN_MAPPING.get(lbl):
+                warsa_matches += [MUN_MAPPING.get(lbl)]
+            else:
+                warsa_matches += list(warsa_munics[:SKOS.prefLabel:Literal(lbl)])
+
+            if not warsa_matches:
+                warsa_matches += list(warsa_munics[:SKOS.prefLabel:Literal(lbl.replace(' kunta', ' mlk'))])
+
+        if len(warsa_matches) == 0:
+            if set(municipalities.subjects(None, casualty_munic)):
+                log.warning("Couldn't find URIs for municipality {lbl}".format(lbl=label))
+        elif len(warsa_matches) == 1:
+            match = warsa_matches[0]
+            log.info('Found {lbl} municipality URI {s}'.format(lbl=label, s=match))
+
+            municipalities.add((casualty_munic, SCHEMA_NS.wartime_municipality, match))
+
+        else:
+            log.warning('Found multiple URIs for municipality {lbl}: {s}'.format(lbl=label, s=warsa_matches))
+
+    return municipalities
+
+
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(description="Casualty linking tasks", fromfile_prefix_chars='@')
 
-    argparser.add_argument("task", help="Linking task to perform", choices=["ranks", "persons"])
+    argparser.add_argument("task", help="Linking task to perform", choices=["ranks", "persons", "municipalities"])
     argparser.add_argument("input", help="Input RDF file")
     argparser.add_argument("output", help="Output file location")
     argparser.add_argument("--loglevel", default='INFO', help="Logging level, default is INFO.",
                            choices=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+    argparser.add_argument("--logfile", default='tasks.log', help="Logfile")
     argparser.add_argument("--endpoint", default='http://ldf.fi/warsa/sparql', help="SPARQL Endpoint")
+    argparser.add_argument("--arpa", type=str, help="ARPA instance URL for linking")
 
     args = argparser.parse_args()
 
-    logging.basicConfig(filename='casualties.log',
+    logging.basicConfig(filename=args.logfile,
                         filemode='a',
                         level=getattr(logging, args.loglevel),
                         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -440,3 +498,9 @@ if __name__ == '__main__':
     elif args.task == 'persons':
         log.info('Linking persons')
         link_persons(input_graph, args.endpoint).serialize(args.output, format=guess_format(args.output))
+
+    elif args.task == 'municipalities':
+        log.info('Linking municipalities')
+        link_municipalities(input_graph, args.endpoint, args.arpa).serialize(args.output, format=guess_format(args.output))
+
+

@@ -1,0 +1,23 @@
+{
+  "name" : "warsa_casualties_actor_units",
+  "endpointURL" : "http://ldf.fi/warsa/sparql",
+  "lasLocale" : "fi",
+  "queryUsingOriginalForm" : true,
+  "queryUsingBaseform" : true,
+  "queryUsingInflections" : [ ],
+  "queryModifyingEveryPart" : true,
+  "queryModifyingOnlyLastPart" : true,
+  "positiveLASFilters" : {
+    "" : [ null ]
+  },
+  "negativeLASFilters" : {
+    "" : [ null ]
+  },
+  "strongNegativeLASFilters" : {
+    "" : [ null ]
+  },
+  "guess" : true,
+  "query" : "PREFIX text: <http://jena.apache.org/text#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nPREFIX actors: <http://ldf.fi/schema/warsa/actors/>\nPREFIX wsc: <http://ldf.fi/schema/warsa/>\nPREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>\nPREFIX ws: <http://www.w3.org/ns/pim/space#>\nSELECT DISTINCT ?id ?label ?ngram ?war {\nVALUES ?ngram {\n    <VALUES>\n}\nFILTER(STRLEN(?ngram)>2)\n{\n    VALUES ?ngram {\n    <VALUES>\n    }\n    BIND(REPLACE(?ngram,'\\\\.$', '') AS ?qlabel)\n    BIND(CONCAT('\"',REPLACE(?qlabel,\"([\\\\+\\\\-\\\\&\\\\|\\\\!\\\\(\\\\)\\\\{\\\\}\\\\[\\\\]\\\\^\\\\\\\"\\\\~\\\\*\\\\?\\\\:\\\\/\\\\\\\\])\",\"\\\\\\\\$1\"),'\"') AS ?qstring)\n    GRAPH <http://ldf.fi/warsa/units> { ?rid text:query ?qstring . }\n} UNION {\n    VALUES ?ngram {\n    <VALUES>\n    }\n    BIND(REPLACE(?ngram,'\\\\.$', '') AS ?qlabel)\n    ?rid actors:covernumber ?qlabel .\n    BIND(?rid AS ?id)\n}\n{\n    ?rid a/rdfs:subClassOf* wsc:Group .\n    BIND(?rid AS ?id)\n}\nUNION\n{\n    ?rid crm:P95_has_formed ?id .\n}\n?rid rdfs:label|skos:prefLabel|skos:altLabel|actors:covernumber ?label .\n\nFILTER(LCASE(REPLACE(STR(?label), \"[,\\\\s]\", \"\"))=LCASE(REPLACE(STR(?qlabel), \"[,\\\\s]\", '')))\nOPTIONAL { ?id <http://ldf.fi/warsa/actors/hasConflict> ?war . }\n}",
+  "depth" : 2,
+  "maxNGrams" : 10
+}

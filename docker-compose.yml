@@ -1,7 +1,9 @@
 version: '3.5'
 services:
-    fuseki:
-        image: warsa-mod
+    warsa:
+        image: warsa-fuseki
+    pnr:
+        image: pnr-fuseki
     las:
         image: jiemakel/las-ws:1.1
     arpa:
@@ -14,7 +16,7 @@ services:
         build:
             context: .
             args:
-                warsa_endpoint_url: http://fuseki:3030/warsa
+                warsa_endpoint_url: http://warsa:3030/warsa
                 arpa_url: http://arpa:9000
         volumes:
             - ./data/:/app/data

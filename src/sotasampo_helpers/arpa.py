@@ -257,7 +257,6 @@ CURRENT_MUNICIPALITIES = {
     # 'Kuopion mlk': 'Kuopio', # Two new municipalities
     # 'Kuopion mlk': 'Siilinjärvi',
     'Tammisaaren mlk': 'Raasepori',
-    'Karjaan mlk': 'Raasepori',
     'Koski Hl.': 'Hollola',
     'Uusikirkko Tl': 'Uusikaupunki',
     'Tenhola': 'Raasepori',
@@ -498,7 +497,7 @@ def link_to_military_units(graph, graph_schema, target_prop, source_prop, arpa, 
 def link_to_pnr(graph, target_prop, source_prop, arpa, *args, preprocess=True, **kwargs):
     """
     Link municipalities to Paikannimirekisteri.
-    :returns dict containing some statistics and a list of errors
+    :returns dict containing graph and stuff
 
     :type graph: rdflib.Graph
     :param target_prop: target property to use for new links
@@ -519,7 +518,7 @@ def link_to_pnr(graph, target_prop, source_prop, arpa, *args, preprocess=True, *
         preprocessor = None
 
     # Query the ARPA service and add the matches
-    return process_graph(graph, target_prop, arpa, new_graph=True, source_prop=source_prop,
+    return process_graph(graph, target_prop, arpa, new_graph=False, source_prop=source_prop,
                          preprocessor=preprocessor, progress=True, **kwargs)
 
 
@@ -563,6 +562,7 @@ def link_to_warsa_persons(graph, graph_schema, target_prop, source_prop, arpa, s
 def process_stage(link_function, stage, arpa_args, query_template_file=None, rank_schema_file=None, pruner=None):
     log_to_file('process.log', arpa_args.log_level)
     del arpa_args.log_level
+    del arpa_args.log_file
 
     log.debug('Now at process_stage')
 
@@ -628,6 +628,7 @@ def prune_extra_unit_candidates(obj):
     """
 
     return False if '#' in obj else obj
+
 
 if __name__ == '__main__':
 

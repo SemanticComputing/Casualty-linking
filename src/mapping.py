@@ -160,27 +160,29 @@ CASUALTY_MAPPING = {
     'AMMATTI':
         {
             # 'uri': BIOC.has_occupation,
-            'uri': SCHEMA_NS.occupation,
+            'uri': SCHEMA_NS.occupation_literal,
             'name_fi': 'Ammatti',
             'name_en': 'Occupation',
         },
     'SOTARVO':
         {
-            'uri': SCHEMA_NS.rank,
+            'uri': SCHEMA_NS.rank_literal,
             'name_fi': 'Sotilasarvo',
             'name_en': 'Military rank',
         },
     'JOSKOODI':
         {
             'uri': WARSA_NS.unit_code,
-            'name_fi': 'Joukko-osastokoodi',
+            'name_fi': 'Joukko-osaston peiteluku',
             'name_en': 'Military unit identification code',
+            'description_fi': 'Henkilön joukko-osaston peiteluku kuolinhetkellä',
         },
     'JOSNIMI':
         {
-            'uri': SCHEMA_NS.unit,
+            'uri': SCHEMA_NS.unit_literal,
             'name_fi': 'Joukko-osasto',
             'name_en': 'Military unit',
+            'description_fi': 'Henkilön joukko-osasto kuolinhetkellä',
         },
     'SAIKA':
         {
@@ -250,7 +252,7 @@ CASUALTY_MAPPING = {
         },
     'KATOPAIKKA':
         {
-            'uri': WARSA_NS.place_of_going_mia,
+            'uri': WARSA_NS.place_of_going_mia_literal,
             'name_fi': 'Katoamispaikka',
             'name_en': 'Place of going missing in action',
         },
@@ -266,11 +268,12 @@ CASUALTY_MAPPING = {
         {
             'uri': SCHEMA_NS.municipality_of_death,
             'name_en': 'Municipality of death',
-            'name_fi': 'Kuolinkunta'
+            'name_fi': 'Kuolinkunta',
+            'converter': partial(urify, MUNICIPALITY_PREFIX),
         },
     'KUOLINPAIKKA':
         {
-            'uri': WARSA_NS.place_of_death,
+            'uri': WARSA_NS.place_of_death_literal,
             'name_fi': 'Kuolinpaikka',
             'name_en': 'Place of death',
         },
@@ -286,6 +289,7 @@ CASUALTY_MAPPING = {
             'uri': SCHEMA_NS.municipality_of_burial,
             'name_fi': 'Hautauskunta',
             'name_en': 'Municipality of burial',
+            'converter': partial(urify, MUNICIPALITY_PREFIX),
         },
     'HMAA':
         {
@@ -295,7 +299,7 @@ CASUALTY_MAPPING = {
         },
     'HPAIKKA':
         {
-            'uri': SCHEMA_NS.place_of_burial,
+            'uri': SCHEMA_NS.place_of_burial_number,
             'name_fi': 'Hautapaikan numero',
             'name_en': 'Place of burial (number)',
         },
