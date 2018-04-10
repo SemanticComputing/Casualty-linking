@@ -13,7 +13,7 @@ from SPARQLWrapper import SPARQLWrapper, JSON
 from arpa_linker.arpa import Arpa, ArpaMimic, process_graph, arpafy, combine_values, log_to_file
 
 from linker import _query_sparql
-from namespaces import WARSA_NS, CRM, SCHEMA_NS
+from namespaces import SCHEMA_WARSA, CRM, SCHEMA_CAS
 
 log = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def documents_links(data_graph, endpoint):
     Create crm:P70_documents links between death records and person instances.
     """
     sparql = SPARQLWrapper(endpoint)
-    persons = list(data_graph[:RDF.type:WARSA_NS.DeathRecord])
+    persons = list(data_graph[:RDF.type:SCHEMA_WARSA.DeathRecord])
     log.debug('Finding links for {len} death records'.format(len=len(persons)))
     links = Graph()
 

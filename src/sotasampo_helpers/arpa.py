@@ -580,7 +580,7 @@ def process_stage(link_function, stage, arpa_args, query_template_file=None, ran
         data = Graph()
         data.parse(arpa_args.pop('input'), format=input_format)
 
-        NARCS = Namespace('http://ldf.fi/schema/narc-menehtyneet1939-45/')
+        NARCS = Namespace('http://ldf.fi/schema/warsa/casualties/')
 
         arpa_url = arpa_args.pop('arpa', None)
 

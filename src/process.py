@@ -16,15 +16,16 @@ import re
 from rdflib import *
 import rdflib
 
-from namespaces import WARSA_NS, KUNNAT, CEMETERY_NS, MENEHTYMISLUOKKA, SCHEMA_NS, SKOS
+from namespaces import SCHEMA_WARSA, MUNICIPALITIES, CEMETERIES, SCHEMA_CAS, SKOS, PERISHING_CLASSES, GENDERS, \
+    CITIZENSHIPS, NATIONALITIES, MOTHER_TONGUES, MARITAL_STATUSES
 
 URI_MAPPINGS = {
     # MANUAL FIXES TO SOME URI'S USED AS TRIPLE OBJECTS
     Literal('Alipuseeri'): Literal('Aliupseeri'),
     Literal('Alikers'): Literal('Alikersantti'),
-    CEMETERY_NS.x: CEMETERY_NS.hx_0,
-    KUNNAT.kx: KUNNAT.k,
-    MENEHTYMISLUOKKA: MENEHTYMISLUOKKA.Tuntematon,
+    CEMETERIES.x: CEMETERIES.hx_0,
+    MUNICIPALITIES.kx: MUNICIPALITIES.k,
+    PERISHING_CLASSES: PERISHING_CLASSES.Tuntematon,
 }
 
 
@@ -79,25 +80,29 @@ def harmonize_names(surma: Graph):
     Link death records to WARSA persons, unify and stylize name representations, fix some errors.
     """
     # Unify previous last names to same format as WARSA actors: LASTNAME (ent PREVIOUS)
-    for lbl_pred in [SCHEMA_NS.family_name, SKOS.prefLabel]:
-        for (person, lname) in list(surma[:lbl_pred:]):
-            new_name = re.sub(r'(\w)0(\w)', r'\1O\2', lname)
-            new_name = re.sub('%', '/', new_name)
-            new_lname = Literal(re.sub(r'(\w\w +)(E(?:NT)?\.)\s?(\w+)', r'\1(ent. \3)', str(new_name)))
-            if new_lname and new_lname != lname:
-                log.debug('Unifying lastname {ln} to {nln}'.format(ln=lname, nln=new_lname))
-                surma.add((person, lbl_pred, new_lname))
-                surma.remove((person, lbl_pred, lname))
+    for (person, lname) in list(surma[:SCHEMA_WARSA.family_name:]):
+        new_fam = re.sub(r'(\w)0(\w)', r'\1O\2', lname)
+        new_fam = re.sub('%', '/', new_fam)
+        new_fam = re.sub(r'(\w\w +)(E(?:NT)?\.)\s?(\w+)', r'\1(ent. \3)', new_fam).title()
+        new_fam_lit = Literal(new_fam)
+        log.debug('Unifying lastname {ln} to {nln}'.format(ln=lname, nln=new_fam_lit))
+        surma.add((person, SCHEMA_WARSA.family_name, new_fam_lit))
+        surma.remove((person, SCHEMA_WARSA.family_name, lname))
+
+        given = surma.value(person, SCHEMA_WARSA.given_names)
+        new_giv = str(given).title()
+        surma.remove((person, SCHEMA_WARSA.given_names, given))
+        surma.add((person, SCHEMA_WARSA.given_names, Literal(new_giv)))
+        log.debug('Changed name {orig} to {new}'.format(orig=given, new=new_giv))
+
+        full_name = '{family}, {given}'.format(family=new_fam, given=new_giv)
+        surma.add((person, SKOS.prefLabel, Literal(full_name)))
 
     # Change names from all uppercase to capitalized
-    for lbl_pred in [SCHEMA_NS.given_names, SCHEMA_NS.family_name, SKOS.prefLabel]:
+    for lbl_pred in [SCHEMA_WARSA.given_names, SCHEMA_WARSA.family_name]:
         for (sub, obj) in list(surma[:lbl_pred:]):
             name = str(obj)
-            new_name = str.title(name)
-            if name != new_name:
-                surma.remove((sub, lbl_pred, obj))
-                surma.add((sub, lbl_pred, Literal(new_name)))
-                log.debug('Changed name {orig} to {new}'.format(orig=name, new=new_name))
+            new_fam = str.title(name)
 
     return surma
 
@@ -131,19 +136,21 @@ def main(args):
 
     surma = harmonize_names(surma)
 
-    ##################
-    # SERIALIZE GRAPHS
-
-    # TODO: Fix this
     # print('Validating graphs for unknown link targets and unlinked subjects...')
     # validate(surma, Graph())
 
     print('Serializing graphs...')
     surma.bind("crm", "http://www.cidoc-crm.org/cidoc-crm/")
     surma.bind("skos", "http://www.w3.org/2004/02/skos/core#")
-    surma.bind("narc", "http://ldf.fi/narc-menehtyneet1939-45/")
-    surma.bind("narcs", "http://ldf.fi/schema/narc-menehtyneet1939-45/")
-    surma.bind("wsc", WARSA_NS)
+    surma.bind("wsc", SCHEMA_WARSA)
+    surma.bind("wcp", PERISHING_CLASSES)
+    surma.bind("wcm", MUNICIPALITIES)
+    surma.bind("wcg", GENDERS)
+    surma.bind("wcc", CITIZENSHIPS)
+    surma.bind("wcn", NATIONALITIES)
+    surma.bind("wct", MOTHER_TONGUES)
+    surma.bind("wcs", MARITAL_STATUSES)
+    surma.bind("wc", CEMETERIES)
 
     surma.serialize(format="turtle", destination=args.output)
 

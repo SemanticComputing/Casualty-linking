@@ -15,7 +15,7 @@ from rdflib import Graph, URIRef, Literal, BNode, RDF
 from rdflib.util import guess_format
 
 from arpa_linker.arpa import ArpaMimic, process_graph, Arpa, combine_values
-from namespaces import SKOS, CRM, BIOC, SCHEMA_NS, WARSA_NS
+from namespaces import SKOS, CRM, BIOC, SCHEMA_CAS, SCHEMA_WARSA
 import rdf_dm as r
 from sotasampo_helpers.arpa import link_to_pnr
 from warsa_linkers.units import preprocessor, Validator
@@ -146,7 +146,7 @@ def link_ranks(graph, endpoint):
 
     arpa = ArpaMimic(query, url=endpoint, retries=3, wait_between_tries=3)
 
-    return link(graph, arpa, SCHEMA_NS.rank_literal, Graph(), SCHEMA_NS.rank, preprocess=preprocess)
+    return link(graph, arpa, SCHEMA_CAS.rank_literal, Graph(), SCHEMA_CAS.rank, preprocess=preprocess)
 
 
 class PersonValidator:
@@ -373,14 +373,14 @@ class PersonValidator:
         best_match = best_matches.pop(0)
 
         m = BNode()
-        self.score_graph.add((s, SCHEMA_NS.best_match, m))
-        self.score_graph.add((m, SCHEMA_NS.match, URIRef(best_match['id'])))
-        self.score_graph.add((m, SCHEMA_NS.score, Literal('%.2f' % best_match['score'])))
+        self.score_graph.add((s, SCHEMA_CAS.best_match, m))
+        self.score_graph.add((m, SCHEMA_CAS.match, URIRef(best_match['id'])))
+        self.score_graph.add((m, SCHEMA_CAS.score, Literal('%.2f' % best_match['score'])))
         for p in best_matches:
             m = BNode()
-            self.score_graph.add((s, SCHEMA_NS.alternative_match, m))
-            self.score_graph.add((m, SCHEMA_NS.match, URIRef(p['id'])))
-            self.score_graph.add((m, SCHEMA_NS.score, Literal('%.2f' % p['score'])))
+            self.score_graph.add((s, SCHEMA_CAS.alternative_match, m))
+            self.score_graph.add((m, SCHEMA_CAS.match, URIRef(p['id'])))
+            self.score_graph.add((m, SCHEMA_CAS.score, Literal('%.2f' % p['score'])))
 
         best_last = best_match['properties']['sukunimi'][0].replace('"', '').lower()
         if lastname != best_last:
@@ -402,10 +402,10 @@ def link_persons(graph, endpoint):
         with open('sparql/persons.sparql') as f:
             return f.read()
 
-    validator = PersonValidator(graph, SCHEMA_NS.date_of_birth, SCHEMA_NS.date_of_death,
-            SCHEMA_NS.rank, SCHEMA_NS.given_name, SCHEMA_NS.family_name,
-            SCHEMA_NS.municipality_of_going_mia, SCHEMA_NS.date_of_going_mia,
-            SCHEMA_NS.municipality_of_birth, SCHEMA_NS.unit, SCHEMA_NS.occupation_literal)
+    validator = PersonValidator(graph, SCHEMA_CAS.date_of_birth, SCHEMA_CAS.date_of_death,
+                                SCHEMA_CAS.rank, SCHEMA_CAS.given_name, SCHEMA_CAS.family_name,
+                                SCHEMA_CAS.municipality_of_going_mia, SCHEMA_CAS.date_of_going_mia,
+                                SCHEMA_CAS.municipality_of_birth, SCHEMA_CAS.unit, SCHEMA_CAS.occupation_literal)
     arpa = ArpaMimic(get_query_template(), endpoint, retries=10, wait_between_tries=6)
     new_graph = process_graph(graph, CRM.P70_documents, arpa, progress=True,
                               validator=validator, new_graph=True, source_prop=SKOS.prefLabel)
@@ -432,13 +432,13 @@ def link_municipalities(municipalities: Graph, warsa_endpoint: str, arpa_endpoin
 
     log.info('Using Warsa municipalities with {n} triples'.format(n=len(warsa_munics)))
 
-    municipalities.remove((None, SCHEMA_NS.current_municipality, None))
-    municipalities.remove((None, SCHEMA_NS.wartime_municipality, None))
+    municipalities.remove((None, SCHEMA_CAS.current_municipality, None))
+    municipalities.remove((None, SCHEMA_CAS.wartime_municipality, None))
 
     pnr_arpa = Arpa(arpa_endpoint)
-    municipalities = link_to_pnr(municipalities, SCHEMA_NS.current_municipality, None, pnr_arpa)['graph']
+    municipalities = link_to_pnr(municipalities, SCHEMA_CAS.current_municipality, None, pnr_arpa)['graph']
 
-    for casualty_munic in list(municipalities[:RDF.type:SCHEMA_NS.Municipality]):
+    for casualty_munic in list(municipalities[:RDF.type:SCHEMA_CAS.Municipality]):
         label = next(municipalities[casualty_munic:SKOS.prefLabel:])
 
         warsa_matches = []
@@ -460,7 +460,7 @@ def link_municipalities(municipalities: Graph, warsa_endpoint: str, arpa_endpoin
             match = warsa_matches[0]
             log.info('Found {lbl} municipality URI {s}'.format(lbl=label, s=match))
 
-            municipalities.add((casualty_munic, SCHEMA_NS.wartime_municipality, match))
+            municipalities.add((casualty_munic, SCHEMA_CAS.wartime_municipality, match))
 
         else:
             log.warning('Found multiple URIs for municipality {lbl}: {s}'.format(lbl=label, s=warsa_matches))
@@ -520,8 +520,8 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
 
     ngram_arpa = Arpa(arpa_url, retries=10, wait_between_tries=6)
 
-    for person in graph[:RDF.type:WARSA_NS.DeathRecord]:
-        cover = graph.value(person, SCHEMA_NS.unit_code)
+    for person in graph[:RDF.type:SCHEMA_WARSA.DeathRecord]:
+        cover = graph.value(person, SCHEMA_CAS.unit_code)
 
         best_score = -1
         # LINK DEATH RECORDS BASED ON COVER NUMBER IF IT EXISTS
@@ -529,7 +529,7 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
             sparql.setQuery(query_template_unit_code.format(cover_number=cover))
             sparql.setReturnFormat(JSON)
             results = _query_sparql(sparql)
-            person_unit = str(graph.value(person, SCHEMA_NS.unit_literal))
+            person_unit = str(graph.value(person, SCHEMA_CAS.unit_literal))
             best_unit = None
             best_labels = None
 
@@ -549,7 +549,7 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
             if best_score >= COVER_NUMBER_SCORE_LIMIT and best_unit:
                 log.info('Found unit {unit} for {pers} by cover number with score {score}.'.
                          format(pers=person, unit=best_unit, score=best_score))
-                unit_code_links.add((person, SCHEMA_NS.unit_literal, URIRef(best_unit)))
+                unit_code_links.add((person, SCHEMA_CAS.unit_literal, URIRef(best_unit)))
 
             else:
                 log.warning('Skipping suspected erroneus unit for {unit} with labels {lbls} and score {score}.'.
@@ -557,25 +557,25 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
 
         # NO COVER NUMBER, ADD RELATED_PERIOD FOR LINKING WITH WARSA-LINKERS
         if not cover or best_score < COVER_NUMBER_SCORE_LIMIT:
-            death_time = str(graph.value(person, WARSA_NS.date_of_death))
+            death_time = str(graph.value(person, SCHEMA_WARSA.date_of_death))
             if death_time < '1941-06-25':
                 temp_graph.add((person, URIRef('http://ldf.fi/schema/warsa/events/related_period'),
                                 URIRef('http://ldf.fi/warsa/conflicts/WinterWar')))
 
-            unit = preprocessor(str(graph.value(person, SCHEMA_NS.unit_literal)))
+            unit = preprocessor(str(graph.value(person, SCHEMA_CAS.unit_literal)))
             ngrams = ngram_arpa.get_candidates(unit)
             combined = combine_values(ngrams['results'])
-            temp_graph.add((person, SCHEMA_NS.candidate, Literal(combined)))
+            temp_graph.add((person, SCHEMA_CAS.candidate, Literal(combined)))
 
     # LINK DEATH RECORDS WITHOUT COVER NUMBER
 
     log.info('Linking the found candidates')
     arpa = ArpaMimic(get_query_template(), endpoint, retries=10, wait_between_tries=6)
-    unit_links = process_graph(temp_graph, SCHEMA_NS.unit_literal, arpa,
+    unit_links = process_graph(temp_graph, SCHEMA_CAS.unit, arpa,
                                progress=True,
                                validator=Validator(temp_graph),
                                new_graph=True,
-                               source_prop=SCHEMA_NS.candidate)['graph']
+                               source_prop=SCHEMA_CAS.candidate)['graph']
     return unit_links + unit_code_links
 
 

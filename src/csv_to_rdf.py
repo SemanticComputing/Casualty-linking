@@ -6,9 +6,9 @@ import datetime
 import logging
 import pandas as pd
 
-from rdflib import URIRef, Graph, Literal, Namespace
+from rdflib import URIRef, Graph, Literal
 from mapping import CASUALTY_MAPPING
-from namespaces import RDF, XSD, DC, SKOS, NARC, SCHEMA_NS, SCHEMA_NS, WARSA_NS, bind_namespaces, CEMETERY_NS, KUNNAT
+from namespaces import RDF, XSD, DC, SKOS, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, CEMETERIES, DATA_CAS
 
 
 class RDFMapper:
@@ -94,23 +94,23 @@ class RDFMapper:
         """
         Convert graveyard information into URIs.
         """
-        mun = graph.value(uri, SCHEMA_NS.hautauskunta_id)
+        mun = graph.value(uri, SCHEMA_CAS.municipality_of_burial)
         if not mun:
             return graph
 
-        gy = graph.value(uri, SCHEMA_NS.hautausmaa_nro)
-        gy_uri = '{base}h{mun}'.format(base=CEMETERY_NS, mun=mun)
-        mun_uri = '{base}k{mun}'.format(base=KUNNAT, mun=mun)
+        gy = graph.value(uri, SCHEMA_CAS.graveyard_number)
+        gy_uri = '{base}h{mun}'.format(base=CEMETERIES, mun=str(mun).split('/k')[-1])
+        # mun_uri = '{base}k{mun}'.format(base=KUNNAT, mun=mun)
         if gy:
             gy_uri = gy_uri + '_{gy}'.format(gy=gy)
 
         if str(gy) not in ['?', 'x']:
-            graph.add((uri, WARSA_NS.buried_in, URIRef(gy_uri)))
+            graph.add((uri, SCHEMA_WARSA.buried_in, URIRef(gy_uri)))
 
-        graph.add((uri, SCHEMA_NS.burial_municipality, URIRef(mun_uri)))
+        # graph.add((uri, SCHEMA_CAS.burial_municipality, URIRef(mun_uri)))
 
-        graph.remove((uri, SCHEMA_NS.hautauskunta_id, mun))
-        graph.remove((uri, SCHEMA_NS.hautausmaa_nro, gy))
+        # graph.remove((uri, SCHEMA_CAS.hautauskunta_id, mun))
+        graph.remove((uri, SCHEMA_CAS.graveyard_number, gy))
 
         return graph
 
@@ -178,7 +178,7 @@ class RDFMapper:
         """
         for index in self.table.index:
             person_id = self.table.ix[index][0]
-            person_uri = NARC['p' + str(person_id)]
+            person_uri = DATA_CAS['p' + str(person_id)]
             row_rdf = self.map_row_to_rdf(person_uri, self.table.ix[index][1:], person_id=person_id)
             if row_rdf:
                 self.data += row_rdf
@@ -208,7 +208,7 @@ if __name__ == "__main__":
 
     args = argparser.parse_args()
 
-    mapper = RDFMapper(CASUALTY_MAPPING, WARSA_NS.DeathRecord, loglevel=args.loglevel.upper())
+    mapper = RDFMapper(CASUALTY_MAPPING, SCHEMA_WARSA.DeathRecord, loglevel=args.loglevel.upper())
     mapper.read_csv(args.input)
 
     mapper.process_rows()
