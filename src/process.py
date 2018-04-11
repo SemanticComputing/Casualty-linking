@@ -82,8 +82,10 @@ def harmonize_names(surma: Graph):
     # Unify previous last names to same format as WARSA actors: LASTNAME (ent PREVIOUS)
     for (person, lname) in list(surma[:SCHEMA_WARSA.family_name:]):
         new_fam = re.sub(r'(\w)0(\w)', r'\1O\2', lname)
+        new_fam = re.sub(r'\s+', ' ', new_fam)
         new_fam = re.sub('%', '/', new_fam)
-        new_fam = re.sub(r'(\w\w +)(E(?:NT)?\.)\s?(\w+)', r'\1(ent. \3)', new_fam).title()
+        new_fam = re.sub(r'(\w\w +)(E(?:NT)?\.)\s?(\w+)', r'\1(ent. \3)', new_fam)
+        new_fam = new_fam.title().replace('(Ent.', '(ent.').replace('Von', 'von')
         new_fam_lit = Literal(new_fam)
         log.debug('Unifying lastname {ln} to {nln}'.format(ln=lname, nln=new_fam_lit))
         surma.add((person, SCHEMA_WARSA.family_name, new_fam_lit))
@@ -91,6 +93,7 @@ def harmonize_names(surma: Graph):
 
         given = surma.value(person, SCHEMA_WARSA.given_names)
         new_giv = str(given).title()
+        new_giv = re.sub('%', '/', new_giv)
         surma.remove((person, SCHEMA_WARSA.given_names, given))
         surma.add((person, SCHEMA_WARSA.given_names, Literal(new_giv)))
         log.debug('Changed name {orig} to {new}'.format(orig=given, new=new_giv))
