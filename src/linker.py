@@ -465,6 +465,7 @@ def link_municipalities(municipalities: Graph, warsa_endpoint: str, arpa_endpoin
         labels = list(municipalities[casualty_munic:SKOS.prefLabel:])
 
         warsa_matches = []
+        match = None
 
         for lbl in labels:
             lbl = str(lbl).strip()
@@ -487,6 +488,10 @@ def link_municipalities(municipalities: Graph, warsa_endpoint: str, arpa_endpoin
 
         else:
             log.warning('Found multiple URIs for municipality {lbl}: {s}'.format(lbl=lbl, s=warsa_matches))
+
+        preferred = match or municipalities.value(casualty_munic, SCHEMA_CAS.current_municipality) or casualty_munic
+        if preferred:
+            municipalities.add((casualty_munic, SCHEMA_CAS.preferred_municipality, preferred))
 
     return municipalities
 

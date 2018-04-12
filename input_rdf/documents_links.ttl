@@ -1,0 +1,88 @@
+@prefix : <http://ldf.fi/warsa/actors/> .
+@prefix actors: <http://ldf.fi/warsa/actors/> .
+@prefix asc: <http://ldf.fi/schema/warsa/> .
+@prefix crm: <http://www.cidoc-crm.org/cidoc-crm/> .
+@prefix dc: <http://purl.org/dc/terms/> .
+@prefix events: <http://ldf.fi/warsa/events/> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix narc: <http://ldf.fi/narc-menehtyneet1939-45/> .
+@prefix narcs: <http://ldf.fi/schema/narc-menehtyneet1939-45/> .
+@prefix natbib: <http://ldf.fi/history/kb/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix times: <http://ldf.fi/warsa/events/times/> .
+@prefix wacs: <http://ldf.fi/schema/warsa/actors/> .
+@prefix wso: <http://ldf.fi/warsa/sources/> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+actors:person_217 a asc:Person ;
+    crm:P70i_is_documented_in narc:p508722 .
+
+actors:person_220 a asc:Person ;
+    crm:P70i_is_documented_in narc:p273901 .
+
+actors:person_228 a asc:Person ;
+    crm:P70i_is_documented_in narc:p530062 .
+
+actors:person_231 a asc:Person ;
+    crm:P70i_is_documented_in narc:p17445 .
+
+actors:person_232 a asc:Person ;
+    crm:P70i_is_documented_in narc:p282493 .
+
+actors:person_240 a asc:Person ;
+    crm:P70i_is_documented_in narc:p280903 .
+
+actors:person_251 a asc:Person ;
+    crm:P70i_is_documented_in narc:p752512 .
+
+actors:person_252 a asc:Person ;
+    crm:P70i_is_documented_in narc:p525193 .
+
+actors:person_258 a asc:Person ;
+    crm:P70i_is_documented_in narc:p513022 .
+
+actors:person_276 a asc:Person ;
+    crm:P70i_is_documented_in narc:p10512 .
+
+actors:person_293 a asc:Person ;
+    crm:P70i_is_documented_in narc:p530976 .
+
+actors:person_301 a asc:Person ;
+    crm:P70i_is_documented_in narc:p753790 .
+
+actors:person_305 a asc:Person ;
+    crm:P70i_is_documented_in narc:p6941 .
+
+actors:person_307 a asc:Person ;
+    crm:P70i_is_documented_in narc:p259297 .
+
+actors:person_332 a asc:Person ;
+    crm:P70i_is_documented_in narc:p11127 .
+
+actors:person_333 a asc:Person ;
+    crm:P70i_is_documented_in narc:p508203 .
+
+actors:person_334 a asc:Person ;
+    crm:P70i_is_documented_in narc:p11344 .
+
+actors:person_343 a asc:Person ;
+    crm:P70i_is_documented_in narc:p515459 .
+
+actors:person_346 a asc:Person ;
+    crm:P70i_is_documented_in narc:p524928 .
+
+actors:person_353 a asc:Person ;
+    crm:P70i_is_documented_in narc:p531437 .
+
+actors:person_383 a asc:Person ;
+    crm:P70i_is_documented_in narc:p13560 .
+
+actors:person_p10295 dc:source wso:source8 ;
+    owl:sameAs actors:person_2353 .
+
+actors:person_p11481 dc:source wso:source8 ;
+    owl:sameAs actors:person_71 .

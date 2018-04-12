@@ -5,15 +5,12 @@ Stand-alone tasks for casualties dataset
 import argparse
 import logging
 from io import StringIO
-from time import sleep
 
-from fuzzywuzzy import fuzz
-from rdflib import *
 from SPARQLWrapper import SPARQLWrapper, JSON
-from arpa_linker.arpa import Arpa, ArpaMimic, process_graph, arpafy, combine_values, log_to_file
+from rdflib import *
 
 from linker import _query_sparql
-from namespaces import SCHEMA_WARSA, CRM, SCHEMA_CAS, bind_namespaces
+from namespaces import SCHEMA_WARSA, CRM, bind_namespaces
 
 log = logging.getLogger(__name__)
 
@@ -28,7 +25,7 @@ def documents_links(data_graph, endpoint):
     links = Graph()
 
     for person in persons:
-        if len(list(data_graph[person:CRM.documents:])):
+        if data_graph.value(person, CRM.P70_documents):
             log.debug('Skipping already linked death record {uri}'.format(uri=person))
             continue
 
