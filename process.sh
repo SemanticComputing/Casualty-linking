@@ -8,7 +8,7 @@ export WARSA_ENDPOINT_URL=${WARSA_ENDPOINT_URL:-http://localhost:3030/warsa}
 export ARPA_URL=${ARPA_URL:-http://demo.seco.tkk.fi/arpa}
 export BASE_URI="http://ldf.fi/"
 
-./convert.sh &&
+./convert.sh $1 &&
 
 python src/process.py output/casualties_initial.ttl output/casualties_processed.ttl --arpa_pnr $ARPA_URL/pnr_municipality &&
 cat input_rdf/cas_additions.ttl >> output/casualties_processed.ttl &&
