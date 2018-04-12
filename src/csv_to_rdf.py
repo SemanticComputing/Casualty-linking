@@ -6,9 +6,9 @@ import datetime
 import logging
 import pandas as pd
 
-from rdflib import URIRef, Graph, Literal
+from rdflib import URIRef, Graph, Literal, RDF, XSD
 from mapping import CASUALTY_MAPPING
-from namespaces import RDF, XSD, DC, SKOS, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, CEMETERIES, DATA_CAS
+from namespaces import DCT, SKOS, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, CEMETERIES, DATA_CAS
 
 
 class RDFMapper:
@@ -190,7 +190,7 @@ class RDFMapper:
             if 'name_en' in prop:
                 self.schema.add((prop['uri'], SKOS.prefLabel, Literal(prop['name_en'], lang='en')))
             if 'description_fi' in prop:
-                self.schema.add((prop['uri'], DC.description, Literal(prop['description_fi'], lang='fi')))
+                self.schema.add((prop['uri'], DCT.description, Literal(prop['description_fi'], lang='fi')))
 
         error_df = pd.DataFrame(columns=['nro', 'nimi', 'sarake', 'virhe', 'arvo'], data=self.errors)
         error_df.to_csv('output/errors.csv', ',', index=False)

@@ -13,7 +13,7 @@ from SPARQLWrapper import SPARQLWrapper, JSON
 from arpa_linker.arpa import Arpa, ArpaMimic, process_graph, arpafy, combine_values, log_to_file
 
 from linker import _query_sparql
-from namespaces import SCHEMA_WARSA, CRM, SCHEMA_CAS
+from namespaces import SCHEMA_WARSA, CRM, SCHEMA_CAS, bind_namespaces
 
 log = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ if __name__ == '__main__':
         log.info('Creating links...')
         death_records = documents_links(death_records, args.endpoint)
         log.info('Serializing output file...')
-        death_records.serialize(format=args.format, destination=args.output)
+        bind_namespaces(death_records).serialize(format=args.format, destination=args.output)
 
     elif args.task == 'test':
         print('Running doctests')

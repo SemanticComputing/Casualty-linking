@@ -16,7 +16,7 @@ from rdflib import Graph, URIRef, Literal, BNode, RDF
 from rdflib.util import guess_format
 
 from arpa_linker.arpa import ArpaMimic, process_graph, Arpa, combine_values
-from namespaces import SKOS, CRM, BIOC, SCHEMA_CAS, SCHEMA_WARSA
+from namespaces import SKOS, CRM, BIOC, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces
 import rdf_dm as r
 from sotasampo_helpers.arpa import link_to_pnr
 from warsa_linkers.units import preprocessor, Validator
@@ -160,9 +160,9 @@ def link_ranks(graph, endpoint):
     results = _query_sparql(sparql)
 
     rank_links = Graph()
-    ranks = defaultdict(list)
+    ranks = {}
     for rank in results['results']['bindings']:
-        ranks[rank['rank']['value']].append(rank['id']['value'])
+        ranks[rank['rank']['value']] = rank['id']['value']
 
     for person in graph[:RDF.type:SCHEMA_WARSA.DeathRecord]:
         rank_literal = str(graph.value(person, SCHEMA_CAS.rank_literal))
@@ -639,18 +639,18 @@ if __name__ == '__main__':
 
     if args.task == 'ranks':
         log.info('Linking ranks')
-        link_ranks(input_graph, args.endpoint).serialize(args.output, format=guess_format(args.output))
+        bind_namespaces(link_ranks(input_graph, args.endpoint)).serialize(args.output, format=guess_format(args.output))
 
     elif args.task == 'persons':
         log.info('Linking persons')
-        link_persons(input_graph, args.endpoint).serialize(args.output, format=guess_format(args.output))
+        bind_namespaces(link_persons(input_graph, args.endpoint)).serialize(args.output, format=guess_format(args.output))
 
     elif args.task == 'municipalities':
         log.info('Linking municipalities')
-        link_municipalities(input_graph, args.endpoint, args.arpa).serialize(args.output, format=guess_format(args.output))
+        bind_namespaces(link_municipalities(input_graph, args.endpoint, args.arpa)).serialize(args.output, format=guess_format(args.output))
 
     elif args.task == 'units':
         log.info('Linking units')
-        link_units(input_graph, args.endpoint, args.arpa).serialize(args.output, format=guess_format(args.output))
+        bind_namespaces(link_units(input_graph, args.endpoint, args.arpa)).serialize(args.output, format=guess_format(args.output))
 
 

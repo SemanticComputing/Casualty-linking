@@ -17,7 +17,7 @@ from rdflib import *
 import rdflib
 
 from namespaces import SCHEMA_WARSA, MUNICIPALITIES, CEMETERIES, SCHEMA_CAS, SKOS, PERISHING_CLASSES, GENDERS, \
-    CITIZENSHIPS, NATIONALITIES, MOTHER_TONGUES, MARITAL_STATUSES
+    CITIZENSHIPS, NATIONALITIES, MOTHER_TONGUES, MARITAL_STATUSES, bind_namespaces
 
 URI_MAPPINGS = {
     # MANUAL FIXES TO SOME URI'S USED AS TRIPLE OBJECTS
@@ -143,19 +143,7 @@ def main(args):
     # validate(surma, Graph())
 
     print('Serializing graphs...')
-    surma.bind("crm", "http://www.cidoc-crm.org/cidoc-crm/")
-    surma.bind("skos", "http://www.w3.org/2004/02/skos/core#")
-    surma.bind("wsc", SCHEMA_WARSA)
-    surma.bind("wcp", PERISHING_CLASSES)
-    surma.bind("wcm", MUNICIPALITIES)
-    surma.bind("wcg", GENDERS)
-    surma.bind("wcc", CITIZENSHIPS)
-    surma.bind("wcn", NATIONALITIES)
-    surma.bind("wct", MOTHER_TONGUES)
-    surma.bind("wcs", MARITAL_STATUSES)
-    surma.bind("wc", CEMETERIES)
-
-    surma.serialize(format="turtle", destination=args.output)
+    bind_namespaces(surma).serialize(format="turtle", destination=args.output)
 
 
 if __name__ == "__main__":

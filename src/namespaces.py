@@ -3,10 +3,10 @@
 """
 Define common RDF namespaces
 """
-from rdflib import Namespace, RDF, RDFS, XSD, Graph
+from rdflib import Namespace, Graph
 
 CRM = Namespace('http://www.cidoc-crm.org/cidoc-crm/')
-DC = Namespace('http://purl.org/dc/terms/')
+DCT = Namespace('http://purl.org/dc/terms/')
 FOAF = Namespace('http://xmlns.com/foaf/0.1/')
 SKOS = Namespace('http://www.w3.org/2004/02/skos/core#')
 BIOC = Namespace('http://ldf.fi/schema/bioc/')
@@ -27,11 +27,22 @@ MUNICIPALITIES = Namespace('http://ldf.fi/warsa/casualties/municipalities/')
 
 
 def bind_namespaces(graph: Graph):
-    graph.bind("c", "http://ldf.fi/warsa/casualties/")
-    graph.bind("cs", "http://ldf.fi/schema/warsa/casualties/")
-    graph.bind("skos", "http://www.w3.org/2004/02/skos/core#")
-    graph.bind("cidoc", 'http://www.cidoc-crm.org/cidoc-crm/')
-    graph.bind("bioc", 'http://ldf.fi/schema/bioc/')
-    graph.bind("dct", 'http://purl.org/dc/terms/')
+    graph.bind("bioc", BIOC)
+    graph.bind("dct", DCT)
+    graph.bind("crm", CRM)
+    graph.bind("skos", SKOS)
 
-    graph.bind("narcs", SCHEMA_CAS)
+    graph.bind("wsch", SCHEMA_WARSA)
+    graph.bind("wcsc", SCHEMA_CAS)
+    graph.bind("wca", DATA_CAS)
+
+    graph.bind("wcp", PERISHING_CLASSES)
+    graph.bind("wcm", MUNICIPALITIES)
+    graph.bind("wcg", GENDERS)
+    graph.bind("wcc", CITIZENSHIPS)
+    graph.bind("wcn", NATIONALITIES)
+    graph.bind("wct", MOTHER_TONGUES)
+    graph.bind("wcs", MARITAL_STATUSES)
+    graph.bind("wce", CEMETERIES)
+
+    return graph
