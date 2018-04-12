@@ -7,6 +7,7 @@ import logging
 import re
 import time
 from datetime import datetime
+from collections import defaultdict
 
 from SPARQLWrapper import SPARQLWrapper, JSON
 from jellyfish import jaro_winkler
@@ -76,7 +77,7 @@ def link_ranks(graph, endpoint):
 
     # TODO: Move to Warsa-linkers
 
-    def preprocess(literal, prisoner, subgraph):
+    def preprocess(literal):
         value = str(literal).strip()
         return rank_mapping[value] if value in rank_mapping else value
 
@@ -139,14 +140,36 @@ def link_ranks(graph, endpoint):
         'ylivääp.': 'Ylivääpeli',
     }
 
-    query = "PREFIX text: <http://jena.apache.org/text#> " + \
-            "SELECT * { GRAPH <http://ldf.fi/warsa/ranks> { ?id a <http://ldf.fi/schema/warsa/Rank> . " + \
-            "?id text:query \"<VALUES>\" . " + \
-            "} } LIMIT 1"
+    query = """
+        PREFIX text: <http://jena.apache.org/text#>
+        SELECT ?rank (SAMPLE(?id_) AS ?id) {{
+            VALUES ?rank {{ "{ranks}" }}
+            GRAPH <http://ldf.fi/warsa/ranks> {{
+                (?id_ ?score) text:query ?rank .
+                ?id_ a <http://ldf.fi/schema/warsa/Rank> .
+            }}
+        }} GROUP BY ?rank ?id HAVING (MAX(?score))
+    """
 
-    arpa = ArpaMimic(query, url=endpoint, retries=3, wait_between_tries=3)
+    rank_literals = set(map(preprocess, graph.objects(None, SCHEMA_CAS.rank_literal)))
 
-    return link(graph, arpa, SCHEMA_CAS.rank_literal, Graph(), SCHEMA_CAS.rank, preprocess=preprocess)
+    sparql = SPARQLWrapper(endpoint)
+    sparql.method = 'POST'
+    sparql.setQuery(query.format(ranks='" "'.join(rank_literals)))
+    sparql.setReturnFormat(JSON)
+    results = _query_sparql(sparql)
+
+    rank_links = Graph()
+    ranks = defaultdict(list)
+    for rank in results['results']['bindings']:
+        ranks[rank['rank']['value']].append(rank['id']['value'])
+
+    for person in graph[:RDF.type:SCHEMA_WARSA.DeathRecord]:
+        rank_literal = str(graph.value(person, SCHEMA_CAS.rank_literal))
+        if rank_literal in ranks:
+            rank_links.add((person, SCHEMA_CAS.rank, URIRef(ranks[rank_literal])))
+
+    return rank_links
 
 
 class PersonValidator:
@@ -481,11 +504,11 @@ def _query_sparql(sparql_obj):
         try:
             results = sparql_obj.query().convert()
         except ValueError:
-            if retry < 50:
-                log.error('Malformed result for query {p_uri}, retrying in 10 seconds...'.format(
+            if retry < 10:
+                log.error('Malformed result for query {p_uri}, retrying in 1 second...'.format(
                     p_uri=sparql_obj.queryString))
                 retry += 1
-                time.sleep(10)
+                time.sleep(1)
             else:
                 raise
     log.debug('Got results {res} for query {q}'.format(res=results, q=sparql_obj.queryString))
@@ -504,21 +527,33 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
         with open('SPARQL/units.sparql') as f:
             return f.read()
 
-    COVER_NUMBER_SCORE_LIMIT = 85
+    COVER_NUMBER_SCORE_LIMIT = 20
 
     sparql = SPARQLWrapper(endpoint)
     query_template_unit_code = """
-                    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-                    SELECT ?sub (GROUP_CONCAT(?label; separator=" || ") as ?labels) WHERE  
-                    {{ 
-                        ?sub <http://ldf.fi/schema/warsa/actors/covernumber> "{cover_number}" .
-                        ?sub skos:prefLabel|skos:altLabel ?label .
-                    }} GROUP BY ?sub
-                    """
+        PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+        SELECT ?sub ?cover (GROUP_CONCAT(?label; separator=" || ") as ?labels) WHERE
+        {{
+            VALUES ?cover {{ "{cover}" }}
+            ?sub <http://ldf.fi/schema/warsa/actors/covernumber> ?cover .
+            ?sub skos:prefLabel|skos:altLabel ?label .
+        }} GROUP BY ?sub ?cover
+    """
     temp_graph = Graph()
     unit_code_links = Graph()
 
     ngram_arpa = Arpa(arpa_url, retries=10, wait_between_tries=6)
+
+    unit_codes = graph.objects(None, SCHEMA_CAS.unit_code)
+
+    sparql.method = 'POST'
+    sparql.setQuery(query_template_unit_code.format(cover='" "'.join(unit_codes)))
+    sparql.setReturnFormat(JSON)
+    results = _query_sparql(sparql)
+
+    units = defaultdict(list)
+    for unit in results['results']['bindings']:
+        units[unit['cover']['value']].append(unit)
 
     for person in graph[:RDF.type:SCHEMA_WARSA.DeathRecord]:
         cover = graph.value(person, SCHEMA_CAS.unit_code)
@@ -526,14 +561,12 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
         best_score = -1
         # LINK DEATH RECORDS BASED ON COVER NUMBER IF IT EXISTS
         if cover:
-            sparql.setQuery(query_template_unit_code.format(cover_number=cover))
-            sparql.setReturnFormat(JSON)
-            results = _query_sparql(sparql)
+            cover = str(cover)
             person_unit = str(graph.value(person, SCHEMA_CAS.unit_literal))
             best_unit = None
             best_labels = None
 
-            for result in results["results"]["bindings"]:
+            for result in units[cover]:
                 if 'sub' not in result:
                     # This can happen because of GROUP_CONCAT
                     log.warning('Unknown cover number {cover}.'.format(cover=cover))
@@ -549,11 +582,11 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
             if best_score >= COVER_NUMBER_SCORE_LIMIT and best_unit:
                 log.info('Found unit {unit} for {pers} by cover number with score {score}.'.
                          format(pers=person, unit=best_unit, score=best_score))
-                unit_code_links.add((person, SCHEMA_CAS.unit_literal, URIRef(best_unit)))
+                unit_code_links.add((person, SCHEMA_CAS.unit, URIRef(best_unit)))
 
             else:
-                log.warning('Skipping suspected erroneus unit for {unit} with labels {lbls} and score {score}.'.
-                            format(unit=person_unit, lbls=best_labels, score=best_score))
+                log.warning('Skipping suspected erroneus unit for {unit}/{cover} with labels {lbls} and score {score}.'.
+                            format(unit=person_unit, cover=cover, lbls=best_labels, score=best_score))
 
         # NO COVER NUMBER, ADD RELATED_PERIOD FOR LINKING WITH WARSA-LINKERS
         if not cover or best_score < COVER_NUMBER_SCORE_LIMIT:

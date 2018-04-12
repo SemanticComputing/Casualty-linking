@@ -16,7 +16,7 @@ echo "Linking ranks" &&
 python src/linker.py ranks output/casualties_processed.ttl output/rank_links.ttl --endpoint $WARSA_ENDPOINT_URL/sparql --logfile output/logs/linker.log &&
 
 echo "Linking units" &&
-python src/linker.py units output/casualties_processed.ttl output/unit_links.ttl --endpoint $WARSA_ENDPOINT_URL/sparql --arpa $ARPA_URL/warsa_casualties_actor_units --logfile output/logs/tasks.log
+python src/linker.py units output/casualties_processed.ttl output/unit_links.ttl --endpoint $WARSA_ENDPOINT_URL/sparql --arpa $ARPA_URL/warsa_casualties_actor_units --logfile output/logs/tasks.log &&
 
 echo "Linking persons" &&
 python src/sotasampo_helpers/arpa.py persons join output/casualties_processed.ttl output/person_candidates_combined.ttl http://candidates/person $WARSA_ENDPOINT_URL/sparql --prop http://ldf.fi/schema/warsa/family_name -n -w 3 -r 3 &&
