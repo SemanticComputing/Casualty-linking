@@ -19,7 +19,7 @@ CEMETERIES = Namespace('http://ldf.fi/warsa/places/cemeteries/')
 MOTHER_TONGUES = Namespace('http://ldf.fi/warsa/mother_tongues/')
 MARITAL_STATUSES = Namespace('http://ldf.fi/warsa/marital_statuses/')
 GENDERS = Namespace('http://ldf.fi/warsa/genders/')
-PERISHING_CLASSES = Namespace('http://ldf.fi/warsa/perishing_classes/')
+PERISHING_CLASSES = Namespace('http://ldf.fi/warsa/perishing_categories/')
 
 CITIZENSHIPS = Namespace('http://ldf.fi/warsa/citizenships/')
 NATIONALITIES = Namespace('http://ldf.fi/warsa/nationalities/')

@@ -462,12 +462,12 @@ def link_municipalities(municipalities: Graph, warsa_endpoint: str, arpa_endpoin
     municipalities = link_to_pnr(municipalities, SCHEMA_CAS.current_municipality, None, pnr_arpa)['graph']
 
     for casualty_munic in list(municipalities[:RDF.type:SCHEMA_CAS.Municipality]):
-        label = next(municipalities[casualty_munic:SKOS.prefLabel:])
+        labels = list(municipalities[casualty_munic:SKOS.prefLabel:])
 
         warsa_matches = []
 
-        labels = str(label).strip().split('/')
         for lbl in labels:
+            lbl = str(lbl).strip()
             if MUN_MAPPING.get(lbl):
                 warsa_matches += [MUN_MAPPING.get(lbl)]
             else:
@@ -478,15 +478,15 @@ def link_municipalities(municipalities: Graph, warsa_endpoint: str, arpa_endpoin
 
         if len(warsa_matches) == 0:
             if set(municipalities.subjects(None, casualty_munic)):
-                log.warning("Couldn't find URIs for municipality {lbl}".format(lbl=label))
+                log.warning("Couldn't find URIs for municipality {lbl}".format(lbl=lbl))
         elif len(warsa_matches) == 1:
             match = warsa_matches[0]
-            log.info('Found {lbl} municipality URI {s}'.format(lbl=label, s=match))
+            log.info('Found {lbl} municipality URI {s}'.format(lbl=lbl, s=match))
 
             municipalities.add((casualty_munic, SCHEMA_CAS.wartime_municipality, match))
 
         else:
-            log.warning('Found multiple URIs for municipality {lbl}: {s}'.format(lbl=label, s=warsa_matches))
+            log.warning('Found multiple URIs for municipality {lbl}: {s}'.format(lbl=lbl, s=warsa_matches))
 
     return municipalities
 

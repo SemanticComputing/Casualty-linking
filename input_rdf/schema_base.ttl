@@ -1,0 +1,37 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix xmls: <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix wsc: <http://ldf.fi/schema/warsa/> .
+@prefix cs: <http://ldf.fi/schema/warsa/casualties/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+wsc:Citizenship
+    rdfs:subClassOf skos:Concept ;
+    skos:prefLabel "Citizenship"@en, "Kansalaisuus"@fi .
+
+wsc:Gender
+    rdfs:subClassOf skos:Concept ;
+    skos:prefLabel "Gender"@en, "Sukupuoli"@fi .
+
+wsc:MaritalStatus
+    rdfs:subClassOf skos:Concept ;
+    skos:prefLabel "Marital Status"@en, "Siviilisääty"@fi .
+
+wsc:MotherTongue
+    rdfs:subClassOf skos:Concept ;
+    skos:prefLabel "Mother tongue"@en, "Äidinkieli"@fi .
+
+wsc:Municipality
+    rdfs:subClassOf skos:Concept ;
+    skos:prefLabel "Kunta"@fi, "Municipality"@en .
+
+wsc:Nationality
+    rdfs:subClassOf skos:Concept ;
+    skos:prefLabel "Kansallisuus"@fi, "Nationality"@en .
+
+wsc:PerishingCategory
+    rdfs:subClassOf skos:Concept ;
+    skos:prefLabel "Menehtymisluokka"@fi, "Perishing category"@en .
+
