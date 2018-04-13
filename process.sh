@@ -45,4 +45,5 @@ echo "Generating schema" &&
 cat input_rdf/schema_base.ttl output/schema.ttl | rapper - $BASE_URI -i turtle -o turtle > output/casualties_schema.ttl &&
 
 echo "Generating persons" &&
-python src/person_generator.py output/casualties.ttl output/municipalities.ttl output/cas_person
+python src/person_generator.py output/casualties.ttl output/municipalities.ttl output/cas_person \
+    --logfile output/logs/person_generator.log

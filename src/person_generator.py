@@ -3,6 +3,7 @@
 """Person generator"""
 
 import argparse
+import logging
 
 from rdflib import Graph, URIRef, Literal, RDF
 from rdflib.util import guess_format
@@ -167,6 +168,8 @@ def generate_person(graph: Graph, casualty: URIRef):
 
     person_uri = URIRef('http://ldf.fi/warsa/actors/person_{}'.format(get_local_id(casualty)))
 
+    log.debug('Generating person instance for {}'.format(person_uri))
+
     family_name = graph.value(casualty, SCHEMA_WARSA.family_name)
     given_names = graph.value(casualty, SCHEMA_WARSA.given_names)
     lbl = Literal('{gn} {fn}'.format(gn=given_names, fn=family_name))
@@ -218,8 +221,18 @@ if __name__ == '__main__':
     argparser.add_argument("input", help="Input RDF file")
     argparser.add_argument("municipalities", help="Municipalities RDF file")
     argparser.add_argument("output", help="Output file prefix")
+    argparser.add_argument("--loglevel", default='INFO', help="Logging level, default is INFO.",
+                           choices=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+    argparser.add_argument("--logfile", default='tasks.log', help="Logfile")
 
     args = argparser.parse_args()
+
+    logging.basicConfig(filename=args.logfile,
+                        filemode='a',
+                        level=getattr(logging, args.loglevel),
+                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    log = logging.getLogger(__name__)
 
     input_graph = Graph().parse(args.input, format=guess_format(args.input))
 

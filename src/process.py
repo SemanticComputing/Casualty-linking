@@ -75,39 +75,40 @@ def fix_by_direct_uri_mappings(graph: Graph):
 #
 # TODO: Do the above as a SPARQL query
 
-def harmonize_names(surma: Graph):
+def unify_names(casualties: Graph):
     """
-    Link death records to WARSA persons, unify and stylize name representations, fix some errors.
+    Unify and stylize name representations
     """
-    # Unify previous last names to same format as WARSA actors: LASTNAME (ent PREVIOUS)
-    for (person, lname) in list(surma[:SCHEMA_WARSA.family_name:]):
-        new_fam = re.sub(r'(\w)0(\w)', r'\1O\2', lname)
+    def unify_family_name(family: str):
+        new_fam = re.sub(r'(\w)0(\w)', r'\1O\2', family)
         new_fam = re.sub(r'\s+', ' ', new_fam)
-        new_fam = re.sub('%', '/', new_fam)
-        new_fam = re.sub(r'(\w\w +)(E(?:NT)?\.)\s?(\w+)', r'\1(ent. \3)', new_fam)
+        new_fam = re.sub('%', '/', new_fam)  # Väinö Jaakkola%Jakkola
+        new_fam = re.sub(r'(\w\w\s+)(E(?:NT)?\.)\s?(\w+)', r'\1(ent. \3)', new_fam)
         new_fam = new_fam.title().replace('(Ent.', '(ent.').replace('Von', 'von')
-        new_fam_lit = Literal(new_fam)
-        log.debug('Unifying lastname {ln} to {nln}'.format(ln=lname, nln=new_fam_lit))
-        surma.add((person, SCHEMA_WARSA.family_name, new_fam_lit))
-        surma.remove((person, SCHEMA_WARSA.family_name, lname))
+        log.debug('Unifying family name "{ln}" to "{nln}"'.format(ln=family, nln=new_fam))
+        return new_fam
 
-        given = surma.value(person, SCHEMA_WARSA.given_names)
+    def unify_given_name(given: str):
         new_giv = str(given).title()
         new_giv = re.sub('%', '/', new_giv)
-        surma.remove((person, SCHEMA_WARSA.given_names, given))
-        surma.add((person, SCHEMA_WARSA.given_names, Literal(new_giv)))
-        log.debug('Changed name {orig} to {new}'.format(orig=given, new=new_giv))
+        log.debug('Unifying given names "{orig}" to "{new}"'.format(orig=given, new=new_giv))
+        return new_giv
 
-        full_name = '{family}, {given}'.format(family=new_fam, given=new_giv)
-        surma.add((person, SKOS.prefLabel, Literal(full_name)))
+    # Unify previous last names to same format as WARSA actors: LASTNAME (ent PREVIOUS)
+    for (person, lname) in list(casualties[:SCHEMA_WARSA.family_name:]):
+        new_fam_lit = Literal(unify_family_name(lname))
+        casualties.remove((person, SCHEMA_WARSA.family_name, lname))
+        casualties.add((person, SCHEMA_WARSA.family_name, new_fam_lit))
 
-    # Change names from all uppercase to capitalized
-    for lbl_pred in [SCHEMA_WARSA.given_names, SCHEMA_WARSA.family_name]:
-        for (sub, obj) in list(surma[:lbl_pred:]):
-            name = str(obj)
-            new_fam = str.title(name)
+        given = casualties.value(person, SCHEMA_WARSA.given_names)
+        new_giv_lit = Literal(unify_given_name(given))
+        casualties.remove((person, SCHEMA_WARSA.given_names, given))
+        casualties.add((person, SCHEMA_WARSA.given_names, new_giv_lit))
 
-    return surma
+        full_name = '{family}, {given}'.format(family=new_fam_lit, given=new_giv_lit)
+        casualties.add((person, SKOS.prefLabel, Literal(full_name)))
+
+    return casualties
 
 
 #######
@@ -137,7 +138,7 @@ def main(args):
 
     print('Handling persons...')
 
-    surma = harmonize_names(surma)
+    surma = unify_names(surma)
 
     # print('Validating graphs for unknown link targets and unlinked subjects...')
     # validate(surma, Graph())
