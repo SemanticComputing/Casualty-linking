@@ -138,8 +138,8 @@ def generate_promotion(graph: Graph, casualty: URIRef, person: URIRef, person_na
 
     rank_literal = graph.value(casualty, SCHEMA_CAS.rank_literal)
     rank_labels = list(ranks.objects(rank, SKOS.prefLabel))
-    rank_fi = next(iter(lit for lit in rank_labels if lit.language == 'fi'), None) or rank_literal
-    rank_en = next(iter(lit for lit in rank_labels if lit.language == 'en'), rank_fi) or rank_literal
+    rank_fi = next(iter(lit for lit in rank_labels if lit.language == 'fi'), rank_literal)
+    rank_en = next(iter(lit for lit in rank_labels if lit.language == 'en'), rank_fi)
     lbl_fi = Literal('{person} ylennettiin sotilasarvoon {rank}'.format(person=person_name, rank=rank_fi.lower()), lang='fi')
     lbl_en = Literal('{person} was promoted to {rank}'.format(person=person_name, rank=rank_en.lower()), lang='en')
 
