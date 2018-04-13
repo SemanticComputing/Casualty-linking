@@ -1,7 +1,7 @@
 version: '3.5'
 services:
     warsa:
-        image: warsa-fuseki
+        image: warsa-fuseki:cas
     pnr:
         image: pnr-fuseki
     las:

@@ -5,6 +5,7 @@
 import argparse
 import logging
 
+from rdf_dm import read_graph_from_sparql
 from rdflib import Graph, URIRef, Literal, RDF
 from rdflib.util import guess_format
 
@@ -19,9 +20,11 @@ def get_local_id(casualty: URIRef):
 
 def generate_event(graph: Graph, casualty: URIRef, person: URIRef, event_type: URIRef, event_prefix: str,
                    date_prop: URIRef, place_prop: URIRef, relation_prop: URIRef, munics: Graph):
+    log.debug('Generating event {} {} {} {} {} {} {}'.format(casualty, person, event_type, event_prefix,
+                                                             date_prop, place_prop, relation_prop))
     event = Graph()
     cas_local_id = get_local_id(casualty)
-    event_uri = URIRef('http://ldf.fi/warsa/events/{prefix}_{id}'.format(prefix=event_prefix, id=cas_local_id))
+    event_uri = URIRef('http://ldf.fi/warsa/events/{prefix}{id}'.format(prefix=event_prefix, id=cas_local_id))
 
     event.add((event_uri, RDF.type, event_type))
     event.add((event_uri, relation_prop, person))
@@ -38,7 +41,7 @@ def generate_event(graph: Graph, casualty: URIRef, person: URIRef, event_type: U
         date = graph.value(subject=casualty, predicate=date_prop)
         if date:
             timespan_uri = URIRef(
-                'http://ldf.fi/warsa/events/times/{prefix}_{id}'.format(prefix=event_prefix, id=cas_local_id))
+                'http://ldf.fi/warsa/events/times/{prefix}{id}'.format(prefix=event_prefix, id=cas_local_id))
 
             event.add((event_uri, CRM['P4_has_time-span'], timespan_uri))
 
@@ -50,7 +53,7 @@ def generate_event(graph: Graph, casualty: URIRef, person: URIRef, event_type: U
 
 
 def generate_birth(graph: Graph, casualty: URIRef, person: URIRef, person_name: str, munics: Graph):
-    event, event_uri = generate_event(graph, casualty, person, SCHEMA_WARSA.Birth, 'birth',
+    event, event_uri = generate_event(graph, casualty, person, SCHEMA_WARSA.Birth, 'birth_',
                                       SCHEMA_WARSA.date_of_birth, SCHEMA_CAS.municipality_of_birth,
                                       CRM.P98_brought_into_life, munics)
 
@@ -64,7 +67,7 @@ def generate_birth(graph: Graph, casualty: URIRef, person: URIRef, person_name: 
 
 
 def generate_death(graph: Graph, casualty: URIRef, person: URIRef, person_name: str, munics: Graph):
-    event, event_uri = generate_event(graph, casualty, person, SCHEMA_WARSA.Death, 'death',
+    event, event_uri = generate_event(graph, casualty, person, SCHEMA_WARSA.Death, 'death_',
                                       SCHEMA_WARSA.date_of_death, SCHEMA_CAS.municipality_of_death,
                                       CRM.P100_was_death_of, munics)
 
@@ -123,7 +126,7 @@ def generate_wounding(graph: Graph, casualty: URIRef, person: URIRef, person_nam
     return event
 
 
-def generate_promotion(graph: Graph, casualty: URIRef, person: URIRef, person_name: str, munics: Graph):
+def generate_promotion(graph: Graph, casualty: URIRef, person: URIRef, person_name: str, munics: Graph, ranks: Graph):
     rank = graph.value(casualty, SCHEMA_CAS.rank)
     if not rank:
         return Graph()
@@ -134,8 +137,11 @@ def generate_promotion(graph: Graph, casualty: URIRef, person: URIRef, person_na
     event.add((event_uri, URIRef('http://ldf.fi/warsa/actors/hasRank'), rank))
 
     rank_literal = graph.value(casualty, SCHEMA_CAS.rank_literal)
-    lbl_fi = Literal('{person} ylennettiin arvoon {rank}'.format(person=person_name, rank=rank_literal), lang='fi')
-    lbl_en = Literal('{person} was promoted to {rank}'.format(person=person_name, rank=rank_literal), lang='en')
+    rank_labels = list(ranks.objects(rank, SKOS.prefLabel))
+    rank_fi = next([lit for lit in rank_labels if lit.language == 'fi'], None) or rank_literal
+    rank_en = next([lit for lit in rank_labels if lit.language == 'en'], rank_fi) or rank_literal
+    lbl_fi = Literal('{person} ylennettiin arvoon {rank}'.format(person=person_name, rank=rank_fi), lang='fi')
+    lbl_en = Literal('{person} was promoted to {rank}'.format(person=person_name, rank=rank_en), lang='en')
 
     event.add((event_uri, SKOS.prefLabel, lbl_fi))
     event.add((event_uri, SKOS.prefLabel, lbl_en))
@@ -179,11 +185,12 @@ def generate_person(graph: Graph, casualty: URIRef):
     person.add((person_uri, FOAF.givenName, given_names))
     person.add((person_uri, SKOS.prefLabel, lbl))
     person.add((person_uri, DCT.source, NARC_SOURCE))
+    person.add((person_uri, CRM.P70i_is_documented_in, casualty))
 
     return person, person_uri, lbl
 
 
-def generate_persons(graph: Graph, municipalities: Graph):
+def generate_persons(graph: Graph, municipalities: Graph, ranks: Graph):
     persons = Graph()
     promotions = Graph()
     joinings = Graph()
@@ -193,6 +200,9 @@ def generate_persons(graph: Graph, municipalities: Graph):
     woundings = Graph()
 
     for casualty in graph.subjects(RDF.type, SCHEMA_WARSA.DeathRecord):
+        if graph.value(casualty, CRM.P70_documents):
+            continue  # Do not generate if the casualty is already linked to a person instance
+
         person, person_uri, person_name = generate_person(graph, casualty)
 
         persons += person
@@ -200,7 +210,7 @@ def generate_persons(graph: Graph, municipalities: Graph):
         births += generate_birth(graph, casualty, person_uri, person_name, municipalities)
         deaths += generate_death(graph, casualty, person_uri, person_name, municipalities)
         joinings += generate_join(graph, casualty, person_uri, person_name, municipalities)
-        promotions += generate_promotion(graph, casualty, person_uri, person_name, municipalities)
+        promotions += generate_promotion(graph, casualty, person_uri, person_name, municipalities, ranks)
         woundings += generate_wounding(graph, casualty, person_uri, person_name, municipalities)
         disappearances += generate_disappearance(graph, casualty, person_uri, person_name, municipalities)
 
@@ -220,6 +230,7 @@ if __name__ == '__main__':
 
     argparser.add_argument("input", help="Input RDF file")
     argparser.add_argument("municipalities", help="Municipalities RDF file")
+    argparser.add_argument("endpoint", help="SPARQL endpoint to get ranks graph from")
     argparser.add_argument("output", help="Output file prefix")
     argparser.add_argument("--loglevel", default='INFO', help="Logging level, default is INFO.",
                            choices=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
@@ -238,5 +249,7 @@ if __name__ == '__main__':
 
     munics = Graph().parse(args.municipalities, format=guess_format(args.input))
 
-    for key, graph in generate_persons(input_graph, munics).items():
-        bind_namespaces(graph).serialize('{prefix}_{key}.ttl'.format(prefix=args.output, key=key), format='turtle')
+    ranks = read_graph_from_sparql(args.endpoint, "http://ldf.fi/warsa/ranks")
+
+    for key, graph in generate_persons(input_graph, munics, ranks).items():
+        bind_namespaces(graph).serialize('{prefix}{key}.ttl'.format(prefix=args.output, key=key), format='turtle')
