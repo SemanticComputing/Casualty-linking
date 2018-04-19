@@ -1,17 +1,14 @@
-FROM python:alpine3.7
+FROM python:3.6.5-stretch
 
-RUN echo "https://dl-3.alpinelinux.org/alpine/v3.7/main" >> /etc/apk/repositories \
-    && echo "https://dl-3.alpinelinux.org/alpine/v3.7/community" >> /etc/apk/repositories
-RUN apk add gcc gfortran python-dev build-base --no-cache --virtual .build-deps \
-    && apk add git curl raptor2 libreoffice openjdk8-jre ruby openblas-dev --no-cache --update
+RUN echo deb http://http.debian.net/debian stretch-backports main >> /etc/apt/sources.list
+
+RUN apt-get update && apt-get -t stretch-backports install -y git curl raptor2-utils libreoffice openjdk-8-jre
 
 WORKDIR /app
 
 COPY requirements.txt /app/
 
-RUN pip install --no-cache-dir -r requirements.txt
-
-RUN apk del .build-deps
+RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 COPY . /app/
 
