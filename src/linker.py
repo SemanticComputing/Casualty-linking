@@ -10,13 +10,14 @@ from datetime import datetime
 from collections import defaultdict
 
 from SPARQLWrapper import SPARQLWrapper, JSON
+from dedupe import RecordLink, StaticRecordLink
 from jellyfish import jaro_winkler
 from fuzzywuzzy import fuzz
 from rdflib import Graph, URIRef, Literal, BNode, RDF
 from rdflib.util import guess_format
 
 from arpa_linker.arpa import ArpaMimic, process_graph, Arpa, combine_values
-from namespaces import SKOS, CRM, BIOC, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces
+from namespaces import SKOS, CRM, BIOC, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, FOAF
 import rdf_dm as r
 from sotasampo_helpers.arpa import link_to_pnr
 from warsa_linkers.units import preprocessor, Validator
@@ -412,6 +413,48 @@ class PersonValidator:
         return [best_match]
 
 
+def _generate_casualties_dict(graph: Graph):
+    casualties = {}
+    for person in graph[:RDF.type:SCHEMA_WARSA.DeathRecord]:
+        given = str(graph.value(person, SCHEMA_WARSA.given_names))
+        family = str(graph.value(person, SCHEMA_WARSA.family_name))
+        rank_uri = graph.value(person, SCHEMA_CAS.rank)
+        municbirth = graph.value(person, SCHEMA_WARSA.municipality_of_birth)
+        datebirth = graph.value(person, SCHEMA_WARSA.date_of_birth)
+        datedeath = graph.value(person, SCHEMA_WARSA.date_of_death)
+        # rank_literal = str(graph.value(person, SCHEMA_CAS.rank_literal))
+
+        casualty = {'rank': rank_uri,
+                    'given': given,
+                    'family': family,
+                    'municbirth': municbirth,
+                    'datebirth': datebirth,
+                    'datedeath': datedeath,
+                    }
+        casualties[str(person)] = casualty
+
+    return casualties
+
+
+def _generate_persons_dict(sparql_results):
+    persons = defaultdict(dict)
+    for person_row in sparql_results['results']['bindings']:
+
+        person = person_row['person']['value']
+        given = person_row['given']['value']
+        family = person_row['family']['value']
+        rank = person_row.get('rank', {}).get('value')
+
+        if given:
+            persons[person]['given'] = given
+        if family:
+            persons[person]['family'] = family
+        if rank:
+            persons[person]['rank'] = rank
+
+    return persons
+
+
 def link_persons(graph, endpoint):
     """
     Link military persons in graph.
@@ -421,19 +464,37 @@ def link_persons(graph, endpoint):
     :return: RDFLib Graph with updated links
     """
 
-    def get_query_template():
-        with open('sparql/persons.sparql') as f:
+    def get_person_query():
+        with open('SPARQL/warsa_persons.sparql') as f:
             return f.read()
 
-    validator = PersonValidator(graph, SCHEMA_CAS.date_of_birth, SCHEMA_CAS.date_of_death,
-                                SCHEMA_CAS.rank, SCHEMA_CAS.given_name, SCHEMA_CAS.family_name,
-                                SCHEMA_CAS.municipality_of_going_mia, SCHEMA_CAS.date_of_going_mia,
-                                SCHEMA_CAS.municipality_of_birth, SCHEMA_CAS.unit, SCHEMA_CAS.occupation_literal)
-    arpa = ArpaMimic(get_query_template(), endpoint, retries=10, wait_between_tries=6)
-    new_graph = process_graph(graph, CRM.P70_documents, arpa, progress=True,
-                              validator=validator, new_graph=True, source_prop=SKOS.prefLabel)
-    validator.score_graph.serialize('output/scores.ttl', format='turtle')
-    return new_graph['graph']
+    fields = [
+        {'field': 'given', 'type': 'String'},
+        {'field': 'family', 'type': 'String'},
+        {'field': 'rank', 'type': 'Set', 'has missing': True}]
+
+    cas_data = _generate_casualties_dict(graph)
+
+    print(cas_data['http://ldf.fi/warsa/casualties/p11840'])
+    print(len(cas_data))
+
+    # persons_graph = r.read_graph_from_sparql(args.endpoint, "http://ldf.fi/warsa/persons")
+    sparql = SPARQLWrapper(endpoint)
+    sparql.method = 'POST'
+    sparql.setQuery(get_person_query())
+    sparql.setReturnFormat(JSON)
+    results = _query_sparql(sparql)
+
+    per_data = _generate_persons_dict(results)
+
+    print(len(per_data))
+
+    RecordLink()
+
+    links = Graph()
+    # TODO: CRM.P70_documents
+
+    return links
 
 
 def link_municipalities(municipalities: Graph, warsa_endpoint: str, arpa_endpoint: str):
