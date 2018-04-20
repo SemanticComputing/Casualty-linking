@@ -35,12 +35,12 @@ cat input_rdf/schema_base.ttl output/schema.ttl | rapper - $BASE_URI -i turtle -
 
 echo "Linking persons"
 
-python src/linker.py persons output/casualties_processed.ttl output/documents_links.ttl --endpoint $WARSA_ENDPOINT_URL/sparql \
-    --logfile output/logs/linker.log --loglevel $LOG_LEVEL
+cat output/rank_links.ttl output/unit_links.ttl output/casualties_processed.ttl > output/casualties_with_links.ttl
 
+python src/linker.py persons output/casualties_with_links.ttl output/documents_links.ttl --endpoint $WARSA_ENDPOINT_URL/sparql \
+    --munics output/municipalities.ttl --logfile output/logs/linker.log --loglevel $LOG_LEVEL
 
-cat output/person_linked.ttl output/rank_links.ttl output/unit_links.ttl output/documents_links.ttl \
-    output/casualties_processed.ttl | rapper - $BASE_URI -i turtle -o turtle > output/casualties.ttl
+cat output/documents_links.ttl output/casualties_with_links.ttl | rapper - $BASE_URI -i turtle -o turtle > output/casualties.ttl
 
 #echo "Generating persons"
 #python src/person_generator.py output/casualties.ttl output/municipalities.ttl $WARSA_ENDPOINT_URL output/cas_person_ \

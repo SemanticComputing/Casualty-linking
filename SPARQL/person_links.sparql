@@ -1,0 +1,7 @@
+PREFIX wsch: <http://ldf.fi/schema/warsa/>
+PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
+SELECT *
+WHERE {
+  ?person a wsch:Person .
+  ?doc crm:P70_documents ?person .
+}

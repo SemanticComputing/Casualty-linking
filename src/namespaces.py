@@ -15,6 +15,7 @@ DATA_CAS = Namespace('http://ldf.fi/warsa/casualties/')
 SCHEMA_CAS = Namespace('http://ldf.fi/schema/warsa/casualties/')
 SCHEMA_WARSA = Namespace('http://ldf.fi/schema/warsa/')
 ACTORS = Namespace('http://ldf.fi/warsa/actors/')
+SCHEMA_ACTORS = Namespace('http://ldf.fi/schema/warsa/actors/')
 
 CEMETERIES = Namespace('http://ldf.fi/warsa/places/cemeteries/')
 MOTHER_TONGUES = Namespace('http://ldf.fi/warsa/mother_tongues/')

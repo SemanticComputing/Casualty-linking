@@ -23,3 +23,7 @@ Run the conversion process:
 `docker-compose run --rm tasks`
 
 The output files will be written to `./output/`, and logs to `./output/logs/`.
+
+## Tests
+
+`docker-compose run --rm tasks python -m doctest -v src/linker.py`
