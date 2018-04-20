@@ -24,6 +24,7 @@ from namespaces import SKOS, CRM, BIOC, SCHEMA_CAS, SCHEMA_WARSA, bind_namespace
 import rdf_dm as r
 from sotasampo_helpers.arpa import link_to_pnr
 from warsa_linkers.units import preprocessor, Validator
+from warsa_linkers.occupations import link_occupations
 
 # TODO: Write some tests using responses
 
@@ -290,9 +291,7 @@ def get_person_links(casualties: dict, persons: dict, links_json_file='output/pe
             casualties[cas].update({'person': per})
             num_links += 1
 
-    log.info('Got {} person links as training data'.format(num_links))
-
-    return casualties
+    return casualties, num_links
 
 
 def intersection_comparator(field_1, field_2):
@@ -336,27 +335,28 @@ def link_persons(graph, endpoint, munics_file):
     print(per_data['http://ldf.fi/warsa/actors/person_50'])
     print(len(per_data))
 
-    cas_data = get_person_links(cas_data, per_data)
+    cas_data, num_links = get_person_links(cas_data, per_data)
 
-    linker = RecordLink(data_fields)
-    linker.sample(cas_data, per_data, 15000)
-    linker.markPairs(trainingDataLink(cas_data, per_data, common_key='person'))
-    # consoleLabel(linker)
-    linker.train()
-
-    with open('output/training_data.json', 'w') as fp:
-        linker.writeTraining(fp)
-
-    links = linker.match(cas_data, per_data)
-
-    log.info('Found {} person links'.format(len(links)))
+    log.info('Got {} person links as training data'.format(num_links))
 
     link_graph = Graph()
-    for link in links:
-        cas = link[0][0]
-        per = link[0][1]
-        log.debug('Found person link: {}  <-->  {} (confidence: {})'.format(cas, per, link[1]))
-        link_graph.add((URIRef(cas), CRM.P70_documents, URIRef(per)))
+    if num_links:
+        linker = RecordLink(data_fields)
+        linker.sample(cas_data, per_data, 15000)
+        linker.markPairs(trainingDataLink(cas_data, per_data, common_key='person'))
+        linker.train()
+
+        with open('output/training_data.json', 'w') as fp:
+            linker.writeTraining(fp)
+
+        links = linker.match(cas_data, per_data)
+        log.info('Found {} person links'.format(len(links)))
+
+        for link in links:
+            cas = link[0][0]
+            per = link[0][1]
+            log.debug('Found person link: {}  <-->  {} (confidence: {})'.format(cas, per, link[1]))
+            link_graph.add((URIRef(cas), CRM.P70_documents, URIRef(per)))
 
     return link_graph
 
@@ -562,7 +562,7 @@ def main():
     argparser = argparse.ArgumentParser(description="Casualty linking tasks", fromfile_prefix_chars='@')
 
     argparser.add_argument("task", help="Linking task to perform",
-                           choices=["ranks", "persons", "municipalities", "units"])
+                           choices=["ranks", "persons", "municipalities", "units", "occupations"])
     argparser.add_argument("input", help="Input RDF file")
     argparser.add_argument("output", help="Output file location")
     argparser.add_argument("--loglevel", default='INFO', help="Logging level, default is INFO.",
@@ -599,6 +599,12 @@ def main():
     elif args.task == 'units':
         log.info('Linking units')
         bind_namespaces(link_units(input_graph, args.endpoint, args.arpa)) \
+            .serialize(args.output, format=guess_format(args.output))
+
+    elif args.task == 'occupations':
+        log.info('Linking occupations')
+        bind_namespaces(link_occupations(input_graph, args.endpoint, SCHEMA_CAS.occupation_literal,
+                                         BIOC.has_occupation, SCHEMA_WARSA.DeathRecord)) \
             .serialize(args.output, format=guess_format(args.output))
 
 

@@ -24,7 +24,9 @@ echo "Linking units"
 python src/linker.py units output/casualties_processed.ttl output/unit_links.ttl --endpoint $WARSA_ENDPOINT_URL/sparql \
     --arpa $ARPA_URL/warsa_casualties_actor_units --logfile output/logs/linker.log --loglevel $LOG_LEVEL
 
-# TODO: Link occupations
+echo "Linking occupations"
+python src/linker.py occupations output/casualties_processed.ttl output/occupation_links.ttl --endpoint $WARSA_ENDPOINT_URL/sparql \
+    --logfile output/logs/linker.log --loglevel $LOG_LEVEL
 
 echo "Linking municipalities"
 python src/linker.py municipalities data/municipalities.ttl output/municipalities.ttl --endpoint $WARSA_ENDPOINT_URL/sparql \
@@ -34,14 +36,12 @@ echo "Generating schema"
 cat input_rdf/schema_base.ttl output/schema.ttl | rapper - $BASE_URI -i turtle -o turtle > output/casualties_schema.ttl
 
 echo "Linking persons"
-
-cat output/rank_links.ttl output/unit_links.ttl output/casualties_processed.ttl > output/casualties_with_links.ttl
-
+cat output/rank_links.ttl output/occupation_links.ttl output/unit_links.ttl output/casualties_processed.ttl > output/casualties_with_links.ttl
 python src/linker.py persons output/casualties_with_links.ttl output/documents_links.ttl --endpoint $WARSA_ENDPOINT_URL/sparql \
     --munics output/municipalities.ttl --logfile output/logs/linker.log --loglevel $LOG_LEVEL
 
 cat output/documents_links.ttl output/casualties_with_links.ttl | rapper - $BASE_URI -i turtle -o turtle > output/casualties.ttl
 
-#echo "Generating persons"
-#python src/person_generator.py output/casualties.ttl output/municipalities.ttl $WARSA_ENDPOINT_URL output/cas_person_ \
-#    --logfile output/logs/person_generator.log --loglevel $LOG_LEVEL
+echo "Generating persons"
+python src/person_generator.py output/casualties.ttl output/municipalities.ttl $WARSA_ENDPOINT_URL output/cas_person_ \
+    --logfile output/logs/person_generator.log --loglevel $LOG_LEVEL
