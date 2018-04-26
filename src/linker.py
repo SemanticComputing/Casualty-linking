@@ -6,25 +6,23 @@ import argparse
 import logging
 import re
 import time
-from datetime import datetime, timedelta
 from collections import defaultdict
+from datetime import datetime, timedelta
 from json import load
 
+import rdf_dm as r
 from SPARQLWrapper import SPARQLWrapper, JSON
-from dedupe import RecordLink, StaticRecordLink, trainingDataLink, consoleLabel
-from dedupe.api import RecordLinkMatching
-from jellyfish import jaro_winkler
+from arpa_linker.arpa import ArpaMimic, process_graph, Arpa, combine_values
+from dedupe import RecordLink, trainingDataLink
 from fuzzywuzzy import fuzz
-from rdflib import Graph, URIRef, Literal, BNode, RDF
+from rdflib import Graph, URIRef, Literal, RDF
 from rdflib.exceptions import UniquenessError
 from rdflib.util import guess_format
 
-from arpa_linker.arpa import ArpaMimic, process_graph, Arpa, combine_values
-from namespaces import SKOS, CRM, BIOC, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, FOAF, SCHEMA_ACTORS
-import rdf_dm as r
+from namespaces import SKOS, CRM, BIOC, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, SCHEMA_ACTORS
 from sotasampo_helpers.arpa import link_to_pnr
-from warsa_linkers.units import preprocessor, Validator
 from warsa_linkers.occupations import link_occupations
+from warsa_linkers.units import preprocessor, Validator
 
 # TODO: Write some tests using responses
 
@@ -318,6 +316,8 @@ def get_person_links(casualties: dict, persons: dict, links_json_file='output/pe
         if cas in casualties and per in persons:
             casualties[cas].update({'person': per})
             num_links += 1
+        else:
+            log.warning('Could not find linked person: {} - {}'.format(cas, per))
 
     return casualties, num_links
 
@@ -325,7 +325,6 @@ def get_person_links(casualties: dict, persons: dict, links_json_file='output/pe
 def intersection_comparator(field_1, field_2):
     if field_1 and field_2:
         if set(field_1) & set(field_2):
-            log.debug('Intersection {} - {}'.format(field_1, field_2))
             return 0
         else:
             return 1
@@ -348,7 +347,8 @@ def activity_comparator(cas_death, per_activity):
         if cas_death >= per_activity:
             return 0
         try:
-            if (datetime.strptime(cas_death, DATE_FORMAT) + timedelta(days=30)) < datetime.strptime(per_activity, DATE_FORMAT):
+            if (datetime.strptime(cas_death, DATE_FORMAT) + timedelta(days=30)) < datetime.strptime(per_activity,
+                                                                                                    DATE_FORMAT):
                 return 1
         except ValueError:
             pass
@@ -372,10 +372,12 @@ def link_persons(graph, endpoint, munics_file):
         {'field': 'birth_end', 'type': 'DateTime', 'has missing': True, 'fuzzy': False},
         {'field': 'death_begin', 'type': 'DateTime', 'has missing': True, 'fuzzy': False},
         {'field': 'death_end', 'type': 'DateTime', 'has missing': True, 'fuzzy': False},
-        {'field': 'activity_end', 'type': 'Custom', 'comparator': activity_comparator,  'has missing': True},
+        {'field': 'activity_end', 'type': 'Custom', 'comparator': activity_comparator, 'has missing': True},
         {'field': 'rank', 'type': 'Exact', 'has missing': True},
         {'field': 'rank_level', 'type': 'Price', 'has missing': True},
     ]
+
+    # TODO: Use generated training data if it exists, take it to repo
 
     ranks = r.read_graph_from_sparql(endpoint, "http://ldf.fi/warsa/ranks")
 
@@ -394,14 +396,14 @@ def link_persons(graph, endpoint, munics_file):
     link_graph = Graph()
     if num_links:
         linker = RecordLink(data_fields)
-        linker.sample(cas_data, per_data, 25000)
+        linker.sample(cas_data, per_data, sample_size=len(cas_data))
         linker.markPairs(trainingDataLink(cas_data, per_data, common_key='person'))
         linker.train()
 
         with open('output/training_data.json', 'w') as fp:
             linker.writeTraining(fp)
 
-        threshold = linker.threshold(cas_data, per_data, 1)  # Set desired precision / recall importance ratio
+        threshold = linker.threshold(cas_data, per_data, 0.5)  # Set desired recall / precision importance ratio
         links = linker.match(cas_data, per_data, threshold=threshold)
         log.info('Found {} person links'.format(len(links)))
 
