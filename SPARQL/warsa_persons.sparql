@@ -3,7 +3,7 @@ PREFIX wsa: <http://ldf.fi/schema/warsa/actors/>
 PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
 PREFIX text: <http://jena.apache.org/text#>
-SELECT ?person ?given ?family ?birth_begin ?birth_end ?birth_place ?death_begin ?death_end ?death_place ?rank (SAMPLE(?rank_lvl) AS ?rank_level)
+SELECT ?person ?given ?family ?birth_begin ?birth_end ?birth_place ?death_begin ?death_end ?death_place ?rank (SAMPLE(?rank_lvl) AS ?rank_level) (MAX(?event_begin) as ?activitity_end)
 WHERE {
       ?person a wsch:Person .
       ?person foaf:firstName ?given .
@@ -31,6 +31,7 @@ WHERE {
     ?rank wsa:level ?rank_lvl .
     ?person ^crm:P11_had_participant/wsa:hasRank/wsa:level ?rank_level2 .
   }
+  OPTIONAL { ?person ^crm:P11_had_participant/crm:P4_has_time-span/crm:P82a_begin_of_the_begin ?event_begin }
 }
 GROUP BY ?person ?given ?family ?birth_begin ?birth_end ?birth_place ?death_begin ?death_end ?death_place ?rank
 HAVING(MAX(COALESCE(?rank_lvl, 1)) >= MAX(COALESCE(?rank_level2, 1)))

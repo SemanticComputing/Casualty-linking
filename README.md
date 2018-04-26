@@ -1,14 +1,12 @@
 Code for converting 
-"Casualties during the Finnish wars 1939–1945" (Suomen sodissa 1939–1945 menehtyneet) to RDF.
-
-Validates, improves and automatically links to other WarSampo datasets.
+"Casualties during the Finnish wars 1939–1945" (Suomen sodissa 1939–1945 menehtyneet) to RDF, and integrating it to WarSampo domain ontologies.
 
 ## Conversion
 
 Requires Docker and Docker Compose.
 
 Create directories `./data/` and `./output/`.
-The initial Excel files (`prisoners.xls`, `hospitals.xlsx`, and `camps.xlsx`) should be placed in `./data/`.
+The initial files (`casualties.xlsx`, `municipalities.ttl`) should be placed in `./data/`.
 
 Build the conversion pipeline:
 
@@ -16,7 +14,7 @@ Build the conversion pipeline:
 
 Start the required services:
 
-`docker-compose up -d las arpa fuseki`
+`docker-compose up -d las arpa warsa`
 
 Run the conversion process:
 
