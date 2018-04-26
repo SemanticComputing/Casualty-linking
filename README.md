@@ -1,4 +1,4 @@
-Code for converting 
+Code for converting
 "Casualties during the Finnish wars 1939–1945" (Suomen sodissa 1939–1945 menehtyneet) to RDF, and integrating it to WarSampo domain ontologies.
 
 ## Conversion
@@ -14,7 +14,7 @@ Build the conversion pipeline:
 
 Start the required services:
 
-`docker-compose up -d las arpa warsa`
+`docker-compose up -d las arpa warsa pnr`
 
 Run the conversion process:
 
