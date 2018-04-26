@@ -14,7 +14,7 @@ export LOG_LEVEL="DEBUG"
 ./convert.sh $1
 
 python src/process.py output/casualties_initial.ttl output/casualties_processed.ttl --arpa_pnr $ARPA_URL/pnr_municipality
-cat input_rdf/cas_additions.ttl >> output/casualties_processed.ttl
+cat input/cas_additions.ttl >> output/casualties_processed.ttl
 
 echo "Linking ranks"
 python src/linker.py ranks output/casualties_processed.ttl output/rank_links.ttl --endpoint $WARSA_ENDPOINT_URL/sparql \
@@ -33,7 +33,7 @@ python src/linker.py municipalities data/municipalities.ttl output/municipalitie
     --arpa $ARPA_URL/pnr_municipality --logfile output/logs/linker.log --loglevel $LOG_LEVEL
 
 echo "Generating schema"
-cat input_rdf/schema_base.ttl output/schema.ttl | rapper - $BASE_URI -i turtle -o turtle > output/casualties_schema.ttl
+cat input/schema_base.ttl output/schema.ttl | rapper - $BASE_URI -i turtle -o turtle > output/casualties_schema.ttl
 
 echo "Linking persons"
 cat output/rank_links.ttl output/occupation_links.ttl output/unit_links.ttl output/casualties_processed.ttl > output/casualties_with_links.ttl

@@ -1,7 +1,14 @@
 PREFIX wsch: <http://ldf.fi/schema/warsa/>
 PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
-SELECT *
+SELECT DISTINCT ?person ?doc
 WHERE {
   ?person a wsch:Person .
-  ?doc crm:P70_documents ?person .
+  {
+    SELECT DISTINCT ?person ?doc {
+      SERVICE <http://ldf.fi/warsa/sparql> {
+        ?doc a <http://ldf.fi/schema/narc-menehtyneet1939-45/DeathRecord> ;
+             crm:P70_documents ?person .
+      }
+    }
+  }
 }

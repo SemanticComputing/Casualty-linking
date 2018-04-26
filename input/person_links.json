@@ -1,0 +1,857 @@
+{
+  "head": {
+    "vars": [ "person" , "doc" ]
+  } ,
+  "results": {
+    "bindings": [
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2064" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p524363" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_219" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p276746" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_222" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p278601" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2238" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p750572" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_230" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p523783" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_233" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p271218" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2353" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p10295" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_237" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p12298" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_245" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p515010" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_249" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p8554" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_250" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p535354" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_251" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p752512" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_256" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p510252" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_257" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p529411" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_272" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p751793" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2753" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p751822" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2764" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p281172" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2771" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p512255" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2773" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p509714" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_278" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p264890" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2788" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p4319" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2789" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p534681" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2809" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p10628" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2810" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p510524" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2818" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p510012" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2833" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p753114" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2840" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p530070" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2842" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p502023" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2856" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p7901" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_286" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p259332" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2878" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p510860" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_289" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p512528" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2890" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p753133" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2903" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p13776" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2907" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p511199" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2910" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p512475" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2913" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p534157" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2921" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p276208" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2923" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p521552" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2926" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p14696" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2930" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p278018" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2959" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p753467" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2973" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p510000" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2982" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p282167" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2984" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p510758" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3017" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p509586" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3020" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p8568" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3027" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p511477" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3038" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p509379" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3046" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p284389" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3056" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p528913" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3064" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p282550" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3077" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p8261" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3082" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p8198" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3083" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p510304" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3094" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p254817" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3101" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p8650" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3121" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p257321" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3122" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p502063" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3133" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p511232" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3148" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p533677" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3157" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p3431" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3178" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p13652" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3218" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p502172" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3219" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p512004" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3235" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p9702" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3237" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p528069" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3238" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p256457" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3239" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p500682" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3245" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p508050" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_325" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p507831" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3268" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p284586" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3302" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p532290" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3312" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p8798" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3323" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p276091" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3327" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p504250" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3329" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p531448" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3335" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p528823" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3344" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p273997" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3346" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p752909" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3347" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p255306" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3354" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p285119" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3363" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p509777" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3365" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p254508" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3367" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p9653" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3380" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p518107" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3382" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p280685" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3387" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p8264" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3388" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p509842" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3392" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p509530" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3393" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p520154" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3431" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p283415" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3439" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p258637" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3446" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p276916" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3448" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p11937" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3452" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p752607" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3453" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p500083" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3454" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p510691" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3455" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p257357" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3456" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p2630" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3466" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p511828" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3469" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p8363" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3470" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p750975" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3481" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p282269" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3483" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p8594" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3509" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p509492" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3510" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p510858" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3511" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p503851" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3515" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p505215" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3523" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p258591" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3526" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p271570" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3527" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p101" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3528" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p11188" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3534" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p284883" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3535" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p10289" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3550" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p504699" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3569" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p8358" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3574" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p529576" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3601" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p511076" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3603" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p536977" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3604" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p286151" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3609" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p753324" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3612" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p16943" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3614" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p7873" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3634" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p536499" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3661" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p265512" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_409" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p8259" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_422" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p752588" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_437" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p529972" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_452" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p511291" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_460" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p510753" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_468" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p536313" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_550" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p276245" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_63" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p259852" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_64" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p514488" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_65" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p8304" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_69" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p285033" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p500751" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p500751" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p7155" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p7155" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p753123" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p753123" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_240" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p280903" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_343" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p515459" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2978" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p16695" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_252" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p525193" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_269" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p11889" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_293" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p530976" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_305" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p6941" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_333" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p508203" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_383" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p13560" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_220" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p273901" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_232" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p282493" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_258" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p513022" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_276" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p10512" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_301" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p753790" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_307" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p259297" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_330" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p529428" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_334" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p11344" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_353" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p531437" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_228" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p530062" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_231" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p17445" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_332" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p11127" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_346" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p524928" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p276765" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p276765" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p278697" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p278697" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p3158" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p3158" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p501650" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p501650" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p501754" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p501754" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p509749" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p509749" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p511677" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p511677" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p511742" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p511742" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p513531" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p513531" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p525354" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p525354" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p525517" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p525517" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p530307" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p530307" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p530434" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p530434" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p5680" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p5680" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p750238" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p750238" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p750676" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p750676" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p750714" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p750714" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p751796" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p751796" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p753243" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p753243" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p753723" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p753723" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p753833" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p753833" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p8380" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p8380" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_638" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p10278" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_71" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p11481" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_661" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p10479" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_76" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p10276" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_474" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p282792" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p531926" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p531926" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_399" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p341" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_518" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p259238" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_523" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p259284" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_568" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p255941" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_619" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p519422" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_644" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p534866" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_1067" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p514576" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2060" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p8306" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2367" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p251889" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2382" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p258905" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2920" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p7934" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_705" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p282613" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p250117" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p250117" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_1292" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p250117" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p266603" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p266603" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_1634" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p266603" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p281005" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p281005" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_1527" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p281005" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p284962" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p284962" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_4152" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p284962" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_2281" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p753856" }
+      } ,
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_484" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p7810" }
+      }
+    ]
+  }
+}
