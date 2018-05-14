@@ -16,6 +16,8 @@ from namespaces import *
 
 log = logging.getLogger(__name__)
 
+DISALLOWED_ADDITIONAL_INFORMATION = ['kuolemanrangaistus', 'teloitettu', 'ammuttu']
+
 
 def convert_dates(raw_date: str):
     """
@@ -103,3 +105,12 @@ def convert_from_dict(dict, language: str):
 def urify(namespace: Namespace, value: str):
     if value:
         return namespace[value]
+
+
+def filter_additional_information(raw_value: str):
+    for disallowed_value in DISALLOWED_ADDITIONAL_INFORMATION:
+        if raw_value.lower() in disallowed_value:
+            return ''
+
+    return raw_value
+

@@ -32,9 +32,6 @@ echo "Linking municipalities"
 python src/linker.py municipalities data/municipalities.ttl output/municipalities.ttl --endpoint $WARSA_ENDPOINT_URL/sparql \
     --arpa $ARPA_URL/pnr_municipality --logfile output/logs/linker.log --loglevel $LOG_LEVEL
 
-echo "Generating schema"
-cat input/schema_base.ttl output/schema.ttl | rapper - $BASE_URI -i turtle -o turtle > output/casualties_schema.ttl
-
 echo "Linking persons"
 cat output/rank_links.ttl output/occupation_links.ttl output/unit_links.ttl output/casualties_processed.ttl > output/casualties_with_links.ttl
 python src/linker.py persons output/casualties_with_links.ttl output/documents_links.ttl --endpoint $WARSA_ENDPOINT_URL/sparql \

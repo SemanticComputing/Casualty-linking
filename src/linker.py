@@ -4,6 +4,7 @@
 
 import argparse
 import logging
+import random
 import re
 import time
 from collections import defaultdict
@@ -22,6 +23,7 @@ from rdflib.util import guess_format
 from namespaces import SKOS, CRM, BIOC, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, SCHEMA_ACTORS
 from sotasampo_helpers.arpa import link_to_pnr
 from warsa_linkers.occupations import link_occupations
+from warsa_linkers.ranks import link_ranks
 from warsa_linkers.units import preprocessor, Validator
 
 # TODO: Write some tests using responses
@@ -76,119 +78,10 @@ def link(graph, arpa, source_prop, target_graph, target_prop, preprocess=_prepro
                          format(ps=prop_str, val=value_literal, res=res))
 
                 target_graph.add((prisoner, target_prop, URIRef(res)))
-
-                # TODO: Update reifications
             else:
                 log.warning('No match found for %s: %s' % (prop_str, value))
 
     return target_graph
-
-
-def link_ranks(graph, endpoint):
-    """
-    Link military ranks in graph.
-
-    :param graph: Data in RDFLib Graph object
-    :param endpoint: Endpoint to query military ranks from
-    :return: RDFLib Graph with updated links
-    """
-
-    # TODO: Move to Warsa-linkers
-
-    def preprocess(literal):
-        value = str(literal).strip()
-        return rank_mapping[value] if value in rank_mapping else value
-
-    rank_mapping = {
-        'aliluutn.': 'aliluutnantti',
-        'alisot.ohj.': 'Alisotilasohjaaja',
-        'alisot.virk.': 'Alisotilasvirkamies',
-        'asemest.': 'asemestari',
-        'au.opp.': 'aliupseerioppilas',
-        'el.lääk.ev.luutn.': 'Eläinlääkintäeverstiluutnantti',
-        'el.lääk.kapt.': 'Eläinlääkintäkapteeni',
-        'el.lääk.maj.': 'Eläinlääkintämajuri',
-        'GRUF': 'Gruppenführer',
-        'II lk. nstm.': 'Toisen luokan nostomies',
-        'ins.kapt.': 'Insinöörikapteeni',
-        'ins.kapt.luutn.': 'Insinöörikapteeniluutnantti',
-        'ins.luutn.': 'Insinööriluutnantti',
-        'ins.maj.': 'Insinöörimajuri',
-        'is-mies': 'Ilmasuojelumies',
-        'is.stm.': 'Ilmasuojelusotamies',
-        'kapt.luutn.': 'kapteeniluutnantti',
-        'kom.kapt.': 'komentajakapteeni',
-        'lääk.alikers.': 'Lääkintäalikersantti',
-        'lääk.kapt.': 'Lääkintäkapteeni',
-        'lääk.kers.': 'Lääkintäkersantti',
-        'lääk.korpr.': 'Lääkintäkorpraali',
-        'lääk.lotta': 'Lääkintälotta',
-        'lääk.maj.': 'Lääkintämajuri',
-        'lääk.stm.': 'Lääkintäsotamies',
-        'lääk.vääp.': 'Lääkintävääpeli',
-        'lääk.virk.': 'Lääkintävirkamies',
-        'lentomek.': 'Lentomekaanikko',
-        'linn.työnjoht.': 'Linnoitustyönjohtaja',
-        'merivart.': 'Merivartija',
-        'mus.luutn.': 'Musiikkiluutnantti',
-        'OSTUF': 'Obersturmführer',
-        'paik.pääll.': 'Paikallispäällikkö',
-        'pans.jääk.': 'Panssarijääkäri',
-        'pursim.': 'pursimies',
-        'rajavääp.': 'rajavääpeli',
-        'RTTF': 'Rottenführer',
-        'sair.hoit.': 'Sairaanhoitaja',
-        'sair.hoit.opp.': 'Sairaanhoitajaoppilas',
-        'SCHTZ': 'Schütze',
-        'sivili': 'siviili',
-        'sk.korpr.': 'Suojeluskuntakorpraali',
-        'sot.alivirk.': 'Sotilasalivirkamies',
-        'sot.inval.': 'Sotainvalidi',
-        'sot.kotisisar': 'Sotilaskotisisar',
-        'sot.past.': 'Sotilaspastori',
-        'sot.pka': 'Sotilaspoika',
-        'sot.poika': 'Sotilaspoika',
-        'sotilasmest.': 'Sotilasmestari',
-        'STRM': 'Sturmmann',
-        'ups.kok.': 'Upseerikokelas',
-        'ups.opp.': 'Upseerioppilas',
-        'USCHA': 'Unterscharführer',
-        'USTUF': 'Untersturmführer',
-        'ylihoit.': 'Ylihoitaja',
-        'ylivääp.': 'Ylivääpeli',
-    }
-
-    # Works in Fuseki because SAMPLE returns the first value and text:query sorts by score
-    query = """
-        PREFIX text: <http://jena.apache.org/text#>
-        SELECT ?rank (SAMPLE(?id_) AS ?id) {{
-            VALUES ?rank {{ "{ranks}" }}
-            GRAPH <http://ldf.fi/warsa/ranks> {{
-                ?id_ text:query ?rank .
-                ?id_ a <http://ldf.fi/schema/warsa/Rank> .
-            }}
-        }} GROUP BY ?rank
-    """
-
-    rank_literals = set(map(preprocess, graph.objects(None, SCHEMA_CAS.rank_literal)))
-
-    sparql = SPARQLWrapper(endpoint)
-    sparql.method = 'POST'
-    sparql.setQuery(query.format(ranks='" "'.join(rank_literals)))
-    sparql.setReturnFormat(JSON)
-    results = _query_sparql(sparql)
-
-    rank_links = Graph()
-    ranks = {}
-    for rank in results['results']['bindings']:
-        ranks[rank['rank']['value']] = rank['id']['value']
-
-    for person in graph[:RDF.type:SCHEMA_WARSA.DeathRecord]:
-        rank_literal = str(graph.value(person, SCHEMA_CAS.rank_literal))
-        if rank_literal in ranks:
-            rank_links.add((person, SCHEMA_CAS.rank, URIRef(ranks[rank_literal])))
-
-    return rank_links
 
 
 def get_date_value(date_literal):
@@ -362,6 +255,8 @@ def link_persons(graph, endpoint, munics_file):
     :param endpoint: Endpoint to query persons from
     :return: RDFLib Graph with updated links
     """
+
+    random.seed(42)  # Initialize randomization to create deterministic results
 
     data_fields = [
         {'field': 'given', 'type': 'String'},
@@ -589,7 +484,7 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
 
             else:
                 log.warning('Skipping suspected erroneus unit for {unit}/{cover} with labels {lbls} and score {score}.'.
-                            format(unit=person_unit, cover=cover, lbls=best_labels, score=best_score))
+                            format(unit=person_unit, cover=cover, lbls=sorted(set(best_labels)), score=best_score))
 
         # NO COVER NUMBER, ADD RELATED_PERIOD FOR LINKING WITH WARSA-LINKERS
         if not cover or best_score < COVER_NUMBER_SCORE_LIMIT:
@@ -641,7 +536,8 @@ def main():
 
     if args.task == 'ranks':
         log.info('Linking ranks')
-        bind_namespaces(link_ranks(input_graph, args.endpoint)).serialize(args.output, format=guess_format(args.output))
+        bind_namespaces(link_ranks(input_graph, args.endpoint, SCHEMA_CAS.rank_literal, SCHEMA_CAS.rank,
+                                   SCHEMA_WARSA.DeathRecord)).serialize(args.output, format=guess_format(args.output))
 
     elif args.task == 'persons':
         log.info('Linking persons')

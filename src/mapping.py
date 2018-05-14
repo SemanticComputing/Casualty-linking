@@ -8,7 +8,7 @@ from functools import partial
 
 from rdflib import Namespace
 
-from converters import convert_dates, strip_dash, convert_from_dict, urify
+from converters import convert_dates, strip_dash, convert_from_dict, urify, filter_additional_information
 from namespaces import SCHEMA_CAS, BIOC, MOTHER_TONGUES, NATIONALITIES, CITIZENSHIPS, MARITAL_STATUSES, GENDERS, \
     PERISHING_CLASSES, MUNICIPALITIES, SCHEMA_WARSA
 
@@ -160,7 +160,7 @@ CASUALTY_MAPPING = {
     'AMMATTI':
         {
             # 'uri': BIOC.has_occupation,
-            'uri': SCHEMA_CAS.occupation_literal,
+            'uri': SCHEMA_WARSA.occupation_literal,
             'name_fi': 'Ammatti',
             'name_en': 'Occupation',
         },
@@ -305,9 +305,9 @@ CASUALTY_MAPPING = {
         },
     'VAPAA_PAIKKATIETO':
         {
-            # TODO: Validator to filter out some words
             'uri': SCHEMA_CAS.additional_information,
             'name_fi': 'Lisätietoja',
             'name_en': 'Additional information',
+            'converter': filter_additional_information,
         },
 }

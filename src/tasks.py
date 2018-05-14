@@ -57,8 +57,6 @@ def load_input_file(filename):
     return Graph().parse(filename, format=args.format)
 
 
-# TODO: Serialize only new information to allow base information to change without having to do linking again
-
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(description="Stand-alone tasks for casualties dataset",
                                         fromfile_prefix_chars='@')
