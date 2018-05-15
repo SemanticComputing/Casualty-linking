@@ -6,12 +6,6 @@ mkdir -p output/logs
 
 command -v rapper >/dev/null 2>&1 || { echo >&2 "rapper is not available, aborting"; exit 1; }
 
-if [ ! -f output/person_links.json ]; then
-    echo "Person links not found, running 'generate_training_data.sh' first"
-    # Run twice to more likely get complete results
-    ./generate_training_data.sh && ./generate_training_data.sh
-fi
-
 export WARSA_ENDPOINT_URL=${WARSA_ENDPOINT_URL:-http://localhost:3030/warsa}
 export ARPA_URL=${ARPA_URL:-http://demo.seco.tkk.fi/arpa}
 export BASE_URI="http://ldf.fi/"
