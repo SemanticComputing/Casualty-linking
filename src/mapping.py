@@ -159,7 +159,6 @@ CASUALTY_MAPPING = {
         },
     'AMMATTI':
         {
-            # 'uri': BIOC.has_occupation,
             'uri': SCHEMA_WARSA.occupation_literal,
             'name_fi': 'Ammatti',
             'name_en': 'Occupation',

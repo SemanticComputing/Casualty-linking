@@ -20,6 +20,7 @@ from rdflib import Graph, URIRef, Literal, RDF
 from rdflib.exceptions import UniquenessError
 from rdflib.util import guess_format
 
+from mapping import CASUALTY_MAPPING
 from namespaces import SKOS, CRM, BIOC, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, SCHEMA_ACTORS
 from sotasampo_helpers.arpa import link_to_pnr
 from warsa_linkers.occupations import link_occupations
@@ -291,7 +292,7 @@ def link_persons(graph, endpoint, munics_file):
     link_graph = Graph()
     if num_links:
         linker = RecordLink(data_fields)
-        linker.sample(cas_data, per_data, sample_size=len(cas_data))
+        linker.sample(cas_data, per_data, sample_size=len(cas_data) * 2)
         linker.markPairs(trainingDataLink(cas_data, per_data, common_key='person'))
         linker.train()
 
@@ -484,7 +485,7 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
 
             else:
                 log.warning('Skipping suspected erroneus unit for {unit}/{cover} with labels {lbls} and score {score}.'.
-                            format(unit=person_unit, cover=cover, lbls=sorted(set(best_labels)), score=best_score))
+                            format(unit=person_unit, cover=cover, lbls=sorted(set(best_labels or [])), score=best_score))
 
         # NO COVER NUMBER, ADD RELATED_PERIOD FOR LINKING WITH WARSA-LINKERS
         if not cover or best_score < COVER_NUMBER_SCORE_LIMIT:
@@ -536,7 +537,7 @@ def main():
 
     if args.task == 'ranks':
         log.info('Linking ranks')
-        bind_namespaces(link_ranks(input_graph, args.endpoint, SCHEMA_CAS.rank_literal, SCHEMA_CAS.rank,
+        bind_namespaces(link_ranks(input_graph, args.endpoint, CASUALTY_MAPPING['SOTARVO']['uri'], SCHEMA_CAS.rank,
                                    SCHEMA_WARSA.DeathRecord)).serialize(args.output, format=guess_format(args.output))
 
     elif args.task == 'persons':
@@ -556,7 +557,7 @@ def main():
 
     elif args.task == 'occupations':
         log.info('Linking occupations')
-        bind_namespaces(link_occupations(input_graph, args.endpoint, SCHEMA_CAS.occupation_literal,
+        bind_namespaces(link_occupations(input_graph, args.endpoint, CASUALTY_MAPPING['AMMATTI']['uri'],
                                          BIOC.has_occupation, SCHEMA_WARSA.DeathRecord)) \
             .serialize(args.output, format=guess_format(args.output))
 
