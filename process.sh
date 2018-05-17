@@ -42,3 +42,5 @@ cat output/documents_links.ttl output/casualties_with_links.ttl | rapper - $BASE
 echo "Generating persons"
 python src/person_generator.py output/casualties.ttl output/municipalities.ttl $WARSA_ENDPOINT_URL output/cas_person_ \
     --logfile output/logs/person_generator.log --loglevel $LOG_LEVEL
+
+echo "Finished"

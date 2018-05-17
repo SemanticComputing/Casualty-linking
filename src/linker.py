@@ -24,7 +24,8 @@ from mapping import CASUALTY_MAPPING
 from namespaces import SKOS, CRM, BIOC, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, SCHEMA_ACTORS
 from sotasampo_helpers.arpa import link_to_pnr
 from warsa_linkers.utils import query_sparql
-from warsa_linkers.person_record_linkage import link_persons, get_date_value
+from warsa_linkers.person_record_linkage import link_persons, get_date_value, intersection_comparator, \
+    activity_comparator
 from warsa_linkers.occupations import link_occupations
 from warsa_linkers.ranks import link_ranks
 from warsa_linkers.units import preprocessor, Validator
@@ -303,12 +304,26 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
 
 
 def link_casualties(input_graph, endpoint, munics):
+    data_fields = [
+        {'field': 'given', 'type': 'String'},
+        {'field': 'family', 'type': 'String'},
+        # Birth place is linked, can have multiple values
+        {'field': 'birth_place', 'type': 'Custom', 'comparator': intersection_comparator, 'has missing': True},
+        {'field': 'birth_begin', 'type': 'DateTime', 'has missing': True, 'fuzzy': False},
+        {'field': 'birth_end', 'type': 'DateTime', 'has missing': True, 'fuzzy': False},
+        {'field': 'death_begin', 'type': 'DateTime', 'has missing': True, 'fuzzy': False},
+        {'field': 'death_end', 'type': 'DateTime', 'has missing': True, 'fuzzy': False},
+        {'field': 'activity_end', 'type': 'Custom', 'comparator': activity_comparator, 'has missing': True},
+        {'field': 'rank', 'type': 'Exact', 'has missing': True},
+        {'field': 'rank_level', 'type': 'Price', 'has missing': True},
+    ]
+
     ranks = r.read_graph_from_sparql(endpoint, "http://ldf.fi/warsa/ranks")
     munics = Graph().parse(munics, format=guess_format(munics))
 
     random.seed(42)  # Initialize randomization to create deterministic results
 
-    return link_persons(input_graph, endpoint, _generate_casualties_dict(input_graph, ranks, munics))
+    return link_persons(input_graph, endpoint, _generate_casualties_dict(input_graph, ranks, munics), data_fields)
 
 
 def main():
