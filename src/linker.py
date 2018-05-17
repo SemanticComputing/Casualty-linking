@@ -2,48 +2,33 @@
 #  -*- coding: UTF-8 -*-
 """Casualty linking tasks"""
 
+from collections import defaultdict
+
 import argparse
 import logging
 import random
-import re
-import time
-from collections import defaultdict
-from datetime import datetime, timedelta
-from json import load
-
 import rdf_dm as r
+import re
 from SPARQLWrapper import SPARQLWrapper, JSON
 from arpa_linker.arpa import ArpaMimic, process_graph, Arpa, combine_values
-from dedupe import RecordLink, trainingDataLink
 from fuzzywuzzy import fuzz
 from rdflib import Graph, URIRef, Literal, RDF
 from rdflib.exceptions import UniquenessError
 from rdflib.util import guess_format
 
 from mapping import CASUALTY_MAPPING
-from namespaces import SKOS, CRM, BIOC, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, SCHEMA_ACTORS
-from sotasampo_helpers.arpa import link_to_pnr
-from warsa_linkers.utils import query_sparql
+from namespaces import SKOS, BIOC, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, SCHEMA_ACTORS
+from warsa_linkers.municipalities import link_to_pnr, link_warsa_municipality
+from warsa_linkers.occupations import link_occupations
 from warsa_linkers.person_record_linkage import link_persons, get_date_value, intersection_comparator, \
     activity_comparator
-from warsa_linkers.occupations import link_occupations
 from warsa_linkers.ranks import link_ranks
 from warsa_linkers.units import preprocessor, Validator
+from warsa_linkers.utils import query_sparql
 
 # TODO: Write some tests using responses
 
 log = logging.getLogger(__name__)
-
-MUNICIPALITY_MAPPING = {
-    'Kemi': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_20'),
-    'Pyhäjärvi Ol': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_75'),
-    'Pyhäjärvi Ul.': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_543'),
-    'Pyhäjärvi Vl': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_586'),
-    'Koski Tl.': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_291'),
-    'Koski Hl.': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_391'),
-    'Koski Vl.': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_609'),
-    'Oulun mlk': URIRef('http://ldf.fi/warsa/places/municipalities/m_place_65'),
-}
 
 
 def _preprocess(literal, prisoner, subgraph):
@@ -130,51 +115,6 @@ def _generate_casualties_dict(graph: Graph, ranks: Graph, munics: Graph):
     return casualties
 
 
-def link_warsa_municipality(warsa_munics: Graph, labels: list):
-    '''
-    Link municipality to Warsa
-
-    >>> warsa_munics = Graph()
-    >>> warsa_munics.add((URIRef('http://muni/Espoo'), SKOS.prefLabel, Literal("Espoo", lang='fi')))
-    >>> warsa_munics.add((URIRef('http://muni/Turku'), SKOS.prefLabel, Literal("Turku")))
-    >>> warsa_munics.add((URIRef('http://muni/Uusik'), SKOS.prefLabel, Literal("Uusikaarlepyyn mlk", lang='fi')))
-    >>> link_warsa_municipality(warsa_munics, ['Espoo'])
-    [rdflib.term.URIRef('http://muni/Espoo')]
-    >>> link_warsa_municipality(warsa_munics, ['Turku'])
-    [rdflib.term.URIRef('http://muni/Turku')]
-    >>> link_warsa_municipality(warsa_munics, ['Uusikaarlepyyn kunta'])
-    [rdflib.term.URIRef('http://muni/Uusik')]
-    '''
-    warsa_matches = []
-
-    for lbl in labels:
-        log.debug('Finding Warsa matches for municipality {}'.format(lbl))
-        lbl = str(lbl).strip()
-        munmap_match = MUNICIPALITY_MAPPING.get(lbl)
-        if munmap_match:
-            log.debug('Found predefined mapping for {}: {}'.format(lbl, munmap_match))
-            warsa_matches += [munmap_match]
-        else:
-            warsa_matches += list(warsa_munics[:SKOS.prefLabel:Literal(lbl)])
-            warsa_matches += list(warsa_munics[:SKOS.prefLabel:Literal(lbl, lang='fi')])
-
-        if not warsa_matches:
-            log.debug('Trying with mlk: {}'.format(lbl))
-            warsa_matches += list(warsa_munics[:SKOS.prefLabel:Literal(lbl.replace(' kunta', ' mlk'))])
-            warsa_matches += list(warsa_munics[:SKOS.prefLabel:Literal(lbl.replace(' kunta', ' mlk'), lang='fi')])
-
-    if len(warsa_matches) == 0:
-        log.info("Couldn't find Warsa URI for municipality {lbl}".format(lbl=labels))
-    elif len(warsa_matches) == 1:
-        match = warsa_matches[0]
-        log.info('Found {lbl} municipality Warsa URI {s}'.format(lbl=labels, s=match))
-    else:
-        log.warning('Found multiple Warsa URIs for municipality {lbl}: {s}'.format(lbl=labels, s=warsa_matches))
-        warsa_matches = []
-
-    return warsa_matches
-
-
 def link_municipalities(municipalities: Graph, warsa_endpoint: str, arpa_endpoint: str):
     """
     Link to Warsa municipalities.
@@ -193,8 +133,8 @@ def link_municipalities(municipalities: Graph, warsa_endpoint: str, arpa_endpoin
     for casualty_munic in list(municipalities[:RDF.type:SCHEMA_CAS.Municipality]):
         labels = list(municipalities[casualty_munic:SKOS.prefLabel:])
 
-        warsa_match = None
-        for warsa_match in link_warsa_municipality(warsa_munics, labels):
+        warsa_match = link_warsa_municipality(warsa_munics, labels)
+        if warsa_match:
             municipalities.add((casualty_munic, SCHEMA_CAS.wartime_municipality, warsa_match))
 
         preferred = warsa_match or \
@@ -323,7 +263,8 @@ def link_casualties(input_graph, endpoint, munics):
 
     random.seed(42)  # Initialize randomization to create deterministic results
 
-    return link_persons(input_graph, endpoint, _generate_casualties_dict(input_graph, ranks, munics), data_fields)
+    return link_persons(input_graph, endpoint, _generate_casualties_dict(input_graph, ranks, munics),
+                        data_fields, 'input/person_links.json')
 
 
 def main():
