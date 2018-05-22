@@ -4,12 +4,11 @@ Stand-alone tasks for casualties dataset
 
 import argparse
 import logging
+import requests
 from io import StringIO
 
-from SPARQLWrapper import SPARQLWrapper, JSON
 from rdflib import *
 
-from linker import _query_sparql
 from namespaces import SCHEMA_WARSA, CRM, bind_namespaces
 
 log = logging.getLogger(__name__)
@@ -19,7 +18,6 @@ def documents_links(data_graph, endpoint):
     """
     Create crm:P70_documents links between death records and person instances.
     """
-    sparql = SPARQLWrapper(endpoint)
     persons = list(data_graph[:RDF.type:SCHEMA_WARSA.DeathRecord])
     log.debug('Finding links for {len} death records'.format(len=len(persons)))
     links = Graph()
@@ -29,13 +27,10 @@ def documents_links(data_graph, endpoint):
             log.debug('Skipping already linked death record {uri}'.format(uri=person))
             continue
 
-        sparql.setQuery("""
-                        PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
-                        SELECT * WHERE {{ ?sub crm:P70i_is_documented_in <{person_uri}> . }}
-                        """.format(person_uri=person))
-        sparql.setReturnFormat(JSON)
-
-        results = _query_sparql(sparql)
+        query = """PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
+                   SELECT * WHERE {{ ?sub crm:P70i_is_documented_in <{person_uri}> . }}
+                   """.format(person_uri=person)
+        results = requests.post(endpoint, {'query': query}).json()
 
         warsa_person = None
         for result in results["results"]["bindings"]:
@@ -49,12 +44,12 @@ def documents_links(data_graph, endpoint):
     return links
 
 
-def load_input_file(filename):
+def load_input_file(filename, fformat):
     """
-    >>> load_input_file(StringIO('<http://example.com/res> a <http://example.com/class> .'))  #doctest: +ELLIPSIS
+    >>> load_input_file(StringIO('<http://example.com/res> a <http://example.com/class> .'), 'turtle')  #doctest: +ELLIPSIS
     <Graph identifier=...(<class 'rdflib.graph.Graph'>)>
     """
-    return Graph().parse(filename, format=args.format)
+    return Graph().parse(filename, format=fformat)
 
 
 if __name__ == '__main__':
@@ -83,7 +78,7 @@ if __name__ == '__main__':
 
     if args.task == 'documents_links':
         log.info('Loading input file...')
-        death_records = load_input_file(args.input)
+        death_records = load_input_file(args.input, args.format)
         log.info('Creating links...')
         death_records = documents_links(death_records, args.endpoint)
         log.info('Serializing output file...')

@@ -14,8 +14,10 @@ BIOC = Namespace('http://ldf.fi/schema/bioc/')
 DATA_CAS = Namespace('http://ldf.fi/warsa/casualties/')
 SCHEMA_CAS = Namespace('http://ldf.fi/schema/warsa/casualties/')
 SCHEMA_WARSA = Namespace('http://ldf.fi/schema/warsa/')
-ACTORS = Namespace('http://ldf.fi/warsa/actors/')
 SCHEMA_ACTORS = Namespace('http://ldf.fi/schema/warsa/actors/')
+
+ACTORS = Namespace('http://ldf.fi/warsa/actors/')
+RANKS_NS = Namespace('http://ldf.fi/schema/warsa/actors/ranks/')
 
 CEMETERIES = Namespace('http://ldf.fi/warsa/places/cemeteries/')
 MOTHER_TONGUES = Namespace('http://ldf.fi/warsa/mother_tongues/')
@@ -39,6 +41,7 @@ def bind_namespaces(graph: Graph):
     graph.bind("wcsc", SCHEMA_CAS)
     graph.bind("wca", DATA_CAS)
     graph.bind("wac", ACTORS)
+    graph.bind("war", RANKS_NS)
 
     graph.bind("wcp", PERISHING_CLASSES)
     graph.bind("wcm", MUNICIPALITIES)

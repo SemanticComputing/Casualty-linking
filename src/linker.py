@@ -2,14 +2,15 @@
 #  -*- coding: UTF-8 -*-
 """Casualty linking tasks"""
 
-from collections import defaultdict
-
 import argparse
 import logging
 import random
-import rdf_dm as r
 import re
-from SPARQLWrapper import SPARQLWrapper, JSON
+from collections import defaultdict
+
+import numpy as np
+import rdf_dm as r
+import requests
 from arpa_linker.arpa import ArpaMimic, process_graph, Arpa, combine_values
 from fuzzywuzzy import fuzz
 from rdflib import Graph, URIRef, Literal, RDF
@@ -24,7 +25,6 @@ from warsa_linkers.person_record_linkage import link_persons, get_date_value, in
     activity_comparator
 from warsa_linkers.ranks import link_ranks
 from warsa_linkers.units import preprocessor, Validator
-from warsa_linkers.utils import query_sparql
 
 # TODO: Write some tests using responses
 
@@ -34,41 +34,6 @@ log = logging.getLogger(__name__)
 def _preprocess(literal, prisoner, subgraph):
     """Default preprocess implementation for link function"""
     return str(literal).strip()
-
-
-def link(graph, arpa, source_prop, target_graph, target_prop, preprocess=_preprocess, validator=None):
-    """
-    Link entities with ARPA based on parameters
-
-    :return: target_graph with found links
-    """
-    prop_str = str(source_prop).split('/')[-1]  # Used for logging
-
-    for (prisoner, value_literal) in list(graph[:source_prop:]):
-        value = preprocess(value_literal, prisoner, graph)
-
-        log.debug('Finding links for %s (originally %s)' % (value, value_literal))
-
-        if value:
-            arpa_result = arpa.query(value)
-            if arpa_result:
-                res = arpa_result[0]['id']
-
-                if validator:
-                    res = validator.validate(arpa_result, value_literal, prisoner)
-                    if not res:
-                        log.info('Match {res} failed validation for {val}, skipping it'.
-                                 format(res=res, val=value_literal))
-                        continue
-
-                log.info('Accepted a match for property {ps} with original value {val} : {res}'.
-                         format(ps=prop_str, val=value_literal, res=res))
-
-                target_graph.add((prisoner, target_prop, URIRef(res)))
-            else:
-                log.warning('No match found for %s: %s' % (prop_str, value))
-
-    return target_graph
 
 
 def _generate_casualties_dict(graph: Graph, ranks: Graph, munics: Graph):
@@ -83,6 +48,7 @@ def _generate_casualties_dict(graph: Graph, ranks: Graph, munics: Graph):
         family = str(graph.value(person, SCHEMA_WARSA.family_name, any=False))
         rank = str(rank_uri) if rank_uri else None
         birth_place_uri = graph.value(person, SCHEMA_CAS.municipality_of_birth, any=False)
+        units = graph.objects(person, SCHEMA_CAS.unit)
 
         cur_mun = str(munics.value(birth_place_uri, SCHEMA_CAS.current_municipality, any=False, default='')) or None
 
@@ -100,13 +66,14 @@ def _generate_casualties_dict(graph: Graph, ranks: Graph, munics: Graph):
                     'rank': rank,
                     'rank_level': rank_level,
                     'given': given,
-                    'family': re.sub(r'\(Ent\.\s*(.+)\)', r'\1', family),
+                    'family': re.sub(r'\(ent\.\s*(.+)\)', r'\1', family),
                     'birth_place': list({cur_mun, war_mun} - {None}),
                     'birth_begin': datebirth,
                     'birth_end': datebirth,
                     'death_begin': datedeath,
                     'death_end': datedeath,
                     'activity_end': datedeath,
+                    'unit': sorted(units) or None,
                     }
         casualties[str(person)] = casualty
 
@@ -160,7 +127,6 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
 
     COVER_NUMBER_SCORE_LIMIT = 20
 
-    sparql = SPARQLWrapper(endpoint)
     query_template_unit_code = """
         PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
         SELECT ?sub ?cover (GROUP_CONCAT(?label; separator=" || ") as ?labels) WHERE
@@ -177,10 +143,7 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
 
     unit_codes = graph.objects(None, SCHEMA_CAS.unit_code)
 
-    sparql.method = 'POST'
-    sparql.setQuery(query_template_unit_code.format(cover='" "'.join(unit_codes)))
-    sparql.setReturnFormat(JSON)
-    results = query_sparql(sparql)
+    results = requests.post(endpoint, {'query': query_template_unit_code.format(cover='" "'.join(unit_codes))}).json()
 
     units = defaultdict(list)
     for unit in results['results']['bindings']:
@@ -217,7 +180,8 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
 
             else:
                 log.warning('Skipping suspected erroneus unit for {unit}/{cover} with labels {lbls} and score {score}.'.
-                            format(unit=person_unit, cover=cover, lbls=sorted(set(best_labels or [])), score=best_score))
+                            format(unit=person_unit, cover=cover, lbls=sorted(set(best_labels or [])),
+                                   score=best_score))
 
         # NO COVER NUMBER, ADD RELATED_PERIOD FOR LINKING WITH WARSA-LINKERS
         if not cover or best_score < COVER_NUMBER_SCORE_LIMIT:
@@ -256,15 +220,19 @@ def link_casualties(input_graph, endpoint, munics):
         {'field': 'activity_end', 'type': 'Custom', 'comparator': activity_comparator, 'has missing': True},
         {'field': 'rank', 'type': 'Exact', 'has missing': True},
         {'field': 'rank_level', 'type': 'Price', 'has missing': True},
+        {'field': 'unit', 'type': 'Custom', 'comparator': intersection_comparator, 'has missing': True},
     ]
 
     ranks = r.read_graph_from_sparql(endpoint, "http://ldf.fi/warsa/ranks")
     munics = Graph().parse(munics, format=guess_format(munics))
 
     random.seed(42)  # Initialize randomization to create deterministic results
+    np.random.seed(42)
 
-    return link_persons(input_graph, endpoint, _generate_casualties_dict(input_graph, ranks, munics),
-                        data_fields, 'input/person_links.json')
+    return link_persons(endpoint, _generate_casualties_dict(input_graph, ranks, munics),
+                        data_fields, 'input/person_links.json', sample_size=2000000, threshold_ratio=0.3,
+                        training_data_file='input/training_data.json',
+                        training_settings_file='input/training_settings.pkl')
 
 
 def main():
@@ -283,6 +251,7 @@ def main():
 
     args = argparser.parse_args()
 
+    log = logging.getLogger()  # Get root logger
     log_handler = logging.FileHandler(args.logfile)
     log_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
     log.addHandler(log_handler)
