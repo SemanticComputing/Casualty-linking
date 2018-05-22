@@ -9,7 +9,7 @@ from rdf_dm import read_graph_from_sparql
 from rdflib import Graph, URIRef, Literal, RDF
 from rdflib.util import guess_format
 
-from namespaces import SKOS, CRM, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, DCT, FOAF
+from namespaces import SKOS, CRM, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, DCT, FOAF, BIOC
 
 NARC_SOURCE = URIRef('http://ldf.fi/warsa/sources/source9')
 
@@ -178,6 +178,7 @@ def generate_person(graph: Graph, casualty: URIRef):
 
     family_name = graph.value(casualty, SCHEMA_WARSA.family_name)
     given_names = graph.value(casualty, SCHEMA_WARSA.given_names)
+    occupation = graph.value(casualty, BIOC.has_occupation)
     lbl = Literal('{gn} {fn}'.format(gn=given_names, fn=family_name))
 
     person.add((person_uri, FOAF.familyName, family_name))
@@ -186,6 +187,8 @@ def generate_person(graph: Graph, casualty: URIRef):
     person.add((person_uri, SKOS.prefLabel, lbl))
     person.add((person_uri, DCT.source, NARC_SOURCE))
     person.add((person_uri, CRM.P70i_is_documented_in, casualty))
+    if occupation:
+        person.add((person_uri, BIOC.has_occupation, occupation))
 
     return person, person_uri, lbl
 
