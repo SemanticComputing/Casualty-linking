@@ -813,32 +813,16 @@
         "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p282613" }
       } ,
       {
-        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p250117" } ,
-        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p250117" }
-      } ,
-      {
         "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_1292" } ,
         "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p250117" }
-      } ,
-      {
-        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p266603" } ,
-        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p266603" }
       } ,
       {
         "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_1634" } ,
         "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p266603" }
       } ,
       {
-        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p281005" } ,
-        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p281005" }
-      } ,
-      {
         "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_1527" } ,
         "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p281005" }
-      } ,
-      {
-        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_p284962" } ,
-        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p284962" }
       } ,
       {
         "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_4152" } ,
@@ -851,6 +835,22 @@
       {
         "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_484" } ,
         "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p7810" }
+      },
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_432" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p501885" }
+      },
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3207" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p511389" }
+      },
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3214" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p751839" }
+      },
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3514" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p753135" }
       }
     ]
   }

@@ -3,6 +3,7 @@
 """Casualty linking tasks"""
 
 import argparse
+import json
 import logging
 import random
 import re
@@ -18,7 +19,7 @@ from rdflib.exceptions import UniquenessError
 from rdflib.util import guess_format
 
 from mapping import CASUALTY_MAPPING
-from namespaces import SKOS, BIOC, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, SCHEMA_ACTORS
+from namespaces import SKOS, BIOC, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, SCHEMA_ACTORS, CRM
 from warsa_linkers.municipalities import link_to_pnr, link_warsa_municipality
 from warsa_linkers.occupations import link_occupations
 from warsa_linkers.person_record_linkage import link_persons, get_date_value, intersection_comparator, \
@@ -77,7 +78,7 @@ def _generate_casualties_dict(graph: Graph, ranks: Graph, munics: Graph):
                     }
         casualties[str(person)] = casualty
 
-    log.debug('Casualty person: {}'.format(casualty))
+    log.info('Got {} casualty persons'.format(len(casualties)))
 
     return casualties
 
@@ -207,6 +208,36 @@ def link_units(graph: Graph, endpoint: str, arpa_url: str):
     return unit_links + unit_code_links
 
 
+def finalize_links(link_graph: Graph, training_links: list):
+    """
+    Do some manual modifications to the person links.
+    :return:
+    """
+    for link in training_links:
+        doc = link[0]
+        per = link[1]
+        link_graph.add((URIRef(doc), CRM.P70_documents, URIRef(per)))
+
+    # link_graph.remove((URIRef('http://ldf.fi/warsa/casualties/p7006'), CRM.P70_documents, URIRef('http://ldf.fi/warsa/actors/person_1132')))
+    return link_graph
+
+
+def read_person_links(json_file: str):
+    with open(json_file, 'r') as fp:
+        links = json.load(fp)['results']['bindings']
+
+    link_tuples = []
+
+    for link in links:
+        doc = link['doc']['value']
+        per = link['person']['value']
+        link_tuples.append((doc, per))
+
+    log.info('Got {} person links as training data'.format(len(links)))
+
+    return link_tuples
+
+
 def link_casualties(input_graph, endpoint, munics):
     data_fields = [
         {'field': 'given', 'type': 'String'},
@@ -229,10 +260,12 @@ def link_casualties(input_graph, endpoint, munics):
     random.seed(42)  # Initialize randomization to create deterministic results
     np.random.seed(42)
 
-    return link_persons(endpoint, _generate_casualties_dict(input_graph, ranks, munics),
-                        data_fields, 'input/person_links.json', sample_size=2000000, threshold_ratio=0.3,
-                        training_data_file='input/training_data.json',
-                        training_settings_file='input/training_settings.pkl')
+    training_links = read_person_links('input/person_links.json')
+
+    person_links = link_persons(endpoint, _generate_casualties_dict(input_graph, ranks, munics),
+                                data_fields, training_links , sample_size=500000,  threshold_ratio=0.5)
+
+    return finalize_links(person_links, training_links)
 
 
 def main():
