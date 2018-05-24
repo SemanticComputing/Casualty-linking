@@ -1,37 +1,63 @@
+@prefix dct: <http://purl.org/dc/terms/> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix xmls: <http://www.w3.org/2001/XMLSchema#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
-@prefix wsc: <http://ldf.fi/schema/warsa/> .
-@prefix cs: <http://ldf.fi/schema/warsa/casualties/> .
+@prefix wsch: <http://ldf.fi/schema/warsa/> .
+@prefix wcsc: <http://ldf.fi/schema/warsa/casualties/> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 
-wsc:Citizenship
+wsch:Citizenship
     rdfs:subClassOf skos:Concept ;
     skos:prefLabel "Citizenship"@en, "Kansalaisuus"@fi .
 
-wsc:Gender
+wsch:Gender
     rdfs:subClassOf skos:Concept ;
     skos:prefLabel "Gender"@en, "Sukupuoli"@fi .
 
-wsc:MaritalStatus
+wsch:MaritalStatus
     rdfs:subClassOf skos:Concept ;
     skos:prefLabel "Marital Status"@en, "Siviilisääty"@fi .
 
-wsc:MotherTongue
+wsch:MotherTongue
     rdfs:subClassOf skos:Concept ;
     skos:prefLabel "Mother tongue"@en, "Äidinkieli"@fi .
 
-wsc:Municipality
+wsch:Municipality
     rdfs:subClassOf skos:Concept ;
     skos:prefLabel "Kunta"@fi, "Municipality"@en .
 
-wsc:Nationality
+wsch:Nationality
     rdfs:subClassOf skos:Concept ;
     skos:prefLabel "Kansallisuus"@fi, "Nationality"@en .
 
-wsc:PerishingCategory
+wsch:PerishingCategory
     rdfs:subClassOf skos:Concept ;
     skos:prefLabel "Menehtymisluokka"@fi, "Perishing category"@en .
+
+wcsc:unit a rdf:Property ;
+    dct:description "Henkilön joukko-osasto kuolinhetkellä"@fi ;
+    skos:prefLabel "Military unit"@en,
+        "Joukko-osasto"@fi .
+
+wcsc:rank a rdf:Property ;
+    skos:prefLabel "Military rank"@en,
+        "Sotilasarvo"@fi .
+
+<http://ldf.fi/schema/bioc/has_occupation> a rdf:Property ;
+    skos:prefLabel "Occupation"@en,
+        "Ammatti"@fi .
+
+wsch:place_of_death a rdf:Property ;
+    skos:prefLabel "Place of death"@en,
+        "Kuolinpaikka"@fi .
+
+wsch:place_of_going_mia a rdf:Property ;
+    skos:prefLabel "Place of going missing in action"@en,
+        "Katoamispaikka"@fi .
+
+wcsc:buried_in a rdf:Property ;
+    skos:prefLabel "Buried in"@en,
+        "Haudattu paikkaan"@fi .
 

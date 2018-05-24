@@ -37,10 +37,14 @@ cat output/rank_links.ttl output/occupation_links.ttl output/unit_links.ttl outp
 python src/linker.py persons output/casualties_with_links.ttl output/documents_links.ttl --endpoint $WARSA_ENDPOINT_URL/sparql \
     --munics output/municipalities.ttl --logfile output/logs/linker.log --loglevel $LOG_LEVEL
 
-cat output/documents_links.ttl output/casualties_with_links.ttl | rapper - $BASE_URI -i turtle -o turtle > output/casualties.ttl
+cat output/documents_links.ttl output/casualties_with_links.ttl | rapper - $BASE_URI -i turtle -o turtle > output/casualties_linked.ttl
 
 echo "Generating persons"
-python src/person_generator.py output/casualties.ttl output/municipalities.ttl $WARSA_ENDPOINT_URL output/cas_person_ \
+python src/person_generator.py output/casualties_linked.ttl output/municipalities.ttl $WARSA_ENDPOINT_URL output/cas_person_ \
     --logfile output/logs/person_generator.log --loglevel $LOG_LEVEL
+
+mv output/cas_person_documents_links.ttl output/generated_documents_links.ttl
+
+cat output/generated_documents_links.ttl output/casualties_linked.ttl | rapper - $BASE_URI -i turtle -o turtle > output/casualties.ttl
 
 echo "Finished"

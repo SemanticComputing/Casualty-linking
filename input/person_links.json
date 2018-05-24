@@ -851,6 +851,10 @@
       {
         "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3514" } ,
         "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p753135" }
+      },
+      {
+        "person": { "type": "uri" , "value": "http://ldf.fi/warsa/actors/person_3180" } ,
+        "doc": { "type": "uri" , "value": "http://ldf.fi/warsa/casualties/p536739" }
       }
     ]
   }

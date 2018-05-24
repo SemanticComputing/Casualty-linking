@@ -150,23 +150,27 @@ def generate_promotion(graph: Graph, casualty: URIRef, person: URIRef, person_na
 
 
 def generate_join(graph: Graph, casualty: URIRef, person: URIRef, person_name: str, munics: Graph):
-    unit = graph.value(casualty, SCHEMA_CAS.unit)
-    if not unit:
+    units = list(graph.objects(casualty, SCHEMA_CAS.unit))
+    if not units:
         return Graph()
 
-    event, event_uri = generate_event(graph, casualty, person, SCHEMA_WARSA.Promotion, 'joining_cas_',
-                                      None, None, CRM.P143_joined, munics)
+    events = Graph()
+    for unit in units:
+        event, event_uri = generate_event(graph, casualty, person, SCHEMA_WARSA.Promotion, 'joining_cas_',
+                                          None, None, CRM.P143_joined, munics)
 
-    event.add((event_uri, CRM.P144_joined_with, unit))
+        event.add((event_uri, CRM.P144_joined_with, unit))
 
-    unit_literal = graph.value(casualty, SCHEMA_CAS.unit_literal)
-    lbl_fi = Literal('{person} liittyi joukko-osastoon {unit}'.format(person=person_name, unit=unit_literal), lang='fi')
-    lbl_en = Literal('{person} joined {unit}'.format(person=person_name, unit=unit_literal), lang='en')
+        unit_literal = graph.value(casualty, SCHEMA_CAS.unit_literal)
+        lbl_fi = Literal('{person} liittyi joukko-osastoon {unit}'.format(person=person_name, unit=unit_literal), lang='fi')
+        lbl_en = Literal('{person} joined {unit}'.format(person=person_name, unit=unit_literal), lang='en')
 
-    event.add((event_uri, SKOS.prefLabel, lbl_fi))
-    event.add((event_uri, SKOS.prefLabel, lbl_en))
+        event.add((event_uri, SKOS.prefLabel, lbl_fi))
+        event.add((event_uri, SKOS.prefLabel, lbl_en))
 
-    return event
+        events += event
+
+    return events
 
 
 def generate_person(graph: Graph, casualty: URIRef):
@@ -201,6 +205,7 @@ def generate_persons(graph: Graph, municipalities: Graph, ranks: Graph):
     deaths = Graph()
     disappearances = Graph()
     woundings = Graph()
+    documents_links = Graph()
 
     for casualty in graph.subjects(RDF.type, SCHEMA_WARSA.DeathRecord):
         if graph.value(casualty, CRM.P70_documents):
@@ -217,6 +222,8 @@ def generate_persons(graph: Graph, municipalities: Graph, ranks: Graph):
         woundings += generate_wounding(graph, casualty, person_uri, person_name, municipalities)
         disappearances += generate_disappearance(graph, casualty, person_uri, person_name, municipalities)
 
+        documents_links.add((casualty, CRM.P70_documents, person_uri))
+
     return {
         'persons': persons,
         'promotions': promotions,
@@ -224,7 +231,8 @@ def generate_persons(graph: Graph, municipalities: Graph, ranks: Graph):
         'births': births,
         'deaths': deaths,
         'disappearances': disappearances,
-        'woundings': woundings
+        'woundings': woundings,
+        'documents_links': documents_links
     }
 
 
