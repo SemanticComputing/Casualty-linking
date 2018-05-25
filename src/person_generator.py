@@ -209,6 +209,7 @@ def generate_persons(graph: Graph, municipalities: Graph, ranks: Graph):
 
     for casualty in graph.subjects(RDF.type, SCHEMA_WARSA.DeathRecord):
         if graph.value(casualty, CRM.P70_documents):
+            log.info('Skipping linked person: {}'.format(casualty))
             continue  # Do not generate if the casualty is already linked to a person instance
 
         person, person_uri, person_name = generate_person(graph, casualty)
