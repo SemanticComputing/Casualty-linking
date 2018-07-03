@@ -95,16 +95,18 @@ class RDFMapper:
         Convert graveyard information into URIs.
         """
         mun = graph.value(uri, SCHEMA_CAS.municipality_of_burial)
-        if not mun:
+        if not mun or str(mun) == 'X':
             return graph
 
         gy = graph.value(uri, SCHEMA_CAS.graveyard_number)
         gy_uri = '{base}h{mun}'.format(base=CEMETERIES, mun=str(mun).split('/k')[-1])
         # mun_uri = '{base}k{mun}'.format(base=KUNNAT, mun=mun)
         if gy:
-            gy_uri = gy_uri + '_{gy}'.format(gy=gy)
+            gy_uri += '_{gy}'.format(gy=gy)
+        else:
+            return graph
 
-        if str(gy) not in ['?', 'x']:
+        if str(gy).isnumeric():
             graph.add((uri, SCHEMA_WARSA.buried_in, URIRef(gy_uri)))
 
         # graph.add((uri, SCHEMA_CAS.burial_municipality, URIRef(mun_uri)))
