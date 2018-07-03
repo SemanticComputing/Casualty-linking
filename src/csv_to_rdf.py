@@ -64,7 +64,7 @@ class RDFMapper:
             if conv_error:
                 row_errors.append([person_id, name, column_name, conv_error, original_value])
 
-            if value:
+            if value not in [None, '']:
                 if type(value) == datetime.date:
                     rdf_value = Literal(value, datatype=XSD.date)
                 elif type(value) == URIRef:
@@ -126,10 +126,10 @@ class RDFMapper:
             return value.strip().upper() if value else None
 
         def stripper(value):
-            return value.strip() if value else None
+            return value.strip() if value != '' else None
 
         def x_stripper(value):
-            return value.strip() if value and value.strip() != 'x' else None
+            return value.strip() if value.strip() not in ['x', ''] else None
 
         csv_data = pd.read_csv(csv_input, encoding='UTF-8', index_col=False, sep=',', quotechar='"',
                                # parse_dates=[1], infer_datetime_format=True, dayfirst=True,

@@ -155,7 +155,7 @@ CASUALTY_MAPPING = {
             'uri': SCHEMA_WARSA.number_of_children,
             'name_fi': 'Lasten lukumäärä',
             'name_en': 'Number of children',
-            'converter': lambda x: int(x) if x else None
+            'converter': lambda x: int(x) if x.isnumeric() else None
         },
     'AMMATTI':
         {
@@ -174,7 +174,7 @@ CASUALTY_MAPPING = {
             'uri': SCHEMA_CAS.unit_code,
             'name_fi': 'Joukko-osaston peiteluku',
             'name_en': 'Military unit identification code',
-            'description_fi': 'Henkilön joukko-osaston peiteluku kuolinhetkellä',
+            'description_fi': 'Henkilön kuolinhetken joukko-osaston peiteluku',
         },
     'JOSNIMI':
         {
