@@ -185,6 +185,7 @@ def generate_person(graph: Graph, casualty: URIRef):
     occupation = graph.value(casualty, BIOC.has_occupation)
     lbl = Literal('{gn} {fn}'.format(gn=given_names, fn=family_name))
 
+    person.add((person_uri, RDF.type, SCHEMA_WARSA.Person))
     person.add((person_uri, FOAF.familyName, family_name))
     person.add((person_uri, FOAF.firstName, given_names))
     person.add((person_uri, FOAF.givenName, given_names))
