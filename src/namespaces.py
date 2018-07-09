@@ -38,6 +38,7 @@ def bind_namespaces(graph: Graph):
     graph.bind("foaf", FOAF)
 
     graph.bind("wsch", SCHEMA_WARSA)
+    graph.bind("wsca", SCHEMA_ACTORS)
     graph.bind("wcsc", SCHEMA_CAS)
     graph.bind("wca", DATA_CAS)
     graph.bind("wac", ACTORS)
