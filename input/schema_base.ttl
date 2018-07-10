@@ -57,7 +57,7 @@ wsch:place_of_going_mia a rdf:Property ;
     skos:prefLabel "Place of going missing in action"@en,
         "Katoamispaikka"@fi .
 
-wcsc:buried_in a rdf:Property ;
+wsch:buried_in a rdf:Property ;
     skos:prefLabel "Buried in"@en,
         "Haudattu paikkaan"@fi .
 
