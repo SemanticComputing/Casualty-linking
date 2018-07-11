@@ -2,6 +2,8 @@
 #  -*- coding: UTF-8 -*-
 """Person generator"""
 
+# TODO: prefLabels for time-spans
+
 import argparse
 import logging
 
@@ -48,6 +50,7 @@ def generate_event(graph: Graph, casualty: URIRef, person: URIRef, event_type: U
             # TODO: dateTimes
             event.add((timespan_uri, CRM.P82a_begin_of_the_begin, date))
             event.add((timespan_uri, CRM.P82b_end_of_the_end, date))
+            event.add((timespan_uri, SKOS.prefLabel, Literal(str(date))))
 
     return event, event_uri
 
