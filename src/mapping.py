@@ -58,7 +58,7 @@ MARITAL_STATUSES = {
 
 GENDERS = {
     'M': GENDERS.Mies,
-    'N': GENDERS.Nainen,
+    'F': GENDERS.Nainen,
     None: GENDERS.Tuntematon,
 }
 
