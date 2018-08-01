@@ -29,7 +29,7 @@ python src/linker.py occupations output/_casualties_processed.ttl output/_occupa
     --logfile output/logs/linker.log --loglevel $LOG_LEVEL
 
 echo "Linking municipalities"
-python src/linker.py municipalities data/municipalities.ttl output/_munics.ttl --endpoint $WARSA_ENDPOINT_URL/sparql \
+python src/linker.py municipalities input/old_municipalities.ttl output/_munics.ttl --endpoint $WARSA_ENDPOINT_URL/sparql \
     --arpa $ARPA_URL/pnr_municipality --logfile output/logs/linker.log --loglevel $LOG_LEVEL
 
 rapper -i turtle output/_munics.ttl -o turtle > output/municipalities.ttl

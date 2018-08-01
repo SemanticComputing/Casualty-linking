@@ -128,7 +128,6 @@ def main(args):
     surma.parse(args.input, format='turtle')
 
     print('Parsed {len} data triples.'.format(len=len(surma)))
-    print('Writing graphs to pickle objects...')
 
     #####################################
     # FIX KNOWN ISSUES IN DATA AND SCHEMA
