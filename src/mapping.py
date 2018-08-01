@@ -16,8 +16,14 @@ from validators import validate_dates, validate_mother_tongue
 
 # CSV column mapping. Person name and person index number are taken separately.
 
-MUNICIPALITY_PREFIX = Namespace(str(MUNICIPALITIES) + "k")
+GRAVEYARD_MAPPING = {
+    'http://ldf.fi/warsa/places/cemeteries/h0520_1':
+    'http://ldf.fi/warsa/places/cemeteries/h0929_1',  # Pieksämäki
+    'http://ldf.fi/warsa/places/cemeteries/h0135_1':
+    'http://ldf.fi/warsa/places/cemeteries/h0927_1',  # Laitila
+}
 
+MUNICIPALITY_PREFIX = Namespace(str(MUNICIPALITIES) + "k")
 
 CITIZENSHIPS = {
     'ITA': CITIZENSHIPS.Italia,
@@ -86,7 +92,6 @@ PERISHING_CLASSES = {
     'S': PERISHING_CLASSES.S,
     None: PERISHING_CLASSES.Tuntematon,
 }
-
 
 CASUALTY_MAPPING = {
     # 'ID':

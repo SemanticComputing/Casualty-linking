@@ -15,7 +15,7 @@ then
 fi
 
 echo "Converting to ttl"
-python src/csv_to_rdf.py data/casualties.csv --outdata=output/_casualties_initial.ttl --outschema=output/_schema.ttl
+python src/csv_to_rdf.py data/casualties.csv data/cemeteries.ttl --outdata=output/_casualties_initial.ttl --outschema=output/_schema.ttl
 
 echo "Finalizing schema"
 cat input/schema_base.ttl output/_schema.ttl | rapper - $BASE_URI -i turtle -o turtle > output/casualties_schema.ttl

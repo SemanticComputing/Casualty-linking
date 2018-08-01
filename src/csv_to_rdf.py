@@ -7,7 +7,7 @@ import logging
 import pandas as pd
 
 from rdflib import URIRef, Graph, Literal, RDF, XSD
-from mapping import CASUALTY_MAPPING
+from mapping import CASUALTY_MAPPING, GRAVEYARD_MAPPING
 from namespaces import DCT, SKOS, SCHEMA_CAS, SCHEMA_WARSA, bind_namespaces, CEMETERIES, DATA_CAS
 
 
@@ -16,7 +16,7 @@ class RDFMapper:
     Map tabular data (currently pandas DataFrame) to RDF. Create a class instance of each row.
     """
 
-    def __init__(self, mapping, instance_class, loglevel='WARNING'):
+    def __init__(self, mapping, instance_class, cemeteries=(), loglevel='WARNING'):
         self.mapping = mapping
         self.instance_class = instance_class
         self.table = None
@@ -24,6 +24,7 @@ class RDFMapper:
         self.schema = Graph()
         # self.errors = pd.DataFrame(columns=['nro', 'sarake', 'virhe', 'arvo'])
         self.errors = []
+        self.cemeteries = cemeteries
 
         logging.basicConfig(filename='casualties.log',
                             filemode='a',
@@ -92,7 +93,7 @@ class RDFMapper:
 
     def convert_graveyards(self, uri, graph: Graph):
         """
-        Convert graveyard information into URIs.
+        Convert graveyard information into URIs. Check if the created URI exists in cemeteries ontology.
         """
         mun = graph.value(uri, SCHEMA_CAS.municipality_of_burial)
         if not mun or str(mun) == 'X':
@@ -106,12 +107,15 @@ class RDFMapper:
         else:
             return graph
 
+        gy_uri = URIRef(GRAVEYARD_MAPPING.get(gy_uri, gy_uri))
+
+        if gy_uri not in self.cemeteries:
+            logging.info('Cemetery {gy} not found for person {p}'.format(gy=gy_uri, p=uri))
+            return graph
+
         if str(gy).isnumeric():
-            graph.add((uri, SCHEMA_WARSA.buried_in, URIRef(gy_uri)))
+            graph.add((uri, SCHEMA_WARSA.buried_in, gy_uri))
 
-        # graph.add((uri, SCHEMA_CAS.burial_municipality, URIRef(mun_uri)))
-
-        # graph.remove((uri, SCHEMA_CAS.hautauskunta_id, mun))
         graph.remove((uri, SCHEMA_CAS.graveyard_number, gy))
 
         return graph
@@ -204,6 +208,7 @@ if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Process casualties CSV", fromfile_prefix_chars='@')
 
     argparser.add_argument("input", help="Input CSV file")
+    argparser.add_argument("cemeteries", help="Input cemeteries turtle file")
     argparser.add_argument("--outdata", help="Output file to serialize RDF dataset to (.ttl)", default=None)
     argparser.add_argument("--outschema", help="Output file to serialize RDF schema to (.ttl)", default=None)
     argparser.add_argument("--loglevel", default='INFO', help="Logging level, default is INFO.",
@@ -211,7 +216,9 @@ if __name__ == "__main__":
 
     args = argparser.parse_args()
 
-    mapper = RDFMapper(CASUALTY_MAPPING, SCHEMA_WARSA.DeathRecord, loglevel=args.loglevel.upper())
+    cemetery_uris = list(Graph().parse(args.cemeteries, format='turtle').subjects())
+    mapper = RDFMapper(CASUALTY_MAPPING, SCHEMA_WARSA.DeathRecord, cemeteries=cemetery_uris,
+                       loglevel=args.loglevel.upper())
     mapper.read_csv(args.input)
 
     mapper.process_rows()
