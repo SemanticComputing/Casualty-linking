@@ -286,7 +286,7 @@ def main():
     elif args.task == 'occupations':
         log.info('Linking occupations')
         bind_namespaces(link_occupations(input_graph, args.endpoint, CASUALTY_MAPPING['AMMATTI']['uri'],
-                                         BIOC.has_occupation, SCHEMA_WARSA.DeathRecord, sep=',')) \
+                                         BIOC.has_occupation, SCHEMA_WARSA.DeathRecord)) \
             .serialize(args.output, format=guess_format(args.output))
 
 
