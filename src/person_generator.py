@@ -2,8 +2,6 @@
 #  -*- coding: UTF-8 -*-
 """Person generator"""
 
-# TODO: prefLabels for time-spans
-
 import argparse
 import logging
 
@@ -51,6 +49,7 @@ def generate_event(graph: Graph, casualty: URIRef, person: URIRef, event_type: U
             event.add((timespan_uri, CRM.P82a_begin_of_the_begin, date))
             event.add((timespan_uri, CRM.P82b_end_of_the_end, date))
             event.add((timespan_uri, SKOS.prefLabel, Literal(str(date))))
+            event.add((timespan_uri, RDF.type, CRM['E52_Time-Span']))
 
     return event, event_uri
 
@@ -215,6 +214,7 @@ def generate_persons(graph: Graph, municipalities: Graph, ranks: Graph):
         if graph.value(casualty, CRM.P70_documents):
             log.info('Skipping linked person: {}'.format(casualty))
             continue  # Do not generate if the casualty is already linked to a person instance
+            # TODO: Update person instance with data from the death record?
 
         person, person_uri, person_name = generate_person(graph, casualty)
 
