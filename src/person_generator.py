@@ -214,7 +214,7 @@ def generate_persons(graph: Graph, municipalities: Graph, ranks: Graph):
         if graph.value(casualty, CRM.P70_documents):
             log.info('Skipping linked person: {}'.format(casualty))
             continue  # Do not generate if the casualty is already linked to a person instance
-            # TODO: Update person instance with data from the death record?
+            # TODO: Update person instance with data from the death record
 
         person, person_uri, person_name = generate_person(graph, casualty)
 

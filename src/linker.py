@@ -47,7 +47,7 @@ def _generate_casualties_dict(graph: Graph, ranks: Graph, munics: Graph):
 
         given = str(graph.value(person, SCHEMA_WARSA.given_names, any=False))
         family = str(graph.value(person, SCHEMA_WARSA.family_name, any=False))
-        rank = str(rank_uri) if rank_uri else None
+        rank = [str(rank_uri)] if rank_uri else None
         birth_place_uri = graph.value(person, SCHEMA_CAS.municipality_of_birth, any=False)
         units = graph.objects(person, SCHEMA_CAS.unit)
 
@@ -233,7 +233,8 @@ def link_casualties(input_graph, endpoint, munics):
     training_links = read_person_links('input/person_links.json')
 
     person_links = link_persons(endpoint, _generate_casualties_dict(input_graph, ranks, munics),
-                                data_fields, training_links, sample_size=500000,  threshold_ratio=0.5)
+                                data_fields, training_links,
+                                sample_size=500000, training_size=150000, threshold_ratio=0.8)
 
     return person_links
 
@@ -286,7 +287,7 @@ def main():
     elif args.task == 'occupations':
         log.info('Linking occupations')
         bind_namespaces(link_occupations(input_graph, args.endpoint, CASUALTY_MAPPING['AMMATTI']['uri'],
-                                         BIOC.has_occupation, SCHEMA_WARSA.DeathRecord)) \
+                                         BIOC.has_occupation, SCHEMA_WARSA.DeathRecord, score_threshold=0.88)) \
             .serialize(args.output, format=guess_format(args.output))
 
 
