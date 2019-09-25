@@ -49,7 +49,7 @@ def _generate_casualties_dict(graph: Graph, ranks: Graph, munics: Graph):
         family = str(graph.value(person, SCHEMA_WARSA.family_name, any=False))
         rank = [str(rank_uri)] if rank_uri else None
         birth_place_uri = graph.value(person, SCHEMA_CAS.municipality_of_birth, any=False)
-        units = graph.objects(person, SCHEMA_CAS.unit)
+        units = sorted(str(unit) for unit in graph.objects(person, SCHEMA_CAS.unit)) or None
 
         cur_mun = str(munics.value(birth_place_uri, SCHEMA_CAS.current_municipality, any=False, default='')) or None
 
@@ -74,7 +74,7 @@ def _generate_casualties_dict(graph: Graph, ranks: Graph, munics: Graph):
                     'death_begin': datedeath,
                     'death_end': datedeath,
                     'activity_end': datedeath,
-                    'unit': sorted(units) or None,
+                    'unit': units,
                     }
         casualties[str(person)] = casualty
 
@@ -219,7 +219,7 @@ def link_casualties(input_graph, endpoint, munics):
         {'field': 'death_begin', 'type': 'DateTime', 'has missing': True, 'fuzzy': False},
         {'field': 'death_end', 'type': 'DateTime', 'has missing': True, 'fuzzy': False},
         {'field': 'activity_end', 'type': 'Custom', 'comparator': activity_comparator, 'has missing': True},
-        {'field': 'rank', 'type': 'Exact', 'has missing': True},
+        {'field': 'rank', 'type': 'Custom', 'comparator': intersection_comparator, 'has missing': True},
         {'field': 'rank_level', 'type': 'Price', 'has missing': True},
         {'field': 'unit', 'type': 'Custom', 'comparator': intersection_comparator, 'has missing': True},
     ]
@@ -234,7 +234,7 @@ def link_casualties(input_graph, endpoint, munics):
 
     person_links = link_persons(endpoint, _generate_casualties_dict(input_graph, ranks, munics),
                                 data_fields, training_links,
-                                sample_size=500000, training_size=150000, threshold_ratio=0.8)
+                                sample_size=1500000, training_size=2500000, threshold_ratio=0.85)
 
     return person_links
 
