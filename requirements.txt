@@ -1,6 +1,6 @@
 numpy
 requests==2.22.0
-joblib==0.13.2
+joblib==1.2.0
 pandas==0.24.2
 iso8601==0.1.12
 rdflib==4.2.2
