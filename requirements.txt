@@ -1,5 +1,5 @@
 numpy
-requests==2.22.0
+requests==2.31.0
 joblib==0.13.2
 pandas==0.24.2
 iso8601==0.1.12
